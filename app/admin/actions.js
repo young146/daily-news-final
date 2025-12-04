@@ -39,31 +39,42 @@ export async function publishItemAction(id, target) {
         const data = {};
 
         if (target === 'main') {
-            await publishToMainSite(item);
+            const result = await publishToMainSite(item);
+            data.wordpressUrl = result.postUrl;
+            if (result.imageUrl) {
+                data.wordpressImageUrl = result.imageUrl;
+            }
             data.isPublishedMain = true;
             data.status = 'PUBLISHED';
         } else if (target === 'daily') {
-            // 1. Publish to Main Site FIRST to get the link
+            // 1. Publish to Main Site FIRST to get the link and image URL
             let mainSiteUrl = item.wordpressUrl;
+            let uploadedImageUrl = item.wordpressImageUrl;
+            
             if (!mainSiteUrl) {
                 try {
-                    mainSiteUrl = await publishToMainSite(item);
+                    const result = await publishToMainSite(item);
+                    mainSiteUrl = result.postUrl;
+                    uploadedImageUrl = result.imageUrl;
                 } catch (e) {
                     console.error("Failed to publish to main site, proceeding without link:", e);
-                    // Optionally throw error or continue with a fallback? 
-                    // For now, we continue so the item at least gets marked as published locally.
                 }
             }
 
-            // 2. Update DB with the link and daily status
+            // 2. Update DB with the link and image URL
             if (mainSiteUrl) {
                 data.wordpressUrl = mainSiteUrl;
             }
+            if (uploadedImageUrl) {
+                data.wordpressImageUrl = uploadedImageUrl;
+            }
 
-            await publishToDailySite(item);
+            // 3. Publish summary - will reuse wordpressImageUrl if available
+            const itemWithImageUrl = { ...item, wordpressImageUrl: uploadedImageUrl };
+            await publishToDailySite(itemWithImageUrl);
             data.isPublishedDaily = true;
-            data.publishedAt = new Date(); // Update publishedAt to NOW so it appears as latest
-            data.status = 'PUBLISHED'; // Mark as fully published
+            data.publishedAt = new Date();
+            data.status = 'PUBLISHED';
         } else if (target === 'sns') {
             await postToSNS(item, 'facebook');
             await postToSNS(item, 'kakao');
@@ -74,8 +85,7 @@ export async function publishItemAction(id, target) {
             where: { id },
             data: {
                 ...data,
-                // isTopNews: false, // KEEP Top News status for display on main site
-                isSelected: false // Remove from Selection Park as well
+                isSelected: false
             }
         });
 

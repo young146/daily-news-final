@@ -34,6 +34,7 @@ model NewsItem {
   isCardNews        Boolean  @default(false) // Selected for Card News (Top 1 + 4 others)
   isSentSNS         Boolean  @default(false) // Facebook, Kakao
   wordpressUrl      String?  // URL of the published post on WordPress
+  wordpressImageUrl String?  // URL of uploaded image in WordPress media library
   
   htmlContent       String?  // Generated HTML for email
   publishedAt       DateTime?
