@@ -1,12 +1,19 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 const https = require('https');
+const crypto = require('crypto');
+
+// Create HTTPS agent that allows legacy SSL renegotiation
+const legacyAgent = new https.Agent({
+    rejectUnauthorized: false,
+    secureOptions: crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT
+});
 
 async function crawlVnaNet() {
     console.log('Starting crawl of VNA Net...');
     try {
         const { data } = await axios.get('https://vnanet.vn/en/', {
-            httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+            httpsAgent: legacyAgent,
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }
@@ -57,7 +64,7 @@ async function crawlVnaNet() {
             try {
                 console.log(`Fetching details for: ${item.title}`);
                 const { data: detailData } = await axios.get(item.originalUrl, {
-                    httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+                    httpsAgent: legacyAgent,
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
                     }
