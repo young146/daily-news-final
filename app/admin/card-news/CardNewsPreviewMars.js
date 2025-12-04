@@ -6,6 +6,7 @@ export default function CardNewsPreviewMars({ data, mode = 'preview' }) {
     const { topNews, cardNewsItems, weather, rates } = data;
     const cardRef = useRef(null);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [publishResult, setPublishResult] = useState(null);
     const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
 
     const generateCanvas = async () => {
@@ -107,6 +108,41 @@ export default function CardNewsPreviewMars({ data, mode = 'preview' }) {
 
     const handleNativePrint = () => {
         window.print();
+    };
+
+    const handlePublishToWordPress = async () => {
+        if (!confirm('카드 엽서를 WordPress에 게시하시겠습니까?')) return;
+        
+        setIsGenerating(true);
+        setPublishResult(null);
+        
+        try {
+            const response = await fetch('/api/generate-daily-content', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ publishToWordPress: true })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success && result.wordpress) {
+                setPublishResult({
+                    success: true,
+                    postUrl: result.wordpress.postUrl,
+                    imageUrl: result.wordpress.imageUrl
+                });
+                alert('WordPress에 카드 엽서가 게시되었습니다!');
+            } else if (result.success) {
+                setPublishResult({ success: true, message: '이미지는 생성되었지만 WordPress 게시에 실패했습니다.' });
+            } else {
+                throw new Error(result.error || 'Unknown error');
+            }
+        } catch (error) {
+            setPublishResult({ success: false, error: error.message });
+            alert(`게시 실패: ${error.message}`);
+        }
+        
+        setIsGenerating(false);
     };
 
     return (
@@ -303,16 +339,54 @@ export default function CardNewsPreviewMars({ data, mode = 'preview' }) {
             </div>
 
             {mode !== 'print' && (
-                <div className="mt-4 flex gap-4">
-                    <button onClick={handleNativePrint} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-bold shadow-md">
-                        🖨️ Print / Save as PDF (Best Quality)
-                    </button>
-                    <button onClick={handleDownloadPDF} disabled={isGenerating} className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm">
-                        Download Mars PDF (Image)
-                    </button>
-                    <button onClick={handleDownloadImage} disabled={isGenerating} className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm">
-                        Download Mars Image
-                    </button>
+                <div className="mt-4 flex flex-col items-center gap-4">
+                    <div className="flex gap-4">
+                        <button onClick={handleNativePrint} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-bold shadow-md">
+                            🖨️ 인쇄 / PDF 저장
+                        </button>
+                        <button onClick={handleDownloadPDF} disabled={isGenerating} className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm">
+                            PDF 다운로드
+                        </button>
+                        <button onClick={handleDownloadImage} disabled={isGenerating} className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm">
+                            이미지 다운로드
+                        </button>
+                    </div>
+                    
+                    <div className="flex gap-4">
+                        <button 
+                            onClick={handlePublishToWordPress} 
+                            disabled={isGenerating}
+                            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            {isGenerating ? (
+                                <>
+                                    <span className="animate-spin">⏳</span>
+                                    게시 중...
+                                </>
+                            ) : (
+                                <>
+                                    📤 WordPress에 카드 엽서 게시
+                                </>
+                            )}
+                        </button>
+                    </div>
+                    
+                    {publishResult && (
+                        <div className={`p-4 rounded-lg text-sm ${publishResult.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                            {publishResult.success ? (
+                                <div className="flex flex-col gap-2">
+                                    <span>✅ 게시 완료!</span>
+                                    {publishResult.postUrl && (
+                                        <a href={publishResult.postUrl} target="_blank" rel="noopener noreferrer" className="underline font-bold">
+                                            게시물 보기 →
+                                        </a>
+                                    )}
+                                </div>
+                            ) : (
+                                <span>❌ 오류: {publishResult.error}</span>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
         </div>
