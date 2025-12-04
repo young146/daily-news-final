@@ -83,6 +83,34 @@ Two publication targets on chaovietnam.co.kr:
 | `WORDPRESS_USERNAME` | WordPress username (default: chaovietnam) |
 | `DATABASE_URL` | SQLite database path |
 
+## Card News (전령 카드/카드 엽서)
+
+카드 엽서는 오늘의 주요 뉴스를 한눈에 보여주는 시각적 카드입니다.
+
+### 구성 요소
+- **특집 뉴스 (TopNews)**: 왼쪽 60% 영역, 큰 이미지와 제목
+- **카드 뉴스 (4개)**: 오른쪽 40% 영역, 4개의 작은 카드
+- **날씨/환율 정보**: 하단 푸터 영역
+
+### 사용 방법
+1. 관리자 대시보드에서 뉴스 선택 시 `isTopNews`, `isCardNews` 지정
+2. `/admin/card-news` 페이지에서 카드 엽서 미리보기
+3. **"WordPress에 카드 엽서 게시"** 버튼으로 WordPress에 자동 게시
+
+### 관련 파일
+| File | Purpose |
+|------|---------|
+| `app/admin/card-news/page.js` | 카드 엽서 미리보기 페이지 |
+| `app/admin/card-news/CardNewsPreviewMars.js` | Mars Explorer 디자인 |
+| `app/api/publish-card-news/route.js` | WordPress 게시 API |
+| `lib/publisher.js` | `publishCardNewsToWordPress()` 함수 |
+
+### WordPress 게시 결과
+- **카테고리**: 뉴스 > 데일리뉴스 (6, 31)
+- **제목**: "📰 YYYY년 M월 D일 데일리뉴스 카드"
+- **Featured Image**: 카드 엽서 PNG 이미지
+- **링크**: 전체 뉴스 목록 페이지로 연결
+
 ## Recent Changes (Dec 4, 2025)
 
 - Added `wordpressMediaId` field to database for image reuse
@@ -92,9 +120,11 @@ Two publication targets on chaovietnam.co.kr:
 - Jenny plugin v1.1: Cards link directly to full article
 - **Yonhap SSL fix**: Images downloaded via Replit first, then uploaded to WordPress
 - **VNA crawler fix**: SSL legacy support enabled
+- **Card News WordPress 게시**: 카드 엽서를 WordPress에 직접 게시하는 기능 추가
 
 ## Notes
 
 - All 7 news sources now working with images
 - Existing summary posts (before Dec 4) still link to summary pages
 - New summary posts link directly to full articles
+- Card news uses client-side html2canvas for image generation (Puppeteer not available)
