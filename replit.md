@@ -106,10 +106,21 @@ Two publication targets on chaovietnam.co.kr:
 | `lib/publisher.js` | `publishCardNewsToWordPress()` 함수 |
 
 ### WordPress 게시 결과
-- **카테고리**: 뉴스 > 데일리뉴스 (6, 31)
-- **제목**: "📰 YYYY년 M월 D일 데일리뉴스 카드"
-- **Featured Image**: 카드 엽서 PNG 이미지
-- **링크**: 전체 뉴스 목록 페이지로 연결
+- **뉴스 터미널 페이지**: `https://chaovietnam.co.kr/daily-news-terminal/`
+- **Featured Image**: 카드 엽서 JPEG 이미지 (뉴스 터미널 페이지 대표이미지로 설정)
+- **OG 이미지**: Featured Image가 SNS 공유 시 미리보기로 표시됨
+
+### SNS 공유 URL
+| 플랫폼 | URL | 비고 |
+|--------|-----|------|
+| Facebook | `https://chaovietnam.co.kr/daily-news-terminal/` | 바로 작동 |
+| 카카오톡 | `https://chaovietnam.co.kr/daily-news-terminal/` | 캐시 초기화 필요 시 [카카오 디버거](https://developers.kakao.com/tool/clear/og) 사용 |
+| Zalo | `https://chaovietnam.co.kr/daily-news-terminal/?v=날짜` | 예: `?v=1204` (12월4일) |
+
+### 일일 워크플로우
+1. 관리자 대시보드에서 뉴스 선택 (TopNews 1개, CardNews 4개)
+2. `/admin/card-news` 페이지에서 **"WordPress에 카드 엽서 게시"** 클릭
+3. SNS에서 뉴스 터미널 URL 공유
 
 ## Recent Changes (Dec 4, 2025)
 
@@ -121,6 +132,9 @@ Two publication targets on chaovietnam.co.kr:
 - **Yonhap SSL fix**: Images downloaded via Replit first, then uploaded to WordPress
 - **VNA crawler fix**: SSL legacy support enabled
 - **Card News WordPress 게시**: 카드 엽서를 WordPress에 직접 게시하는 기능 추가
+- **카드 엽서 JPEG 변환**: PNG → JPEG (92% 품질), 파일 크기 86% 감소 (2.4MB → 339KB)
+- **뉴스 터미널 대표이미지**: 카드 엽서가 뉴스 터미널 페이지의 Featured Image로 설정
+- **SNS 공유 성공**: Facebook, 카카오톡, Zalo 모두 OG 이미지 표시 확인
 
 ## Notes
 
