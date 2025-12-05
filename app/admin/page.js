@@ -67,30 +67,10 @@ async function toggleTopNews(formData) {
     revalidatePath('/admin');
 }
 
-
-
-async function archiveOldNews() {
+async function deleteNewsItem(formData) {
     'use server';
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    await prisma.newsItem.updateMany({
-        where: {
-            createdAt: { lt: yesterday },
-            isSelected: false,
-            isTopNews: false,
-            status: 'DRAFT'
-        },
-        data: { status: 'ARCHIVED' }
-    });
-    revalidatePath('/admin');
-}
-
-async function resetAllNews() {
-    'use server';
-    // Delete all news items except published ones (optional safety)
-    // For now, user wants to "delete everything and start over", so we delete everything.
-    await prisma.newsItem.deleteMany({});
+    const id = formData.get('id');
+    await prisma.newsItem.delete({ where: { id } });
     revalidatePath('/admin');
 }
 
@@ -128,16 +108,6 @@ export default async function AdminPage() {
                     <Link href="/admin/settings" className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 transition flex items-center gap-2">
                         ⚙️ 설정
                     </Link>
-                    <form action={resetAllNews}>
-                        <button type="submit" className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition flex items-center gap-2" title="Delete ALL news items">
-                            ⚠️ Hard Reset
-                        </button>
-                    </form>
-                    <form action={archiveOldNews}>
-                        <button type="submit" className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition flex items-center gap-2" title="Archive items older than 24h">
-                            🧹 Cleanup
-                        </button>
-                    </form>
                 </div>
             </div>
 
@@ -185,12 +155,20 @@ export default async function AdminPage() {
                                         <div className="w-40">
                                             <CategorySelector id={item.id} initialCategory={item.category} />
                                         </div>
-                                        <form action={addToTop}>
-                                            <input type="hidden" name="id" value={item.id} />
-                                            <button type="submit" className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition">
-                                                Select →
-                                            </button>
-                                        </form>
+                                        <div className="flex gap-2">
+                                            <form action={deleteNewsItem}>
+                                                <input type="hidden" name="id" value={item.id} />
+                                                <button type="submit" className="text-sm bg-gray-200 text-gray-600 px-2 py-1 rounded hover:bg-red-100 hover:text-red-600 transition" title="Delete">
+                                                    🗑️
+                                                </button>
+                                            </form>
+                                            <form action={addToTop}>
+                                                <input type="hidden" name="id" value={item.id} />
+                                                <button type="submit" className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition">
+                                                    Select →
+                                                </button>
+                                            </form>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
