@@ -4,7 +4,11 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const title = searchParams.get('title') || '오늘의 뉴스';
     const summary = searchParams.get('summary') || '';
+    const imageUrl = searchParams.get('image') || '';
     const date = searchParams.get('date') || new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+    const weather = searchParams.get('weather') || '25';
+    const usd = searchParams.get('usd') || '25,400';
+    const krw = searchParams.get('krw') || '17.8';
 
     try {
         return new ImageResponse(
@@ -15,35 +19,47 @@ export async function GET(request) {
                         height: '630px',
                         display: 'flex',
                         flexDirection: 'column',
-                        background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
                         fontFamily: 'sans-serif',
                         position: 'relative',
+                        overflow: 'hidden',
+                        background: '#0f172a',
                     }}
                 >
-                    {/* Big TEST Watermark */}
+                    {/* Background Image with Overlay */}
+                    {imageUrl && (
+                        <img
+                            src={imageUrl}
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                            }}
+                        />
+                    )}
+                    
+                    {/* Dark Gradient Overlay */}
                     <div
                         style={{
                             position: 'absolute',
-                            top: '50%',
-                            left: '50%',
-                            transform: 'translate(-50%, -50%) rotate(-15deg)',
-                            fontSize: '200px',
-                            fontWeight: 'bold',
-                            color: 'rgba(255,255,255,0.1)',
-                            letterSpacing: '20px',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'linear-gradient(to bottom, rgba(15, 23, 42, 0.6) 0%, rgba(15, 23, 42, 0.85) 100%)',
                         }}
-                    >
-                        TEST
-                    </div>
+                    />
 
-                    {/* Content */}
+                    {/* Content Container */}
                     <div
                         style={{
+                            position: 'relative',
                             display: 'flex',
                             flexDirection: 'column',
                             height: '100%',
-                            padding: '50px',
-                            position: 'relative',
+                            padding: '40px 50px',
                         }}
                     >
                         {/* Header */}
@@ -51,46 +67,24 @@ export async function GET(request) {
                             style={{
                                 display: 'flex',
                                 justifyContent: 'space-between',
-                                alignItems: 'center',
+                                alignItems: 'flex-start',
                             }}
                         >
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '15px',
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        width: '60px',
-                                        height: '60px',
-                                        background: 'white',
-                                        borderRadius: '50%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '30px',
-                                    }}
-                                >
-                                    VN
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <span style={{ color: 'white', fontSize: '36px', fontWeight: 'bold' }}>
-                                        Test Card
-                                    </span>
-                                    <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '18px' }}>
-                                        SERVER-SIDE RENDERING
-                                    </span>
-                                </div>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ color: 'white', fontSize: '32px', fontWeight: 'bold' }}>
+                                    Xin Chao Vietnam
+                                </span>
+                                <span style={{ color: '#94a3b8', fontSize: '18px', marginTop: '4px' }}>
+                                    오늘의 뉴스
+                                </span>
                             </div>
                             <div
                                 style={{
-                                    background: 'white',
-                                    color: '#dc2626',
-                                    padding: '12px 24px',
-                                    borderRadius: '30px',
-                                    fontSize: '18px',
+                                    background: 'linear-gradient(135deg, #f43f5e, #ec4899)',
+                                    color: 'white',
+                                    padding: '10px 20px',
+                                    borderRadius: '25px',
+                                    fontSize: '16px',
                                     fontWeight: 'bold',
                                 }}
                             >
@@ -98,85 +92,104 @@ export async function GET(request) {
                             </div>
                         </div>
 
-                        {/* Main Title */}
+                        {/* Main Content - Title & Summary */}
                         <div
                             style={{
                                 flex: 1,
                                 display: 'flex',
                                 flexDirection: 'column',
                                 justifyContent: 'center',
-                                alignItems: 'center',
-                                textAlign: 'center',
+                                marginTop: '20px',
                             }}
                         >
-                            <div
+                            <h1
                                 style={{
-                                    background: 'rgba(0,0,0,0.3)',
-                                    padding: '40px 60px',
-                                    borderRadius: '20px',
-                                    border: '4px solid rgba(255,255,255,0.3)',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
+                                    color: 'white',
+                                    fontSize: title.length > 30 ? '48px' : '56px',
+                                    fontWeight: 'bold',
+                                    lineHeight: 1.2,
+                                    margin: 0,
+                                    textShadow: '2px 2px 8px rgba(0,0,0,0.5)',
                                 }}
                             >
-                                <h1
+                                {title.length > 50 ? title.substring(0, 50) + '...' : title}
+                            </h1>
+                            {summary && (
+                                <p
                                     style={{
-                                        color: 'white',
-                                        fontSize: '64px',
-                                        fontWeight: 'bold',
-                                        margin: 0,
-                                        textShadow: '3px 3px 6px rgba(0,0,0,0.3)',
+                                        color: '#cbd5e1',
+                                        fontSize: '22px',
+                                        marginTop: '20px',
+                                        lineHeight: 1.5,
                                     }}
                                 >
-                                    {title}
-                                </h1>
-                                {summary && (
-                                    <p
-                                        style={{
-                                            color: 'rgba(255,255,255,0.9)',
-                                            fontSize: '28px',
-                                            marginTop: '20px',
-                                        }}
-                                    >
-                                        {summary}
-                                    </p>
-                                )}
-                            </div>
+                                    {summary.length > 100 ? summary.substring(0, 100) + '...' : summary}
+                                </p>
+                            )}
                         </div>
 
                         {/* Footer */}
                         <div
                             style={{
                                 display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                gap: '20px',
+                                flexDirection: 'column',
+                                marginTop: 'auto',
                             }}
                         >
+                            {/* Wave Separator Line */}
                             <div
                                 style={{
-                                    background: 'rgba(255,255,255,0.2)',
-                                    padding: '15px 30px',
-                                    borderRadius: '10px',
-                                    color: 'white',
-                                    fontSize: '20px',
-                                    fontWeight: 'bold',
+                                    width: '100%',
+                                    height: '2px',
+                                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+                                    marginBottom: '20px',
                                 }}
-                            >
-                                Font Test: ABC 123
-                            </div>
+                            />
+
+                            {/* Footer Info Bar */}
                             <div
                                 style={{
-                                    background: 'rgba(255,255,255,0.2)',
-                                    padding: '15px 30px',
-                                    borderRadius: '10px',
-                                    color: 'white',
-                                    fontSize: '20px',
-                                    fontWeight: 'bold',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    background: 'rgba(255,255,255,0.95)',
+                                    padding: '16px 28px',
+                                    borderRadius: '12px',
                                 }}
                             >
-                                @vercel/og
+                                {/* Logo */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontSize: '22px', fontWeight: 'bold', color: '#0f172a' }}>
+                                        XinChao
+                                    </span>
+                                    <span style={{ fontSize: '22px', fontWeight: 'bold', color: '#3b82f6' }}>
+                                        Vietnam
+                                    </span>
+                                </div>
+
+                                {/* Info Section */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                                    {/* Weather */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ fontSize: '14px', color: '#64748b' }}>서울</span>
+                                        <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#0f172a' }}>{weather}°C</span>
+                                    </div>
+
+                                    {/* Divider */}
+                                    <div style={{ width: '1px', height: '24px', background: '#e2e8f0' }} />
+
+                                    {/* USD */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b', background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}>USD</span>
+                                        <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#0f172a' }}>{usd}</span>
+                                    </div>
+
+                                    {/* KRW */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b', background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}>KRW</span>
+                                        <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#0f172a' }}>{krw}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
