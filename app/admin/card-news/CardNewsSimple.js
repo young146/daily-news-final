@@ -12,7 +12,12 @@ export default function CardNewsSimple({ data, mode = 'preview' }) {
     const generateCanvas = async () => {
         if (!cardRef.current) return null;
         window.scrollTo(0, 0);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Wait for fonts to load
+        if (document.fonts && document.fonts.ready) {
+            await document.fonts.ready;
+        }
+        await new Promise(resolve => setTimeout(resolve, 800));
 
         const html2canvas = (await import('html2canvas')).default;
         const images = cardRef.current.querySelectorAll('img');
@@ -33,14 +38,24 @@ export default function CardNewsSimple({ data, mode = 'preview' }) {
         }));
 
         const canvas = await html2canvas(cardRef.current, {
-            scale: 3,
+            scale: 2,
             useCORS: true,
             allowTaint: true,
-            backgroundColor: '#ffffff',
+            backgroundColor: '#0f172a',
             logging: false,
             scrollY: 0,
-            windowWidth: document.documentElement.offsetWidth,
-            windowHeight: document.documentElement.offsetHeight
+            windowWidth: 1200,
+            windowHeight: 630,
+            onclone: (clonedDoc) => {
+                // Force system fonts in cloned document
+                const style = clonedDoc.createElement('style');
+                style.textContent = `
+                    * { 
+                        font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif !important; 
+                    }
+                `;
+                clonedDoc.head.appendChild(style);
+            }
         });
 
         images.forEach((img, i) => {
@@ -141,7 +156,8 @@ export default function CardNewsSimple({ data, mode = 'preview' }) {
                     width: '1200px', 
                     height: '630px', 
                     backgroundColor: '#0f172a',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", "Noto Sans KR", sans-serif'
                 }}
             >
                 {/* Background Image with Overlay - Full Coverage */}
