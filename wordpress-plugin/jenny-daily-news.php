@@ -198,7 +198,7 @@ function jenny_daily_news_shortcode( $atts ) {
     $output .= '<div class="jenny-card-header">';
     $output .= '<span class="jenny-card-icon">💱</span>';
     $output .= '<span class="jenny-card-title">환율</span>';
-    $output .= '<span class="jenny-card-source">(ExchangeRate-API)</span>';
+    $output .= '<span class="jenny-card-source">(유럽중앙은행 ECB 기준)</span>';
     $output .= '</div>';
     $output .= '<div class="jenny-card-chips">';
     $output .= '<div class="jenny-fx-chip">';
