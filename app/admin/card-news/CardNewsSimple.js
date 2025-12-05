@@ -47,11 +47,12 @@ export default function CardNewsSimple({ data, mode = 'preview' }) {
             windowWidth: 1200,
             windowHeight: 630,
             onclone: (clonedDoc) => {
-                // Force system fonts in cloned document
+                // Force Noto Sans KR font in cloned document
                 const style = clonedDoc.createElement('style');
                 style.textContent = `
+                    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
                     * { 
-                        font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif !important; 
+                        font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, sans-serif !important; 
                     }
                 `;
                 clonedDoc.head.appendChild(style);
@@ -157,7 +158,7 @@ export default function CardNewsSimple({ data, mode = 'preview' }) {
                     height: '630px', 
                     backgroundColor: '#0f172a',
                     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", "Noto Sans KR", sans-serif'
+                    fontFamily: 'var(--font-noto-sans-kr), "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif'
                 }}
             >
                 {/* Background Image with Overlay - Full Coverage */}
