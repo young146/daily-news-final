@@ -9,77 +9,37 @@ export default function CardNewsSimple({ data, mode = 'preview' }) {
     const [publishResult, setPublishResult] = useState(null);
     const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
 
-    const generateImage = async () => {
-        if (!cardRef.current) return null;
-        window.scrollTo(0, 0);
-        
-        // Explicitly load Korean fonts
-        try {
-            await document.fonts.load('400 16px "Noto Sans KR"');
-            await document.fonts.load('500 16px "Noto Sans KR"');
-            await document.fonts.load('700 16px "Noto Sans KR"');
-            await document.fonts.load('900 16px "Noto Sans KR"');
-        } catch (e) {
-            console.log('Font preload warning:', e);
-        }
-        
-        // Wait for all fonts to be ready
-        if (document.fonts && document.fonts.ready) {
-            await document.fonts.ready;
-        }
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Proxy external images first
-        const images = cardRef.current.querySelectorAll('img');
-        const originalSrcs = [];
-
-        await Promise.all(Array.from(images).map(async (img, i) => {
-            originalSrcs[i] = img.src;
-            if (img.src.startsWith('/') || img.src.includes(window.location.origin)) return;
-            try {
-                const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(img.src)}`;
-                const response = await fetch(proxyUrl);
-                if (!response.ok) throw new Error('Proxy fetch failed');
-                const blob = await response.blob();
-                img.src = URL.createObjectURL(blob);
-            } catch (e) {
-                console.warn('Failed to proxy image:', img.src);
-            }
-        }));
-
-        // Use dom-to-image-more for better Korean font support
-        const domtoimage = (await import('dom-to-image-more')).default;
-        
-        const dataUrl = await domtoimage.toJpeg(cardRef.current, {
-            quality: 0.92,
-            width: 1200,
-            height: 630,
-            style: {
-                transform: 'scale(1)',
-                transformOrigin: 'top left'
-            }
-        });
-
-        // Restore original image sources
-        images.forEach((img, i) => {
-            if (originalSrcs[i]) {
-                URL.revokeObjectURL(img.src);
-                img.src = originalSrcs[i];
-            }
+    const generateServerImage = async () => {
+        const params = new URLSearchParams({
+            title: topNews?.titleKo || topNews?.title || '오늘의 뉴스',
+            summary: topNews?.summaryKo || topNews?.summary || '',
+            date: today,
+            weather: weather ? `${getWeatherIcon(weather.weatherCode)} ${weather.temperature}°C` : '☀️ 25°C',
+            usd: rates?.usdVnd?.toLocaleString() || '25,400',
+            krw: rates?.krwVnd?.toLocaleString() || '17.8',
+            image: topNews?.imageUrl || '',
         });
         
-        return dataUrl;
+        const response = await fetch(`/api/generate-card-image?${params.toString()}`);
+        if (!response.ok) {
+            throw new Error('Server image generation failed');
+        }
+        
+        const blob = await response.blob();
+        return blob;
     };
 
     const handleDownloadImage = async () => {
         setIsGenerating(true);
         try {
-            const dataUrl = await generateImage();
-            if (dataUrl) {
+            const blob = await generateServerImage();
+            if (blob) {
+                const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
-                link.href = dataUrl;
-                link.download = `xinchao-news-${new Date().toISOString().split('T')[0]}.jpg`;
+                link.href = url;
+                link.download = `xinchao-news-${new Date().toISOString().split('T')[0]}.png`;
                 link.click();
+                URL.revokeObjectURL(url);
             }
         } catch (error) {
             alert(`Failed: ${error.message}`);
@@ -94,21 +54,13 @@ export default function CardNewsSimple({ data, mode = 'preview' }) {
         setPublishResult(null);
         
         try {
-            const dataUrl = await generateImage();
-            if (!dataUrl) {
+            const blob = await generateServerImage();
+            if (!blob) {
                 throw new Error('이미지 생성에 실패했습니다');
             }
             
-            // Convert data URL to blob
-            const response = await fetch(dataUrl);
-            const blob = await response.blob();
-            
-            if (!blob) {
-                throw new Error('이미지 변환에 실패했습니다');
-            }
-            
             const formData = new FormData();
-            formData.append('image', blob, 'card-news.jpg');
+            formData.append('image', blob, 'card-news.png');
             
             const apiResponse = await fetch('/api/publish-card-news', {
                 method: 'POST',
