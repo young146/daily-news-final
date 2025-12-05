@@ -61,7 +61,7 @@ async function crawlVnExpress() {
         
         const listItems = [];
         $('.item-news, .item-topstory').each((index, el) => {
-            if (index >= 6) return;
+            if (index >= 10) return;
             
             const titleEl = $(el).find('.title_news_site a');
             const title = titleEl.text().trim();
@@ -109,7 +109,7 @@ async function crawlVnExpressVN() {
         
         const listItems = [];
         $('.item-news').each((index, el) => {
-            if (index >= 6) return;
+            if (index >= 10) return;
             
             const titleEl = $(el).find('.title-news a');
             const title = titleEl.text().trim();
@@ -163,7 +163,7 @@ async function crawlYonhap() {
         const listItems = [];
         
         $('.list-type038 li, .list-type212 li, .news-list li').each((i, el) => {
-            if (listItems.length >= 6) return;
+            if (listItems.length >= 10) return;
             
             const titleEl = $(el).find('.tit-news a, .news-tl a, .tit a, a.tit-news').first();
             let title = titleEl.text().trim();
@@ -242,7 +242,7 @@ async function crawlInsideVina() {
         const seen = new Set();
         
         $('a[href*="articleView.html"]').each((i, el) => {
-            if (listItems.length >= 6) return;
+            if (listItems.length >= 10) return;
             
             const link = $(el).attr('href');
             const titleEl = $(el).find('.auto-titles, .altlist-subject').first();
@@ -310,7 +310,7 @@ async function crawlTuoitre() {
         const seen = new Set();
         
         $('.box-category-item, .news-item, .box-focus-item, .box-content-item').each((i, el) => {
-            if (listItems.length >= 6) return;
+            if (listItems.length >= 10) return;
             
             const titleEl = $(el).find('h3 a, .title-name a, h2 a').first();
             const title = titleEl.text().trim();
@@ -360,7 +360,7 @@ async function crawlThanhNien() {
         const seen = new Set();
         
         $('.story, .box-category-item, article.story').each((index, el) => {
-            if (listItems.length >= 6) return;
+            if (listItems.length >= 10) return;
             
             const titleEl = $(el).find('.story__heading a, .story__title a, h3 a, h2 a').first();
             const title = titleEl.text().trim();
@@ -425,7 +425,7 @@ async function crawlVnaNet() {
         const seen = new Set();
         
         $('a[href*=".html"]').each((i, el) => {
-            if (listItems.length >= 6) return;
+            if (listItems.length >= 10) return;
             
             const title = $(el).text().trim();
             const link = $(el).attr('href');
