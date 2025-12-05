@@ -56,24 +56,21 @@ export default function CardNewsSimple({ data, mode = 'preview' }) {
                 style={{ 
                     width: '1200px', 
                     height: '630px', 
-                    background: 'linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)',
+                    background: 'linear-gradient(180deg, #8B0000 0%, #4a0000 100%)',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    justifyContent: 'center',
+                    justifyContent: 'flex-start',
                     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
                     borderRadius: '12px',
-                    position: 'relative'
+                    paddingTop: '30px'
                 }}
             >
                 <div style={{ 
-                    position: 'absolute',
-                    top: '40px',
-                    left: '50px',
-                    color: '#fb923c', 
-                    fontSize: '72px', 
-                    fontWeight: 'bold',
-                    textDecoration: 'underline'
+                    color: 'white', 
+                    fontSize: '48px', 
+                    fontWeight: 'normal',
+                    marginBottom: '80px'
                 }}>
                     {dateStr}
                 </div>

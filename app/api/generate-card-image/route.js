@@ -22,21 +22,18 @@ export async function GET(request) {
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)',
+                        justifyContent: 'flex-start',
+                        background: 'linear-gradient(180deg, #8B0000 0%, #4a0000 100%)',
                         fontFamily: 'sans-serif',
-                        position: 'relative',
+                        paddingTop: '30px',
                     }}
                 >
                     <div
                         style={{
-                            position: 'absolute',
-                            top: '40px',
-                            left: '50px',
-                            color: '#fb923c',
-                            fontSize: '72px',
-                            fontWeight: 'bold',
-                            textDecoration: 'underline',
+                            color: 'white',
+                            fontSize: '48px',
+                            fontWeight: 'normal',
+                            marginBottom: '80px',
                         }}
                     >
                         {dateStr}
