@@ -228,37 +228,34 @@ async function crawlInsideVina() {
     const items = [];
     try {
         console.log('Crawling InsideVina...');
-        const { data } = await axios.get('http://www.insidevina.com/news/articleList.html?sc_section_code=S1N1&view_type=sm', {
+        const { data } = await axios.get('https://www.insidevina.com/', {
             timeout: 15000,
             headers: { 
                 'User-Agent': USER_AGENT,
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Referer': 'http://www.insidevina.com/'
+                'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
             }
         });
         const $ = cheerio.load(data);
         
         const listItems = [];
+        const seen = new Set();
         
-        $('#section-list .article-list li, .type2 li, .ArtList li, ul.article-list > li').each((i, el) => {
+        $('a[href*="articleView.html"]').each((i, el) => {
             if (listItems.length >= 6) return;
             
-            const titleEl = $(el).find('.titles a, .article-title a, a.tit, .art-tit a').first();
+            const link = $(el).attr('href');
+            const titleEl = $(el).find('.auto-titles, .altlist-subject').first();
             let title = titleEl.text().trim();
-            let link = titleEl.attr('href');
             
             if (!title) {
-                title = $(el).find('a').first().text().trim();
-                link = $(el).find('a').first().attr('href');
+                title = $(el).text().trim();
             }
             
-            const summary = $(el).find('.sub-title, .article-summary, .lead').text().trim();
-            
-            if (title && link) {
-                if (!link.startsWith('http')) {
-                    link = `http://www.insidevina.com${link}`;
-                }
-                listItems.push({ title, summary, url: link });
+            if (title && link && title.length > 10 && !seen.has(link)) {
+                seen.add(link);
+                const fullUrl = link.startsWith('http') ? link : `https://www.insidevina.com${link}`;
+                listItems.push({ title, url: fullUrl });
             }
         });
 
@@ -270,19 +267,20 @@ async function crawlInsideVina() {
                     timeout: 15000,
                     headers: { 
                         'User-Agent': USER_AGENT,
-                        'Referer': 'http://www.insidevina.com/'
+                        'Referer': 'https://www.insidevina.com/'
                     }
                 });
                 const $d = cheerio.load(detailData);
                 const content = $d('#article-view-content-div').html() || $d('.article-body').html() || $d('.article-view-body').html();
                 const imageUrl = $d('meta[property="og:image"]').attr('content');
+                const summary = $d('meta[property="og:description"]').attr('content') || item.title;
                 
                 items.push({
                     title: item.title,
-                    summary: item.summary || item.title,
+                    summary: summary,
                     content: content?.trim() || null,
                     originalUrl: item.url,
-                    imageUrl: imageUrl ? (imageUrl.startsWith('http') ? imageUrl : `http://www.insidevina.com${imageUrl}`) : null,
+                    imageUrl: imageUrl || null,
                     source: 'InsideVina',
                     category: 'Korea-Vietnam',
                     publishedAt: new Date(),
