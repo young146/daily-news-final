@@ -77,9 +77,10 @@ export async function publishItemAction(id, target) {
                 data.wordpressMediaId = uploadedMediaId;
             }
 
-            // 3. Publish summary - will reuse wordpressImageUrl and wordpressMediaId
+            // 3. Publish summary - will reuse wordpressImageUrl, wordpressMediaId, and wordpressUrl
             const itemWithMedia = { 
                 ...item, 
+                wordpressUrl: mainSiteUrl,
                 wordpressImageUrl: uploadedImageUrl,
                 wordpressMediaId: uploadedMediaId 
             };
