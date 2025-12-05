@@ -17,6 +17,7 @@ export function BatchTranslateTitlesButton({ ids }) {
 
     return (
         <button
+            type="button"
             onClick={() => startTransition(() => batchTranslateTitlesAction(ids))}
             disabled={isPending}
             className="bg-blue-800 text-white px-4 py-2 rounded shadow-md hover:bg-blue-900 flex items-center gap-2 font-bold transition-all transform hover:scale-105 border-2 border-blue-950"
@@ -33,6 +34,7 @@ export function BatchTranslateButton({ ids, redirectId }) {
 
     return (
         <button
+            type="button"
             onClick={() => startTransition(async () => {
                 await batchTranslateAction(ids);
                 if (redirectId) {
@@ -53,6 +55,7 @@ export function BatchPublishButton({ ids }) {
     const [isPending, startTransition] = useTransition();
     return (
         <button
+            type="button"
             onClick={() => {
                 if (confirm(`Are you sure you want to publish ${ids.length} items to the Daily News site?`)) {
                     startTransition(() => batchPublishDailyAction(ids));
@@ -75,6 +78,7 @@ export function CardNewsToggle({ id, isCardNews }) {
 
     return (
         <button
+            type="button"
             onClick={() => {
                 const newState = !optimisticIsCardNews;
                 startTransition(async () => {
@@ -180,6 +184,7 @@ These will NOT be published now. You can review them later.
     if (needsTranslation) {
         return (
             <button
+                type="button"
                 onClick={handleAction}
                 disabled={isPending}
                 className="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700 flex items-center gap-2 font-bold animate-pulse"
@@ -194,6 +199,7 @@ These will NOT be published now. You can review them later.
         return (
             <div className="flex flex-col gap-1 items-end">
                 <button
+                    type="button"
                     onClick={handleAction}
                     disabled={isPending}
                     className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2 font-bold"
@@ -202,6 +208,7 @@ These will NOT be published now. You can review them later.
                 </button>
                 {completedCount > 0 && (
                     <button
+                        type="button"
                         onClick={() => {
                             if (confirm(`Publish the ${completedCount} COMPLETED items now? (Others will remain as Draft/Skipped)`)) {
                                 startTransition(() => batchPublishDailyAction(completedItems.map(n => n.id)));
@@ -220,6 +227,7 @@ These will NOT be published now. You can review them later.
     // Ready to Publish (either fully complete or with skipped items)
     return (
         <button
+            type="button"
             onClick={handleAction}
             disabled={isPending}
             className={`text-white px-4 py-2 rounded shadow flex items-center gap-2 font-bold ${hasSkippedItems ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-600 hover:bg-green-700'}`}
