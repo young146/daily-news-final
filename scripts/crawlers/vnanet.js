@@ -71,20 +71,45 @@ async function crawlVnaNet() {
                 });
                 const $detail = cheerio.load(detailData);
 
-                // Content selector
-                let content = $detail('.news-detail, .detail-content, .content-detail, .fck_detail').html();
+                // VNA is a photo gallery site - content is in captions
+                // Try multiple selectors for content
+                let content = $detail('.sample-grl').text().trim();
+                
+                if (!content) {
+                    content = $detail('.caption-slider').text().trim();
+                }
+                
+                if (!content) {
+                    content = $detail('.separator-right').text().trim();
+                }
+                
+                if (!content) {
+                    content = $detail('.news-detail, .detail-content, .content-detail, .fck_detail').text().trim();
+                }
 
                 // Improve Image Extraction from Detail Page
                 const metaImage = $detail('meta[property="og:image"]').attr('content');
                 if (metaImage) {
                     item.imageUrl = metaImage;
                 }
+                
+                // Also try to get first image from slider
+                if (!item.imageUrl) {
+                    const sliderImg = $detail('.slider-glr img').first().attr('src');
+                    if (sliderImg) {
+                        item.imageUrl = sliderImg.startsWith('http') ? sliderImg : `https://vnanet.vn${sliderImg}`;
+                    }
+                }
 
-                if (content) {
-                    item.content = content.trim();
+                if (content && content.length > 50) {
+                    // Clean up the content - remove date/source prefixes
+                    content = content.replace(/^VNA Photos\s*/i, '');
+                    content = content.replace(/\d{2}\/\d{2}\/\d{4}\s*\d{2}:\d{2}\s*\|\s*TTXVN\s*/g, '');
+                    item.content = `<p>${content.trim()}</p>`;
+                    console.log(`[VNA] Found content (${content.length} chars)`);
                 } else {
                     console.warn(`No content found for ${item.originalUrl}`);
-                    item.content = item.summary;
+                    item.content = item.summary ? `<p>${item.summary}</p>` : '';
                 }
 
                 detailedItems.push(item);
