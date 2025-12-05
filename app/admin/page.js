@@ -102,9 +102,6 @@ export default async function AdminPage() {
                 <h1 className="text-2xl font-bold">Admin Dashboard</h1>
                 <div className="flex gap-2">
                     <CrawlNewsButton />
-                    <a href="/api/generate-card-image" target="_blank" className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 transition flex items-center gap-2">
-                        🖼️ 오늘의 카드 이미지
-                    </a>
                     <Link href="/admin/card-news" className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition flex items-center gap-2">
                         📮 전령카드 확인하기
                     </Link>
