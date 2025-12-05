@@ -34,26 +34,31 @@ function jenny_get_weather_html() {
 }
 
 function jenny_get_weather_fallback() {
-    $cache_key = 'jenny_weather_data';
+    $cache_key = 'jenny_weather_html_v2';
     $cached = get_transient( $cache_key );
-    if ( $cached !== false ) {
+    if ( $cached !== false && is_string( $cached ) ) {
         return $cached;
     }
 
     $cities = array(
-        'hanoi' => array( 'name' => '하노이', 'query' => 'Hanoi' ),
-        'hochiminh' => array( 'name' => '호치민', 'query' => 'Ho+Chi+Minh' ),
-        'seoul' => array( 'name' => '서울', 'query' => 'Seoul' ),
+        array( 'name' => '하노이', 'query' => 'Hanoi' ),
+        array( 'name' => '호치민', 'query' => 'Ho+Chi+Minh' ),
+        array( 'name' => '서울', 'query' => 'Seoul' ),
     );
 
     $output = '';
-    foreach ( $cities as $key => $city ) {
+    foreach ( $cities as $city ) {
         $url = 'https://wttr.in/' . $city['query'] . '?format=%t&m';
-        $response = wp_remote_get( $url, array( 'timeout' => 5 ) );
-        $temp = '-';
+        $response = wp_remote_get( $url, array( 
+            'timeout' => 10,
+            'user-agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        ) );
+        $temp = '--';
         if ( ! is_wp_error( $response ) ) {
-            $temp = trim( wp_remote_retrieve_body( $response ) );
-            $temp = str_replace( '+', '', $temp );
+            $body = trim( wp_remote_retrieve_body( $response ) );
+            if ( ! empty( $body ) && strpos( $body, '°C' ) !== false ) {
+                $temp = str_replace( '+', '', $body );
+            }
         }
         $output .= '<div class="jenny-weather-chip">';
         $output .= '<span class="jenny-chip-city">' . esc_html( $city['name'] ) . '</span>';
@@ -61,7 +66,9 @@ function jenny_get_weather_fallback() {
         $output .= '</div>';
     }
 
-    set_transient( $cache_key, $output, 30 * MINUTE_IN_SECONDS );
+    if ( ! empty( $output ) ) {
+        set_transient( $cache_key, $output, 30 * MINUTE_IN_SECONDS );
+    }
     return $output;
 }
 
@@ -199,10 +206,7 @@ function jenny_daily_news_shortcode( $atts ) {
     $output .= '</div>';
     $output .= '</div>';
     
-    $output .= '</div>';
-    
-    $output .= '<div class="jenny-filter-row">';
-    
+    $output .= '<div class="jenny-filter-buttons">';
     if ( $is_filtered ) {
         $output .= '<a href="' . esc_url( $page_url ) . '" class="jenny-filter-btn">오늘의 뉴스</a>';
     } else {
@@ -224,6 +228,7 @@ function jenny_daily_news_shortcode( $atts ) {
         $output .= '<a href="' . esc_url( add_query_arg( 'news_date', $date, $page_url ) ) . '" class="jenny-date-option' . $date_class . '">' . esc_html( $date_display ) . '</a>';
     }
     
+    $output .= '</div>';
     $output .= '</div>';
     $output .= '</div>';
     $output .= '</div>';
@@ -305,36 +310,32 @@ function jenny_get_styles() {
         .jenny-date-filter {
             margin-bottom: 24px;
             padding: 16px 0;
+            border-bottom: 1px solid #e5e7eb;
         }
         .jenny-info-bar {
             display: flex;
             gap: 16px;
-            margin-bottom: 16px;
+            align-items: center;
             flex-wrap: wrap;
         }
         .jenny-info-card {
             background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
             border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            padding: 16px 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .jenny-info-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
+            padding: 12px 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         }
         .jenny-card-header {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 12px;
+            gap: 6px;
+            margin-bottom: 8px;
         }
         .jenny-card-icon {
-            font-size: 20px;
+            font-size: 16px;
         }
         .jenny-card-title {
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 700;
             color: #64748b;
             text-transform: uppercase;
@@ -342,67 +343,67 @@ function jenny_get_styles() {
         }
         .jenny-card-chips {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
         }
         .jenny-weather-chip {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             background: #ffffff;
-            padding: 8px 14px;
-            border-radius: 20px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+            padding: 6px 10px;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
             border: 1px solid #e5e7eb;
         }
         .jenny-chip-city {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             color: #374151;
         }
         .jenny-chip-temp {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
             color: #ea580c;
         }
         .jenny-fx-chip {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             background: #ffffff;
-            padding: 8px 14px;
-            border-radius: 20px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+            padding: 6px 10px;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
             border: 1px solid #e5e7eb;
         }
         .jenny-fx-flag {
-            font-size: 18px;
+            font-size: 14px;
         }
         .jenny-fx-label {
-            font-size: 12px;
+            font-size: 11px;
             color: #6b7280;
             font-weight: 500;
         }
         .jenny-fx-value {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 700;
             color: #059669;
         }
-        @media (max-width: 768px) {
-            .jenny-info-bar {
-                flex-direction: column;
-            }
-            .jenny-info-card {
-                width: 100%;
-            }
-        }
-        .jenny-filter-row {
+        .jenny-filter-buttons {
             display: flex;
             gap: 12px;
             align-items: center;
-            flex-wrap: wrap;
-            padding-top: 16px;
-            border-top: 1px solid #e5e7eb;
+            margin-left: auto;
+        }
+        @media (max-width: 900px) {
+            .jenny-info-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .jenny-filter-buttons {
+                margin-left: 0;
+                margin-top: 12px;
+            }
         }
         .jenny-filter-btn {
             display: inline-block;
