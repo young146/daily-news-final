@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news summaries in a beautiful card layout using the shortcode [daily_news_list]. Links directly to full article.
- * Version: 1.1
+ * Version: 1.2
  * Author: Jenny (Antigravity)
  */
 
@@ -74,7 +74,7 @@ function jenny_daily_news_shortcode( $atts ) {
                 <span class="jenny-badge">' . esc_html( $cat_name ) . '</span>
             </div>
             <div class="jenny-content">
-                <div class="jenny-date">' . get_the_date( 'Y.m.d' ) . '</div>
+                <div class="jenny-date">' . get_the_date( 'Y.m.d H:i' ) . '</div>
                 <h3 class="jenny-title"><a href="' . esc_url( $link_url ) . '">' . get_the_title() . '</a></h3>
                 <div class="jenny-excerpt">' . $excerpt . '</div>
                 <a href="' . esc_url( $link_url ) . '" class="jenny-link">자세히 보기 →</a>
@@ -96,17 +96,16 @@ function jenny_daily_news_shortcode( $atts ) {
         }
         .jenny-news-card {
             background: #ffffff;
-            border-radius: 12px;
+            border-radius: 0;
             overflow: hidden;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-shadow: none;
             border: 1px solid #e5e7eb;
             display: flex;
             flex-direction: column;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transition: border-color 0.3s ease;
         }
         .jenny-news-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
+            border-color: #9ca3af;
         }
         .jenny-card-image {
             position: relative;
@@ -132,10 +131,11 @@ function jenny_daily_news_shortcode( $atts ) {
             background: #ffffff;
             color: #ea580c;
             padding: 4px 12px;
-            border-radius: 9999px;
+            border-radius: 0;
             font-size: 12px;
             font-weight: 700;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: none;
+            border: 1px solid #e5e7eb;
             z-index: 10;
         }
         .jenny-content {
@@ -170,10 +170,6 @@ function jenny_daily_news_shortcode( $atts ) {
             color: #4b5563;
             line-height: 1.6;
             margin-bottom: 20px;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
             flex-grow: 1;
         }
         .jenny-link {
