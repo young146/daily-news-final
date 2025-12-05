@@ -6,6 +6,7 @@ const crawlTuoitre = require('./crawlers/tuoitre');
 const crawlThanhNien = require('./crawlers/thanhnien');
 const crawlVnaNet = require('./crawlers/vnanet');
 const crawlVnExpressVN = require('./crawlers/vnexpress_vn');
+const { sendCrawlerAlert } = require('../lib/telegram');
 
 const prisma = new PrismaClient();
 
@@ -90,6 +91,13 @@ async function main() {
   console.log(`🎉 Crawl finished. New items saved: ${savedCount}`);
   if (failedSources.length > 0) {
     console.log(`⚠️ Failed sources: ${failedSources.join(', ')}`);
+  }
+
+  // Send Telegram notification
+  try {
+    await sendCrawlerAlert(status, savedCount, successSources, failedSources, errorDetails);
+  } catch (e) {
+    console.log('[Telegram] Notification skipped:', e.message);
   }
 }
 
