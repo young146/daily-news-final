@@ -25,14 +25,18 @@ export async function GET(request) {
                         justifyContent: 'center',
                         background: 'linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)',
                         fontFamily: 'sans-serif',
+                        position: 'relative',
                     }}
                 >
                     <div
                         style={{
+                            position: 'absolute',
+                            top: '40px',
+                            left: '50px',
                             color: '#fb923c',
-                            fontSize: '48px',
+                            fontSize: '72px',
                             fontWeight: 'bold',
-                            marginBottom: '20px',
+                            textDecoration: 'underline',
                         }}
                     >
                         {dateStr}
@@ -50,10 +54,11 @@ export async function GET(request) {
                     </h1>
                     <p
                         style={{
-                            color: '#94a3b8',
-                            fontSize: '40px',
+                            color: 'white',
+                            fontSize: '80px',
                             marginTop: '30px',
                             textAlign: 'center',
+                            fontWeight: 'bold',
                         }}
                     >
                         XinChao Today's News

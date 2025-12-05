@@ -62,14 +62,18 @@ export default function CardNewsSimple({ data, mode = 'preview' }) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                    borderRadius: '12px'
+                    borderRadius: '12px',
+                    position: 'relative'
                 }}
             >
                 <div style={{ 
+                    position: 'absolute',
+                    top: '40px',
+                    left: '50px',
                     color: '#fb923c', 
-                    fontSize: '48px', 
+                    fontSize: '72px', 
                     fontWeight: 'bold',
-                    marginBottom: '20px'
+                    textDecoration: 'underline'
                 }}>
                     {dateStr}
                 </div>
@@ -83,10 +87,11 @@ export default function CardNewsSimple({ data, mode = 'preview' }) {
                     씬짜오 오늘의 뉴스
                 </h1>
                 <p style={{ 
-                    color: '#94a3b8', 
-                    fontSize: '40px', 
+                    color: 'white', 
+                    fontSize: '80px', 
                     marginTop: '30px',
-                    textAlign: 'center'
+                    textAlign: 'center',
+                    fontWeight: 'bold'
                 }}>
                     XinChao Today's News
                 </p>
