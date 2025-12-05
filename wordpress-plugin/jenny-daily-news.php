@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article.
- * Version: 1.3
+ * Version: 1.4
  * Author: Jenny (Antigravity)
  * Requires PHP: 5.4
  */
@@ -29,22 +29,94 @@ function jenny_daily_news_shortcode( $atts ) {
         'category' => 31,
     ), $atts );
 
+    // Check for date filter from URL parameter
+    $selected_date = isset( $_GET['news_date'] ) ? sanitize_text_field( $_GET['news_date'] ) : '';
+    $is_filtered = ! empty( $selected_date );
+
     $args = array(
         'post_type' => 'post',
-        'posts_per_page' => $atts['count'],
+        'posts_per_page' => $is_filtered ? 50 : $atts['count'],
         'cat' => $atts['category'],
         'post_status' => 'publish',
         'orderby' => 'date',
         'order' => 'DESC',
     );
 
-    $query = new WP_Query( $args );
-
-    if ( ! $query->have_posts() ) {
-        return '<p style="text-align:center; padding: 20px;">아직 등록된 데일리 뉴스가 없습니다.</p>';
+    // Add date filter if specified
+    if ( $is_filtered ) {
+        $date_parts = explode( '-', $selected_date );
+        if ( count( $date_parts ) === 3 ) {
+            $args['date_query'] = array(
+                array(
+                    'year'  => intval( $date_parts[0] ),
+                    'month' => intval( $date_parts[1] ),
+                    'day'   => intval( $date_parts[2] ),
+                ),
+            );
+        }
     }
 
-    $output = '<div class="jenny-news-grid">';
+    $query = new WP_Query( $args );
+
+    // Get available dates for the date picker
+    $date_args = array(
+        'post_type' => 'post',
+        'posts_per_page' => 100,
+        'cat' => $atts['category'],
+        'post_status' => 'publish',
+        'orderby' => 'date',
+        'order' => 'DESC',
+    );
+    $date_query = new WP_Query( $date_args );
+    $available_dates = array();
+    while ( $date_query->have_posts() ) {
+        $date_query->the_post();
+        $post_date = get_the_date( 'Y-m-d' );
+        if ( ! in_array( $post_date, $available_dates ) ) {
+            $available_dates[] = $post_date;
+        }
+    }
+    wp_reset_postdata();
+
+    // Build date picker output
+    $current_url = strtok( $_SERVER['REQUEST_URI'], '?' );
+    
+    $output = '<div class="jenny-date-filter">';
+    $output .= '<div class="jenny-filter-row">';
+    
+    // Today's news button (default view)
+    $today_active = ! $is_filtered ? ' active' : '';
+    $output .= '<a href="' . esc_url( $current_url ) . '" class="jenny-filter-btn' . $today_active . '">오늘의 뉴스</a>';
+    
+    // Archive button with date picker
+    $output .= '<div class="jenny-archive-wrapper">';
+    $output .= '<button type="button" class="jenny-filter-btn jenny-archive-btn' . ( $is_filtered ? ' active' : '' ) . '">지난 뉴스 보기 ▼</button>';
+    $output .= '<div class="jenny-date-dropdown">';
+    
+    foreach ( $available_dates as $date ) {
+        $date_display = date_i18n( 'Y년 m월 d일', strtotime( $date ) );
+        $date_active = ( $selected_date === $date ) ? ' selected' : '';
+        $output .= '<a href="' . esc_url( $current_url . '?news_date=' . $date ) . '" class="jenny-date-option' . $date_active . '">' . esc_html( $date_display ) . '</a>';
+    }
+    
+    $output .= '</div>'; // .jenny-date-dropdown
+    $output .= '</div>'; // .jenny-archive-wrapper
+    $output .= '</div>'; // .jenny-filter-row
+    
+    // Show current filter info
+    if ( $is_filtered ) {
+        $display_date = date_i18n( 'Y년 m월 d일', strtotime( $selected_date ) );
+        $output .= '<div class="jenny-filter-info">' . esc_html( $display_date ) . ' 뉴스를 보고 있습니다. <a href="' . esc_url( $current_url ) . '">오늘의 뉴스로 돌아가기</a></div>';
+    }
+    
+    $output .= '</div>'; // .jenny-date-filter
+
+    if ( ! $query->have_posts() ) {
+        $output .= '<p style="text-align:center; padding: 40px 20px; color: #6b7280;">선택한 날짜에 등록된 뉴스가 없습니다.</p>';
+        return $output . jenny_get_styles();
+    }
+
+    $output .= '<div class="jenny-news-grid">';
 
     while ( $query->have_posts() ) {
         $query->the_post();
@@ -100,8 +172,99 @@ function jenny_daily_news_shortcode( $atts ) {
 
     wp_reset_postdata();
 
-    $output .= '
+    $output .= jenny_get_styles();
+
+    return $output;
+}
+add_shortcode( 'daily_news_list', 'jenny_daily_news_shortcode' );
+
+function jenny_get_styles() {
+    return '
     <style>
+        .jenny-date-filter {
+            margin-bottom: 24px;
+            padding: 16px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .jenny-filter-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .jenny-filter-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #f3f4f6;
+            color: #374151;
+            text-decoration: none;
+            border: 1px solid #e5e7eb;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .jenny-filter-btn:hover {
+            background: #e5e7eb;
+            color: #111827;
+        }
+        .jenny-filter-btn.active {
+            background: #ea580c;
+            color: #ffffff;
+            border-color: #ea580c;
+        }
+        .jenny-archive-wrapper {
+            position: relative;
+        }
+        .jenny-date-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 100;
+            min-width: 180px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .jenny-archive-wrapper:hover .jenny-date-dropdown,
+        .jenny-archive-wrapper:focus-within .jenny-date-dropdown {
+            display: block;
+        }
+        .jenny-date-option {
+            display: block;
+            padding: 10px 16px;
+            color: #374151;
+            text-decoration: none;
+            font-size: 14px;
+            border-bottom: 1px solid #f3f4f6;
+            transition: background 0.2s;
+        }
+        .jenny-date-option:hover {
+            background: #f3f4f6;
+        }
+        .jenny-date-option.selected {
+            background: #fef3c7;
+            color: #ea580c;
+            font-weight: 600;
+        }
+        .jenny-date-option:last-child {
+            border-bottom: none;
+        }
+        .jenny-filter-info {
+            margin-top: 12px;
+            padding: 10px 16px;
+            background: #fef3c7;
+            color: #92400e;
+            font-size: 14px;
+            border-left: 3px solid #ea580c;
+        }
+        .jenny-filter-info a {
+            color: #ea580c;
+            font-weight: 600;
+        }
         .jenny-news-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -199,9 +362,23 @@ function jenny_daily_news_shortcode( $atts ) {
         .jenny-link:hover {
             color: #ea580c;
         }
+        @media (max-width: 640px) {
+            .jenny-filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .jenny-filter-btn {
+                text-align: center;
+            }
+            .jenny-date-dropdown {
+                position: fixed;
+                left: 16px;
+                right: 16px;
+                top: 50%;
+                transform: translateY(-50%);
+                max-height: 60vh;
+            }
+        }
     </style>
     ';
-
-    return $output;
 }
-add_shortcode( 'daily_news_list', 'jenny_daily_news_shortcode' );
