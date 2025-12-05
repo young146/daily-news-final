@@ -202,10 +202,10 @@ export default function SettingsPage() {
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
         <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>
-          🗑️ 발행된 뉴스 관리
+          🗑️ 오늘 발행된 뉴스 관리
         </h2>
         <p style={{ color: '#6b7280', marginBottom: '20px', fontSize: '14px' }}>
-          이미 발행된 뉴스를 DB에서 삭제할 수 있습니다. (WordPress 글은 별도 삭제 필요)
+          오늘 발행된 뉴스를 DB에서 삭제할 수 있습니다. (WordPress 글은 별도 삭제 필요)
         </p>
         
         {publishedNews.length === 0 ? (

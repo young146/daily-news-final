@@ -4,9 +4,15 @@ import { revalidatePath } from 'next/cache';
 
 export async function GET() {
   try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     const publishedNews = await prisma.newsItem.findMany({
       where: {
-        status: 'PUBLISHED'
+        status: 'PUBLISHED',
+        updatedAt: {
+          gte: today
+        }
       },
       orderBy: {
         updatedAt: 'desc'
