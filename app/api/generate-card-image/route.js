@@ -20,11 +20,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const title = searchParams.get('title') || '오늘의 뉴스';
     const summary = searchParams.get('summary') || '';
-    const imageUrl = searchParams.get('image') || '';
     const date = searchParams.get('date') || new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
-    const weather = searchParams.get('weather') || '25°C';
-    const usd = searchParams.get('usd') || '25,400';
-    const krw = searchParams.get('krw') || '17.8';
 
     const fontData = await loadNotoSansKR();
 
@@ -39,46 +35,33 @@ export async function GET(request) {
                         flexDirection: 'column',
                         fontFamily: '"Noto Sans KR", sans-serif',
                         position: 'relative',
-                        overflow: 'hidden',
+                        background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
                     }}
                 >
-                    {/* Background Image */}
-                    {imageUrl && (
-                        <img
-                            src={imageUrl}
-                            style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                            }}
-                        />
-                    )}
-                    
-                    {/* Dark Overlay */}
+                    {/* Big TEST Watermark */}
                     <div
                         style={{
                             position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            background: imageUrl 
-                                ? 'linear-gradient(to bottom, rgba(15, 23, 42, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%)'
-                                : '#0f172a',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%) rotate(-15deg)',
+                            fontSize: '200px',
+                            fontWeight: 'bold',
+                            color: 'rgba(255,255,255,0.1)',
+                            letterSpacing: '20px',
                         }}
-                    />
+                    >
+                        TEST
+                    </div>
 
-                    {/* Content Container */}
+                    {/* Content */}
                     <div
                         style={{
-                            position: 'relative',
                             display: 'flex',
                             flexDirection: 'column',
                             height: '100%',
-                            padding: '40px 60px',
+                            padding: '50px',
+                            position: 'relative',
                         }}
                     >
                         {/* Header */}
@@ -86,24 +69,46 @@ export async function GET(request) {
                             style={{
                                 display: 'flex',
                                 justifyContent: 'space-between',
-                                alignItems: 'flex-start',
+                                alignItems: 'center',
                             }}
                         >
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ color: 'white', fontSize: '32px', fontWeight: 'bold' }}>
-                                    Xin Chao Vietnam
-                                </span>
-                                <span style={{ color: '#94a3b8', fontSize: '18px', marginTop: '4px' }}>
-                                    오늘의 뉴스
-                                </span>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '15px',
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        width: '60px',
+                                        height: '60px',
+                                        background: 'white',
+                                        borderRadius: '50%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '30px',
+                                    }}
+                                >
+                                    🇻🇳
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ color: 'white', fontSize: '36px', fontWeight: 'bold' }}>
+                                        테스트 카드
+                                    </span>
+                                    <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '18px' }}>
+                                        SERVER-SIDE RENDERING
+                                    </span>
+                                </div>
                             </div>
                             <div
                                 style={{
-                                    background: 'linear-gradient(135deg, #f43f5e, #ec4899)',
-                                    color: 'white',
-                                    padding: '10px 20px',
-                                    borderRadius: '25px',
-                                    fontSize: '16px',
+                                    background: 'white',
+                                    color: '#dc2626',
+                                    padding: '12px 24px',
+                                    borderRadius: '30px',
+                                    fontSize: '18px',
                                     fontWeight: 'bold',
                                 }}
                             >
@@ -111,102 +116,82 @@ export async function GET(request) {
                             </div>
                         </div>
 
-                        {/* Main Content - Title & Summary */}
+                        {/* Main Title */}
                         <div
                             style={{
                                 flex: 1,
                                 display: 'flex',
                                 flexDirection: 'column',
                                 justifyContent: 'center',
-                                marginTop: '20px',
+                                alignItems: 'center',
+                                textAlign: 'center',
                             }}
                         >
-                            <h1
+                            <div
                                 style={{
-                                    color: 'white',
-                                    fontSize: '56px',
-                                    fontWeight: 'bold',
-                                    lineHeight: 1.2,
-                                    margin: 0,
-                                    textShadow: '2px 2px 8px rgba(0,0,0,0.5)',
+                                    background: 'rgba(0,0,0,0.3)',
+                                    padding: '40px 60px',
+                                    borderRadius: '20px',
+                                    border: '4px solid rgba(255,255,255,0.3)',
                                 }}
                             >
-                                {title.length > 40 ? title.substring(0, 40) + '...' : title}
-                            </h1>
-                            {summary && (
-                                <p
+                                <h1
                                     style={{
-                                        color: '#cbd5e1',
-                                        fontSize: '24px',
-                                        marginTop: '20px',
-                                        lineHeight: 1.5,
+                                        color: 'white',
+                                        fontSize: '64px',
+                                        fontWeight: 'bold',
+                                        margin: 0,
+                                        textShadow: '3px 3px 6px rgba(0,0,0,0.3)',
                                     }}
                                 >
-                                    {summary.length > 80 ? summary.substring(0, 80) + '...' : summary}
-                                </p>
-                            )}
+                                    {title}
+                                </h1>
+                                {summary && (
+                                    <p
+                                        style={{
+                                            color: 'rgba(255,255,255,0.9)',
+                                            fontSize: '28px',
+                                            marginTop: '20px',
+                                        }}
+                                    >
+                                        {summary}
+                                    </p>
+                                )}
+                            </div>
                         </div>
 
-                        {/* Footer with Wave */}
+                        {/* Footer */}
                         <div
                             style={{
                                 display: 'flex',
-                                flexDirection: 'column',
-                                marginTop: 'auto',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                gap: '20px',
                             }}
                         >
-                            {/* Wave Separator */}
-                            <svg
-                                viewBox="0 0 1200 50"
-                                style={{ width: '100%', height: '30px', marginBottom: '15px' }}
-                            >
-                                <path
-                                    d="M0,25 Q150,0 300,25 T600,25 T900,25 T1200,25 L1200,50 L0,50 Z"
-                                    fill="white"
-                                    opacity="0.15"
-                                />
-                            </svg>
-
-                            {/* Footer Info */}
                             <div
                                 style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    background: 'rgba(255,255,255,0.95)',
+                                    background: 'rgba(255,255,255,0.2)',
                                     padding: '15px 30px',
-                                    borderRadius: '12px',
+                                    borderRadius: '10px',
+                                    color: 'white',
+                                    fontSize: '20px',
+                                    fontWeight: 'bold',
                                 }}
                             >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ fontSize: '22px', fontWeight: 'bold', color: '#0f172a' }}>
-                                        XinChao
-                                    </span>
-                                    <span style={{ fontSize: '22px', fontWeight: 'bold', color: '#3b82f6' }}>
-                                        Vietnam
-                                    </span>
-                                </div>
-
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
-                                    {/* Weather */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span style={{ fontSize: '14px', color: '#64748b' }}>서울</span>
-                                        <span style={{ fontSize: '18px' }}>☀️</span>
-                                        <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#0f172a' }}>{weather}</span>
-                                    </div>
-
-                                    {/* USD */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b', background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}>USD</span>
-                                        <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#0f172a' }}>{usd}</span>
-                                    </div>
-
-                                    {/* KRW */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#64748b', background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}>KRW</span>
-                                        <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#0f172a' }}>{krw}</span>
-                                    </div>
-                                </div>
+                                ✅ 한글 폰트 테스트
+                            </div>
+                            <div
+                                style={{
+                                    background: 'rgba(255,255,255,0.2)',
+                                    padding: '15px 30px',
+                                    borderRadius: '10px',
+                                    color: 'white',
+                                    fontSize: '20px',
+                                    fontWeight: 'bold',
+                                }}
+                            >
+                                🚀 @vercel/og 사용
                             </div>
                         </div>
                     </div>
