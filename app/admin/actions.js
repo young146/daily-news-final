@@ -2,7 +2,7 @@
 
 import prisma from '@/lib/prisma';
 import { translateNewsItem, translateText } from '@/lib/openai';
-import { publishToMainSite, publishToDailySite } from '@/lib/publisher';
+import { publishToMainSite } from '@/lib/publisher';
 import { postToSNS } from '@/lib/sns';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -50,41 +50,16 @@ export async function publishItemAction(id, target) {
             data.isPublishedMain = true;
             data.status = 'PUBLISHED';
         } else if (target === 'daily') {
-            // 1. Publish to Main Site FIRST to get the link, image URL, and media ID
-            let mainSiteUrl = item.wordpressUrl;
-            let uploadedImageUrl = item.wordpressImageUrl;
-            let uploadedMediaId = item.wordpressMediaId;
-            
-            if (!mainSiteUrl) {
-                try {
-                    const result = await publishToMainSite(item);
-                    mainSiteUrl = result.postUrl;
-                    uploadedImageUrl = result.imageUrl;
-                    uploadedMediaId = result.mediaId;
-                } catch (e) {
-                    console.error("Failed to publish to main site, proceeding without link:", e);
-                }
+            // Publish to Main Site only (no separate summary post needed)
+            const result = await publishToMainSite(item);
+            data.wordpressUrl = result.postUrl;
+            if (result.imageUrl) {
+                data.wordpressImageUrl = result.imageUrl;
             }
-
-            // 2. Update DB with the link, image URL, and media ID
-            if (mainSiteUrl) {
-                data.wordpressUrl = mainSiteUrl;
+            if (result.mediaId) {
+                data.wordpressMediaId = result.mediaId;
             }
-            if (uploadedImageUrl) {
-                data.wordpressImageUrl = uploadedImageUrl;
-            }
-            if (uploadedMediaId) {
-                data.wordpressMediaId = uploadedMediaId;
-            }
-
-            // 3. Publish summary - will reuse wordpressImageUrl, wordpressMediaId, and wordpressUrl
-            const itemWithMedia = { 
-                ...item, 
-                wordpressUrl: mainSiteUrl,
-                wordpressImageUrl: uploadedImageUrl,
-                wordpressMediaId: uploadedMediaId 
-            };
-            await publishToDailySite(itemWithMedia);
+            data.isPublishedMain = true;
             data.isPublishedDaily = true;
             data.publishedAt = new Date();
             data.status = 'PUBLISHED';

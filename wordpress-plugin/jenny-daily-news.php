@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Jenny Daily News Display
- * Description: Displays daily news summaries in a beautiful card layout using the shortcode [daily_news_list]. Links directly to full article.
- * Version: 1.2
+ * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article.
+ * Version: 1.3
  * Author: Jenny (Antigravity)
  */
 
@@ -12,15 +12,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Register custom meta fields for REST API
 add_action( 'init', function() {
-    register_post_meta( 'post', 'full_article_url', array(
-        'show_in_rest' => true,
-        'single' => true,
-        'type' => 'string',
-        'auth_callback' => function() {
-            return current_user_can( 'edit_posts' );
-        }
-    ));
-    
     register_post_meta( 'post', 'news_category', array(
         'show_in_rest' => true,
         'single' => true,
@@ -34,7 +25,7 @@ add_action( 'init', function() {
 function jenny_daily_news_shortcode( $atts ) {
     $atts = shortcode_atts( array(
         'count' => 12,
-        'category' => 711,
+        'category' => 31,
     ), $atts );
 
     $args = array(
@@ -84,9 +75,8 @@ function jenny_daily_news_shortcode( $atts ) {
             $excerpt = wp_trim_words( get_the_content(), 20 );
         }
 
-        // Get full article URL from custom field, fallback to permalink
-        $full_article_url = get_post_meta( get_the_ID(), 'full_article_url', true );
-        $link_url = ! empty( $full_article_url ) ? $full_article_url : get_permalink();
+        // Link directly to the article
+        $link_url = get_permalink();
 
         $output .= '
         <div class="jenny-news-card">
