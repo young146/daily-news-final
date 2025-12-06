@@ -17,7 +17,7 @@ async function crawlVnExpress() {
         const listItems = [];
 
         $('.item-news, .item-topstory').each((index, element) => {
-            if (index > 5) return;
+            if (index > 9) return;
 
             const titleElement = $(element).find('.title_news_site a');
             const title = titleElement.text().trim();

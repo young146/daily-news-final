@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+const sourceNames = {
+  'vnexpress': 'VnExpress',
+  'vnexpress-vn': 'VnExpress VN',
+  'yonhap': 'Yonhap',
+  'insidevina': 'InsideVina',
+  'tuoitre': 'TuoiTre',
+  'thanhnien': 'ThanhNien',
+  'vnanet': 'VNA',
+};
+
 const crawlers = {
   'vnexpress': () => require('@/scripts/crawlers/vnexpress')(),
   'vnexpress-vn': () => require('@/scripts/crawlers/vnexpress-vn')(),
@@ -55,6 +65,17 @@ export async function POST(request) {
     }
     
     console.log(`[Crawl] ${source}: Saved ${savedCount} items`);
+    
+    // Save to CrawlerLog
+    const sourceName = sourceNames[source] || source;
+    await prisma.crawlerLog.create({
+      data: {
+        status: 'SUCCESS',
+        totalItems: items.length,
+        savedItems: savedCount,
+        message: `${sourceName} crawl completed. Total: ${items.length}, New: ${savedCount}`,
+      }
+    });
     
     return NextResponse.json({ 
       success: true, 

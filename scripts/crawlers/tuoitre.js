@@ -14,7 +14,7 @@ async function crawlTuoitre() {
 
         // Selectors based on debug: direct link search
         $('h3 a, h2 a').each((index, element) => {
-            if (index > 5) return;
+            if (index > 9) return;
 
             const title = $(element).text().trim();
             const url = $(element).attr('href');

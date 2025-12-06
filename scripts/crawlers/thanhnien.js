@@ -14,7 +14,7 @@ async function crawlThanhNien() {
 
         // Selectors for Thanh Nien - Robust
         $('.story, .box-news .item, article').each((index, element) => {
-            if (index > 5) return;
+            if (index > 9) return;
 
             const titleElement = $(element).find('.story__heading a, .title a, h3 a, h2 a');
             const title = titleElement.text().trim();
@@ -42,7 +42,7 @@ async function crawlThanhNien() {
         // Fallback if specific classes fail
         if (listItems.length === 0) {
             $('h3 a, h2 a').each((index, element) => {
-                if (index > 5) return;
+                if (index > 9) return;
                 const title = $(element).text().trim();
                 const url = $(element).attr('href');
                 if (title && url) {

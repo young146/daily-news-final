@@ -18,7 +18,7 @@ async function crawlYonhap() {
 
         // Selector for Yonhap list items
         $('.list-type212 li').each((i, el) => {
-            if (i > 5) return; // Limit items
+            if (i > 9) return; // Limit items
 
             const titleEl = $(el).find('.tit-news');
             const title = titleEl.text().trim();

@@ -14,7 +14,7 @@ async function crawlVnExpressVN() {
 
         // Selectors for VnExpress VN - Robust
         $('.item-news, .list-news-subfolder .item-news').each((index, element) => {
-            if (index > 5) return;
+            if (index > 9) return;
 
             const titleElement = $(element).find('.title-news a, .title_news a');
             const title = titleElement.text().trim();
@@ -40,7 +40,7 @@ async function crawlVnExpressVN() {
         // Fallback
         if (listItems.length === 0) {
             $('h3 a, h2 a').each((index, element) => {
-                if (index > 5) return;
+                if (index > 9) return;
                 const title = $(element).text().trim();
                 const url = $(element).attr('href');
                 if (title && url) {

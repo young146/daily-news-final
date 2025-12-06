@@ -23,7 +23,7 @@ async function crawlVnaNet() {
 
         // Selectors for VNA Net - URL Pattern Strategy
         $('a[href*=".html"]').each((index, element) => {
-            if (listItems.length > 5) return;
+            if (listItems.length > 9) return;
 
             const title = $(element).text().trim();
             const url = $(element).attr('href');
