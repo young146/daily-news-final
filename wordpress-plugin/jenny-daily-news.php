@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 1.6
+ * Version: 1.7
  * Author: Jenny (Antigravity)
  */
 
@@ -159,6 +159,57 @@ function jenny_daily_news_shortcode( $atts ) {
 
     $query = new WP_Query( $args );
 
+    // 카테고리 순서 정의
+    $category_order = array(
+        '경제' => 1,
+        'Economy' => 1,
+        '사회' => 2,
+        'Society' => 2,
+        '정치' => 3,
+        'Policy' => 3,
+        '문화' => 4,
+        'Culture' => 4,
+        '한베' => 5,
+        'Korea-Vietnam' => 5,
+        '한-베' => 5,
+        '교민' => 6,
+        '교민 소식' => 6,
+    );
+
+    // 뉴스를 카테고리별로 정렬
+    $sorted_posts = array();
+    if ( $query->have_posts() ) {
+        while ( $query->have_posts() ) {
+            $query->the_post();
+            $post_id = get_the_ID();
+            
+            // 카테고리 확인 (메타 또는 WordPress 카테고리)
+            $news_category = get_post_meta( $post_id, 'news_category', true );
+            if ( empty( $news_category ) ) {
+                $categories = get_the_category();
+                $news_category = ! empty( $categories ) ? $categories[0]->name : '뉴스';
+            }
+            
+            // 순서 결정 (정의되지 않은 카테고리는 맨 뒤)
+            $order = isset( $category_order[ $news_category ] ) ? $category_order[ $news_category ] : 99;
+            
+            $sorted_posts[] = array(
+                'post_id' => $post_id,
+                'order' => $order,
+                'date' => get_the_date( 'Y-m-d H:i:s' ),
+            );
+        }
+        wp_reset_postdata();
+        
+        // 카테고리 순서로 정렬, 같은 카테고리 내에서는 날짜순
+        usort( $sorted_posts, function( $a, $b ) {
+            if ( $a['order'] === $b['order'] ) {
+                return strcmp( $b['date'], $a['date'] ); // 날짜 내림차순
+            }
+            return $a['order'] - $b['order']; // 카테고리 순서
+        });
+    }
+
     $date_args = array(
         'post_type' => 'post',
         'posts_per_page' => 100,
@@ -252,7 +303,7 @@ function jenny_daily_news_shortcode( $atts ) {
     
     $output .= '</div>';
 
-    if ( ! $query->have_posts() ) {
+    if ( empty( $sorted_posts ) ) {
         $output .= '<p style="text-align:center; padding: 40px 20px; color: #6b7280;">선택한 날짜에 등록된 뉴스가 없습니다.</p>';
         $output .= jenny_get_styles();
         return $output;
@@ -260,46 +311,48 @@ function jenny_daily_news_shortcode( $atts ) {
 
     $output .= '<div class="jenny-news-grid">';
 
-    while ( $query->have_posts() ) {
-        $query->the_post();
+    $category_map = array(
+        'Society' => '사회',
+        'Economy' => '경제',
+        'Culture' => '문화',
+        'Policy' => '정책',
+        'Korea-Vietnam' => '한-베',
+    );
+
+    foreach ( $sorted_posts as $sorted_post ) {
+        $post_obj = get_post( $sorted_post['post_id'] );
+        setup_postdata( $post_obj );
         
-        $thumb_url = get_the_post_thumbnail_url( get_the_ID(), 'medium_large' );
+        $thumb_url = get_the_post_thumbnail_url( $sorted_post['post_id'], 'medium_large' );
         if ( ! $thumb_url ) {
             $thumb_url = 'https://via.placeholder.com/600x400?text=Xin+Chao';
         }
 
-        $news_category = get_post_meta( get_the_ID(), 'news_category', true );
+        $news_category = get_post_meta( $sorted_post['post_id'], 'news_category', true );
         if ( ! empty( $news_category ) ) {
-            $category_map = array(
-                'Society' => '사회',
-                'Economy' => '경제',
-                'Culture' => '문화',
-                'Policy' => '정책',
-                'Korea-Vietnam' => '한-베',
-            );
             $cat_name = isset( $category_map[ $news_category ] ) ? $category_map[ $news_category ] : $news_category;
         } else {
-            $categories = get_the_category();
+            $categories = get_the_category( $sorted_post['post_id'] );
             $cat_name = ! empty( $categories ) ? $categories[0]->name : '뉴스';
         }
         
-        $excerpt = get_the_excerpt();
+        $excerpt = get_the_excerpt( $sorted_post['post_id'] );
         if ( empty( $excerpt ) ) {
-            $excerpt = wp_trim_words( get_the_content(), 20 );
+            $excerpt = wp_trim_words( $post_obj->post_content, 20 );
         }
 
-        $link_url = get_permalink();
+        $link_url = get_permalink( $sorted_post['post_id'] );
 
         $output .= '<div class="jenny-news-card">';
         $output .= '<div class="jenny-card-image">';
         $output .= '<a href="' . esc_url( $link_url ) . '">';
-        $output .= '<img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( get_the_title() ) . '">';
+        $output .= '<img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( get_the_title( $sorted_post['post_id'] ) ) . '">';
         $output .= '</a>';
         $output .= '<span class="jenny-badge">' . esc_html( $cat_name ) . '</span>';
         $output .= '</div>';
         $output .= '<div class="jenny-content">';
-        $output .= '<div class="jenny-date">' . get_the_date( 'Y.m.d H:i' ) . '</div>';
-        $output .= '<h3 class="jenny-title"><a href="' . esc_url( $link_url ) . '">' . get_the_title() . '</a></h3>';
+        $output .= '<div class="jenny-date">' . get_the_date( 'Y.m.d H:i', $sorted_post['post_id'] ) . '</div>';
+        $output .= '<h3 class="jenny-title"><a href="' . esc_url( $link_url ) . '">' . get_the_title( $sorted_post['post_id'] ) . '</a></h3>';
         $output .= '<div class="jenny-excerpt">' . $excerpt . '</div>';
         $output .= '<a href="' . esc_url( $link_url ) . '" class="jenny-link">자세히 보기 →</a>';
         $output .= '</div>';
