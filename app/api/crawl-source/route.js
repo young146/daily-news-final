@@ -71,8 +71,7 @@ export async function POST(request) {
     await prisma.crawlerLog.create({
       data: {
         status: 'SUCCESS',
-        totalItems: items.length,
-        savedItems: savedCount,
+        itemsFound: savedCount,
         message: `${sourceName} crawl completed. Total: ${items.length}, New: ${savedCount}`,
       }
     });
