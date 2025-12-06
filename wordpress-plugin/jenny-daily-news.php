@@ -174,6 +174,7 @@ function jenny_daily_news_shortcode( $atts ) {
         '한-베' => 5,
         '교민' => 6,
         '교민 소식' => 6,
+        '교민소식' => 6,
     );
 
     // 뉴스를 카테고리별로 정렬
