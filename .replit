@@ -10,7 +10,7 @@ packages = ["chromium"]
 
 [userenv.shared]
 WORDPRESS_URL = "https://chaovietnam.co.kr"
-WORDPRESS_USERNAME = "chaovietnam"
+WORDPRESS_USERNAME = "younghan146@gmail.com"
 ADMIN_EMAIL = "admin@chaovietnam.co.kr"
 ADMIN_PASSWORD = "admin123"
 JWT_SECRET = "xinchao-vietnam-news-jwt-secret-2025"
@@ -46,10 +46,6 @@ externalPort = 3000
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 39493
-externalPort = 3002
 
 [[ports]]
 localPort = 44433
