@@ -6,16 +6,22 @@ export default function CardNewsSimple({ data, mode = 'preview' }) {
     const [isGenerating, setIsGenerating] = useState(false);
     const [publishResult, setPublishResult] = useState(null);
     
+    const { topNews, weather, rates } = data || {};
+    
     const now = new Date();
     const vietnamTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
     const year = vietnamTime.getFullYear();
     const month = vietnamTime.getMonth() + 1;
     const day = vietnamTime.getDate();
-    const hours = vietnamTime.getHours();
-    const minutes = vietnamTime.getMinutes().toString().padStart(2, '0');
     const weekdays = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
     const weekday = weekdays[vietnamTime.getDay()];
-    const dateStr = `${year}년 ${month}월 ${day}일 ${weekday} ${hours}:${minutes}`;
+    const dateStr = `${year}년 ${month}월 ${day}일 ${weekday}`;
+    
+    const newsTitle = topNews?.translatedTitle || topNews?.title || '오늘의 뉴스';
+    const newsImage = topNews?.imageUrl || '';
+    const weatherTemp = weather?.temp ?? '--';
+    const usdRate = typeof rates?.usdVnd === 'number' ? rates.usdVnd.toLocaleString() : (rates?.usdVnd ?? '--');
+    const krwRate = typeof rates?.krwVnd === 'number' ? rates.krwVnd.toFixed(1) : (rates?.krwVnd ?? '--');
 
     const handlePublishToWordPress = async () => {
         if (!confirm('카드 엽서를 WordPress에 게시하시겠습니까?')) return;
@@ -51,52 +57,151 @@ export default function CardNewsSimple({ data, mode = 'preview' }) {
     return (
         <div className="flex flex-col items-center py-8 px-4 min-h-screen">
             
-            {/* 테스트용 카드 미리보기 */}
+            {/* 카드 뉴스 미리보기 */}
             <div 
                 style={{ 
                     width: '1200px', 
                     height: '630px', 
-                    background: 'linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    position: 'relative',
+                    overflow: 'hidden',
                     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
                     borderRadius: '12px'
                 }}
             >
-                <div style={{ 
-                    backgroundColor: '#8B0000',
-                    color: '#ffffff', 
-                    fontSize: '54px', 
-                    fontWeight: 'bold',
-                    padding: '18px 60px',
-                    borderRadius: '50px',
-                    marginBottom: '50px',
-                    textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                {/* 배경 이미지 */}
+                {newsImage ? (
+                    <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundImage: `url(${newsImage})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        filter: 'brightness(0.4)'
+                    }} />
+                ) : (
+                    <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)'
+                    }} />
+                )}
+                
+                {/* 콘텐츠 오버레이 */}
+                <div style={{
+                    position: 'relative',
+                    zIndex: 10,
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    padding: '40px 60px'
                 }}>
-                    {dateStr}
+                    {/* 상단: 로고 + 날짜 */}
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                    }}>
+                        <div style={{
+                            color: '#ffffff',
+                            fontSize: '32px',
+                            fontWeight: 'bold',
+                            textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                        }}>
+                            Xin Chào Vietnam
+                        </div>
+                        <div style={{ 
+                            backgroundColor: 'rgba(139, 0, 0, 0.9)',
+                            color: '#ffffff', 
+                            fontSize: '24px', 
+                            fontWeight: 'bold',
+                            padding: '10px 30px',
+                            borderRadius: '30px',
+                            textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                        }}>
+                            {dateStr}
+                        </div>
+                    </div>
+                    
+                    {/* 중앙: 오늘의 뉴스 + 제목 */}
+                    <div style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        textAlign: 'center'
+                    }}>
+                        <div style={{
+                            color: '#fbbf24',
+                            fontSize: '28px',
+                            fontWeight: 'bold',
+                            marginBottom: '20px',
+                            textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                        }}>
+                            오늘의 뉴스
+                        </div>
+                        <h1 style={{ 
+                            color: '#ffffff', 
+                            fontSize: newsTitle.length > 40 ? '42px' : '52px',
+                            fontWeight: 'bold',
+                            margin: 0,
+                            lineHeight: 1.3,
+                            maxWidth: '1000px',
+                            textShadow: '0 4px 8px rgba(0,0,0,0.7)'
+                        }}>
+                            {newsTitle}
+                        </h1>
+                    </div>
+                    
+                    {/* 하단: 날씨 + 환율 */}
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        gap: '40px',
+                        paddingTop: '20px',
+                        borderTop: '1px solid rgba(255,255,255,0.2)'
+                    }}>
+                        <div style={{
+                            color: '#ffffff',
+                            fontSize: '18px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                        }}>
+                            <span>🌡️</span>
+                            <span>서울 {weatherTemp}°C</span>
+                        </div>
+                        <div style={{
+                            color: '#ffffff',
+                            fontSize: '18px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                        }}>
+                            <span>💵</span>
+                            <span>USD {usdRate}₫</span>
+                        </div>
+                        <div style={{
+                            color: '#ffffff',
+                            fontSize: '18px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                        }}>
+                            <span>💴</span>
+                            <span>KRW {krwRate}₫</span>
+                        </div>
+                    </div>
                 </div>
-                <h1 style={{ 
-                    color: '#ffffff', 
-                    fontSize: '90px', 
-                    fontWeight: 'bold',
-                    margin: 0,
-                    textAlign: 'center',
-                    textShadow: '0 4px 8px rgba(0,0,0,0.5)'
-                }}>
-                    씬짜오 오늘의 뉴스
-                </h1>
-                <p style={{ 
-                    color: '#ffffff', 
-                    fontSize: '70px', 
-                    marginTop: '30px',
-                    textAlign: 'center',
-                    fontWeight: 'bold',
-                    textShadow: '0 4px 8px rgba(0,0,0,0.5)'
-                }}>
-                    XinChao Today's News
-                </p>
             </div>
 
             {/* 버튼 */}
