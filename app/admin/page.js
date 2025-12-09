@@ -108,6 +108,9 @@ export default async function AdminPage() {
                     <Link href="/admin/card-news" className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition flex items-center gap-2">
                         📮 전령카드 확인하기
                     </Link>
+                    <Link href="/admin/stats" className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition flex items-center gap-2">
+                        📊 통계
+                    </Link>
                     <Link href="/admin/settings" className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 transition flex items-center gap-2">
                         ⚙️ 설정
                     </Link>
