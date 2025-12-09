@@ -5,7 +5,7 @@ const crawlInsideVina = require('./crawlers/insidevina');
 const crawlTuoitre = require('./crawlers/tuoitre');
 const crawlThanhNien = require('./crawlers/thanhnien');
 const crawlVnaNet = require('./crawlers/vnanet');
-const crawlVnExpressVN = require('./crawlers/vnexpress_vn');
+const crawlVnExpressVN = require('./crawlers/vnexpress-vn');
 const { sendCrawlerAlert } = require('../lib/telegram');
 
 const prisma = new PrismaClient();
