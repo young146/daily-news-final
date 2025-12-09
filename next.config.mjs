@@ -28,11 +28,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'images2.thanhnien.vn' },
     ],
   },
-  allowedDevOrigins: [
-    'https://faccc10c-3cef-4cf6-9509-6778e0448935-00-2b1osfv8idx9m.pike.replit.dev',
-    'http://127.0.0.1:5000',
-    'http://localhost:5000',
-  ],
+  allowedDevOrigins: ['*'],
   experimental: {
     serverActions: {
       allowedOrigins: ['*'],
