@@ -1,7 +1,79 @@
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
+import OpenAI from 'openai';
 
 const prisma = new PrismaClient();
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+async function translateAndProcess(item) {
+  if (!process.env.OPENAI_API_KEY) {
+    console.log('[번역] API 키 없음, 원문 유지');
+    return { translatedTitle: null, translatedSummary: null, category: item.category || 'Society' };
+  }
+
+  const isKorean = item.source === 'Yonhap News' || item.source === 'InsideVina';
+  
+  try {
+    const prompt = isKorean 
+      ? `다음 뉴스를 분석해주세요:
+
+제목: "${item.title}"
+내용: "${(item.content || item.summary || '').substring(0, 1000)}"
+
+다음 형식으로 JSON만 반환하세요:
+{
+  "title": "제목 (이미 한국어면 그대로, 아니면 번역)",
+  "summary": "2-3문장 한국어 요약 (핵심 내용만)",
+  "category": "Society/Economy/Culture/Policy 중 하나"
+}
+
+카테고리 기준:
+- Society: 사회, 사건사고, 건강, 교육, 환경
+- Economy: 경제, 기업, 금융, 부동산, 기술
+- Culture: 문화, 엔터테인먼트, 스포츠, 관광, 음식
+- Policy: 정치, 외교, 법률, 정부정책`
+      : `Analyze this news article:
+
+Title: "${item.title}"
+Content: "${(item.content || item.summary || '').substring(0, 1000)}"
+
+Return ONLY a JSON object in this exact format:
+{
+  "title": "Korean translation of the title (professional news style)",
+  "summary": "2-3 sentence summary in Korean (key points only)",
+  "category": "One of: Society/Economy/Culture/Policy"
+}
+
+Category guidelines:
+- Society: social issues, accidents, health, education, environment
+- Economy: business, finance, real estate, technology, trade
+- Culture: entertainment, sports, tourism, food, lifestyle
+- Policy: politics, diplomacy, law, government policy`;
+
+    const completion = await openai.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: "gpt-4o-mini",
+      max_tokens: 500,
+      response_format: { type: "json_object" }
+    });
+    
+    const result = JSON.parse(completion.choices[0].message.content);
+    
+    return {
+      translatedTitle: result.title?.replace(/^["']|["']$/g, '') || item.title,
+      translatedSummary: result.summary || null,
+      category: ['Society', 'Economy', 'Culture', 'Policy'].includes(result.category) 
+        ? result.category 
+        : (item.category || 'Society')
+    };
+  } catch (error) {
+    console.error(`[처리 실패] ${error.message}`);
+    return { translatedTitle: null, translatedSummary: null, category: item.category || 'Society' };
+  }
+}
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
@@ -516,9 +588,21 @@ export async function POST(request) {
             });
             
             if (!exists) {
-                await prisma.newsItem.create({ data: item });
+                const processed = await translateAndProcess(item);
+                
+                await prisma.newsItem.create({ 
+                  data: {
+                    ...item,
+                    translatedTitle: processed.translatedTitle || null,
+                    translatedSummary: processed.translatedSummary || null,
+                    category: processed.category
+                  }
+                });
                 savedCount++;
-                console.log(`✅ Saved[${item.source}]: ${item.title.substring(0, 50)}... (img: ${item.imageUrl ? 'yes' : 'no'}, content: ${item.content ? 'yes' : 'no'})`);
+                console.log(`✅ Saved[${item.source}]: ${item.title.substring(0, 50)}...`);
+                if (processed.translatedTitle) {
+                  console.log(`   → 번역: ${processed.translatedTitle.substring(0, 50)}...`);
+                }
             }
         }
         
