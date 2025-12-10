@@ -1,19 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Menu, Search, X } from 'lucide-react';
 
 export default function Header() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [currentDate, setCurrentDate] = useState('');
+
+    useEffect(() => {
+        setCurrentDate(new Date().toLocaleDateString('ko-KR', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric', 
+            weekday: 'long',
+            timeZone: 'Asia/Bangkok'
+        }));
+    }, []);
 
     return (
         <header className="bg-white sticky top-0 z-50 shadow-sm">
             {/* Top Bar for Date/Info */}
             <div className="bg-primary text-white text-xs py-1">
                 <div className="container mx-auto px-4 flex justify-between items-center">
-                    <span>{new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}</span>
+                    <span>{currentDate || '\u00A0'}</span>
                     <span className="opacity-80">베트남-한국을 잇는 매일의 소식</span>
                 </div>
             </div>
