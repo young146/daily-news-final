@@ -44,8 +44,9 @@ Single publication target on chaovietnam.co.kr:
 
 | File | Purpose |
 |------|---------|
+| `lib/translator.js` | 통합 번역 모듈 (재시도 3회, 응답 검증) |
 | `lib/publisher.js` | WordPress publishing logic |
-| `lib/openai.js` | GPT translation |
+| `lib/openai.js` | (Deprecated) translator.js로 리다이렉트 |
 | `lib/prisma.js` | Database client |
 | `app/admin/page.js` | Admin dashboard |
 | `app/admin/actions.js` | Server actions for publishing |
@@ -182,7 +183,19 @@ Single publication target on chaovietnam.co.kr:
 2. `/admin/card-news` 페이지에서 **"WordPress에 카드 엽서 게시"** 클릭
 3. SNS에서 뉴스 터미널 URL 공유
 
-## Recent Changes (Dec 9, 2025)
+## Recent Changes (Dec 10, 2025)
+
+### Code Stability Improvements
+- **번역 로직 통합**: `lib/translator.js`로 모든 번역 함수 통합
+  - 재시도 로직 3회 추가 (네트워크 오류 대응)
+  - 응답 구조 검증 (잘못된 JSON 응답 처리)
+  - 에러 추적 (error 필드로 실패 원인 반환)
+- **중복 코드 제거**: `app/api/crawl-news/route.js`와 `scripts/crawler.js`가 통합 모듈 사용
+- **lib/openai.js 정리**: deprecated 처리, translator.js로 리다이렉트
+- **카드뉴스 배경 이미지 수정**: TopNews 이미지를 WordPress에 먼저 업로드 후 안정적인 URL 사용
+- **uploadImageToWordPress 함수 export 추가**: 카드뉴스 API에서 사용 가능
+
+## Previous Changes (Dec 9, 2025)
 
 ### Crawler Title Translation
 - **크롤러에서 제목 자동 번역**: 뉴스 수집 시 GPT-4o-mini로 제목을 한국어로 번역
