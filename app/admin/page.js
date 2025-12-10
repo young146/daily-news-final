@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { translateText, translateNewsItem } from '@/lib/openai';
+import { translateText, translateNewsItem } from '@/lib/translator';
 import CategorySelector from './category-selector';
 import GenerateButton from './generate-button';
 import { BatchTranslateButton, BatchPublishButton, CardNewsToggle, WorkflowButton } from './batch-actions';

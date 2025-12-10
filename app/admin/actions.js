@@ -1,7 +1,7 @@
 'use server'
 
 import prisma from '@/lib/prisma';
-import { translateNewsItem, translateText } from '@/lib/openai';
+import { translateNewsItem, translateText } from '@/lib/translator';
 import { publishToMainSite } from '@/lib/publisher';
 import { postToSNS } from '@/lib/sns';
 import { revalidatePath } from 'next/cache';
