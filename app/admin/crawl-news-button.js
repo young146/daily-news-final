@@ -71,9 +71,14 @@ export default function CrawlNewsButton() {
                             🎉 뉴스 수집 완료!
                         </h3>
                         
-                        <div className="mb-4 p-3 bg-blue-50 rounded-lg text-center">
-                            <div className="text-2xl font-bold text-blue-600">{result.total}개</div>
-                            <div className="text-sm text-gray-600">총 수집 (새로 저장: {result.newItems}개)</div>
+                        <div className="mb-4 p-3 bg-green-50 rounded-lg text-center">
+                            <div className="text-3xl font-bold text-green-600">{result.newItems}개</div>
+                            <div className="text-sm text-gray-600">새 뉴스 저장됨</div>
+                            {result.total > result.newItems && (
+                                <div className="text-xs text-gray-400 mt-1">
+                                    (총 {result.total}개 중 {result.total - result.newItems}개 중복 제외)
+                                </div>
+                            )}
                         </div>
 
                         <div className="border rounded-lg overflow-hidden mb-4">
