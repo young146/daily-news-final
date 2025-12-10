@@ -19,8 +19,8 @@ Automated news workflow system for XinChao Vietnam, a 23-year-old Korean-languag
 - ThanhNien
 - InsideVina
 - Public Security News (en.cand.com.vn) - 베트남 공안 신문 영문판
-- Saigoneer - 베트남 음식/펫/여행 (영문)
-- SoraNews24 - 일본 펫/라이프스타일 뉴스 (영문)
+- Saigoneer (kr.saigoneer.com) - 베트남 음식/여행 (한글판, 번역 불필요)
+- SoraNews24 - 일본 음식/펫/여행 뉴스 (영문, 2024-2025년만)
 
 ### WordPress Publishing
 Single publication target on chaovietnam.co.kr:
@@ -187,7 +187,21 @@ Single publication target on chaovietnam.co.kr:
 2. `/admin/card-news` 페이지에서 **"WordPress에 카드 엽서 게시"** 클릭
 3. SNS에서 뉴스 터미널 URL 공유
 
-## Recent Changes (Dec 10, 2025)
+## Recent Changes (Dec 11, 2025)
+
+### Bug Fixes
+- **개별 크롤링 제목 번역 추가**: `crawl-source` API에서 제목 번역 누락 수정
+  - SoraNews24, VnExpress 등 영문 소스 → GPT로 제목 한글 번역
+  - Yonhap, Saigoneer(한글판) → 이미 한글이라 번역 스킵
+- **SoraNews24 연도 필터 추가**: 2024-2025년 기사만 수집 (오래된 기사 수집 방지)
+- **이미지 도메인 추가**: `media.urbanistnetwork.com`, `soranews24.com`, `en.cand.com.vn` 추가
+- **기사 수집 한도 증가**: Saigoneer, SoraNews24 → 10개로 증가 (기존 8개)
+
+### Header Date Fix
+- **Hydration 에러 수정**: 날짜 표시 클라이언트 사이드 렌더링으로 변경
+- **베트남 시간대 적용**: `Asia/Bangkok` (UTC+7) 시간대 고정
+
+## Previous Changes (Dec 10, 2025)
 
 ### News Source Update
 - **VNA 소스 삭제**: VNA 웹사이트가 사진 갤러리만 제공하여 본문 추출 불가
