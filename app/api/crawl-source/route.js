@@ -10,7 +10,7 @@ const sourceNames = {
   'thanhnien': 'ThanhNien',
   'publicsecurity': 'PublicSecurity',
   'saigoneer': 'Saigoneer',
-  'japantoday': 'SoraNews24',
+  'soranews24': 'SoraNews24',
 };
 
 const crawlers = {
@@ -22,7 +22,7 @@ const crawlers = {
   'thanhnien': () => require('@/scripts/crawlers/thanhnien')(),
   'publicsecurity': () => require('@/scripts/crawlers/publicsecurity')(),
   'saigoneer': () => require('@/scripts/crawlers/saigoneer')(),
-  'japantoday': () => require('@/scripts/crawlers/japantoday')(),
+  'soranews24': () => require('@/scripts/crawlers/soranews24')(),
 };
 
 export async function POST(request) {

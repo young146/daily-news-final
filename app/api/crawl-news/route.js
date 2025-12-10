@@ -526,7 +526,7 @@ async function crawlSaigoneer() {
     return items;
 }
 
-async function crawlJapanToday() {
+async function crawlSoraNews24() {
     const cheerio = await import('cheerio');
     const items = [];
     try {
@@ -595,7 +595,7 @@ export async function POST(request) {
             crawlThanhNien(),
             crawlPublicSecurity(),
             crawlSaigoneer(),
-            crawlJapanToday()
+            crawlSoraNews24()
         ]);
         
         const [vnItems, vnvnItems, yhItems, ivItems, ttItems, tnItems, psItems, sgItems, jtItems] = results;
