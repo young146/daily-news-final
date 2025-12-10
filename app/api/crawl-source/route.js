@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { translateTitle } from '@/lib/translator';
+
+const koreanSources = ['Yonhap', 'Saigoneer'];
 
 const sourceNames = {
   'vnexpress': 'VnExpress',
@@ -59,10 +62,29 @@ export async function POST(request) {
               summary: item.summary,
             }
           });
+          savedCount++;
         } else {
-          await prisma.newsItem.create({ data: item });
+          let translatedTitle = null;
+          let category = item.category || 'Society';
+          
+          if (koreanSources.includes(item.source)) {
+            translatedTitle = item.title;
+          } else {
+            const translated = await translateTitle(item);
+            translatedTitle = translated.translatedTitle;
+            category = translated.category || category;
+          }
+          
+          await prisma.newsItem.create({ 
+            data: {
+              ...item,
+              translatedTitle,
+              category
+            }
+          });
+          console.log(`✅ [${item.source}]: ${(translatedTitle || item.title).substring(0, 50)}...`);
+          savedCount++;
         }
-        savedCount++;
       } catch (err) {
         console.error(`[Crawl] Error saving item:`, err.message);
       }
