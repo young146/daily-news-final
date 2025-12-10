@@ -27,7 +27,7 @@ async function crawlSaigoneer() {
                 const $ = cheerio.load(data);
 
                 $('a').each((index, element) => {
-                    if (listItems.length >= 8) return;
+                    if (listItems.length >= 10) return;
 
                     let href = $(element).attr('href') || '';
                     const title = $(element).text().trim().replace(/\s+/g, ' ');

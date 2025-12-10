@@ -26,7 +26,7 @@ async function crawlSoraNews24() {
                 const $ = cheerio.load(data);
 
                 $('a').each((index, element) => {
-                    if (listItems.length >= 8) return;
+                    if (listItems.length >= 10) return;
 
                     const href = $(element).attr('href') || '';
                     const title = $(element).text().trim();
