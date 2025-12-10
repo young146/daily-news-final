@@ -18,7 +18,7 @@ Automated news workflow system for XinChao Vietnam, a 23-year-old Korean-languag
 - TuoiTre News
 - ThanhNien
 - InsideVina
-- VNA
+- Public Security News (en.cand.com.vn) - 베트남 공안 신문 영문판
 
 ### WordPress Publishing
 Single publication target on chaovietnam.co.kr:
@@ -96,7 +96,7 @@ Single publication target on chaovietnam.co.kr:
 | InsideVina | ✅ Works | WordPress plugin |
 | TuoiTre | ✅ Works | WordPress plugin |
 | ThanhNien | ✅ Works | WordPress plugin |
-| VNA | ✅ Works | WordPress plugin |
+| PublicSecurity | ✅ Works | WordPress plugin |
 | Yonhap | ✅ Works | Replit → WordPress (SSL bypass) |
 
 ## Environment Variables
@@ -184,6 +184,12 @@ Single publication target on chaovietnam.co.kr:
 3. SNS에서 뉴스 터미널 URL 공유
 
 ## Recent Changes (Dec 10, 2025)
+
+### News Source Update
+- **VNA 소스 삭제**: VNA 웹사이트가 사진 갤러리만 제공하여 본문 추출 불가
+- **공안 신문 추가**: en.cand.com.vn (베트남 공안 신문 영문판) 크롤러 추가
+  - 정치, 공안, 문화, 경제 섹션 지원
+  - 본문 및 이미지 정상 추출
 
 ### Code Stability Improvements
 - **번역 로직 통합**: `lib/translator.js`로 모든 번역 함수 통합

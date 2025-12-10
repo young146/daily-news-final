@@ -399,84 +399,69 @@ async function crawlThanhNien() {
     return items;
 }
 
-async function crawlVnaNet() {
+async function crawlPublicSecurity() {
     const cheerio = await import('cheerio');
-    const https = await import('https');
-    const axios = (await import('axios')).default;
     const items = [];
     try {
-        console.log('Crawling VNA (English)...');
+        console.log('Crawling Public Security News (en.cand.com.vn)...');
         
-        const agent = new https.Agent({ 
-            rejectUnauthorized: false,
-            secureOptions: crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT
-        });
-        
-        const { data } = await axios.get('https://vnanet.vn/en/', { 
-            timeout: 15000,
-            httpsAgent: agent,
-            headers: { 
-                'User-Agent': USER_AGENT,
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-            }
-        });
+        const { data } = await fetchWithRetry('https://en.cand.com.vn/');
         const $ = cheerio.load(data);
         
         const listItems = [];
         const seen = new Set();
         
-        $('a[href*=".html"]').each((i, el) => {
+        $('a[href]').each((i, el) => {
             if (listItems.length >= 10) return;
             
             const title = $(el).text().trim();
             const link = $(el).attr('href');
             
-            if (!title || title.length < 15) return;
-            if (!link || !link.includes('/en/')) return;
+            if (!title || title.length < 20 || title.length > 200) return;
+            if (!link || link === '/' || link.startsWith('#')) return;
             
-            const fullUrl = link.startsWith('http') ? link : `https://vnanet.vn${link}`;
+            const isArticle = link.includes('-i') || link.match(/[a-z]-[0-9]+\/?$/);
+            const isCategory = link.match(/^\/(politics|public-security-forces|culture-travel|economy)\/?$/);
+            if (isCategory || !isArticle) return;
+            
+            const fullUrl = link.startsWith('http') ? link : `https://en.cand.com.vn${link}`;
             
             if (seen.has(fullUrl)) return;
             seen.add(fullUrl);
             
-            const container = $(el).closest('li, div, td');
-            const summary = container.find('.news-sapo, .sapo, .summary, p').text().trim();
+            let category = 'Policy';
+            if (link.includes('/public-security')) category = 'Society';
+            if (link.includes('/culture')) category = 'Culture';
+            if (link.includes('/economy')) category = 'Economy';
             
-            listItems.push({ title, summary, url: fullUrl });
+            listItems.push({ title, url: fullUrl, category });
         });
 
-        console.log(`VNA list items found: ${listItems.length}`);
+        console.log(`Public Security list items found: ${listItems.length}`);
         
         for (const item of listItems) {
-            try {
-                const { data: detailData } = await axios.get(item.url, {
-                    timeout: 15000,
-                    httpsAgent: agent,
-                    headers: { 'User-Agent': USER_AGENT }
-                });
-                const $d = cheerio.load(detailData);
-                const content = $d('.news-detail, .detail-content, .content-detail, .fck_detail').html();
-                const imageUrl = $d('meta[property="og:image"]').attr('content');
-                
-                items.push({
-                    title: item.title,
-                    summary: item.summary || item.title,
-                    content: content?.trim() || null,
-                    originalUrl: item.url,
-                    imageUrl: imageUrl || null,
-                    source: 'VNA',
-                    category: 'Policy',
-                    publishedAt: new Date(),
-                    status: 'DRAFT'
-                });
-                await new Promise(r => setTimeout(r, 500));
-            } catch (e) {
-                console.error(`VNA detail failed: ${e.message}`);
-            }
+            const detail = await fetchDetailPage(item.url, ['.entry-content', '.post-content', '.article-content', '.detail-content']);
+            
+            const summary = detail.content ? 
+                cheerio.load(detail.content).text().trim().substring(0, 300) : 
+                item.title;
+            
+            items.push({
+                title: item.title,
+                summary: summary,
+                content: detail.content,
+                originalUrl: item.url,
+                imageUrl: detail.imageUrl,
+                source: 'PublicSecurity',
+                category: item.category,
+                publishedAt: new Date(),
+                status: 'DRAFT'
+            });
+            await new Promise(r => setTimeout(r, 500));
         }
-        console.log(`VNA: ${items.length} items`);
+        console.log(`Public Security: ${items.length} items`);
     } catch (e) {
-        console.error('VNA crawl error:', e.message);
+        console.error('Public Security crawl error:', e.message);
     }
     return items;
 }
@@ -492,11 +477,11 @@ export async function POST(request) {
             crawlInsideVina(),
             crawlTuoitre(),
             crawlThanhNien(),
-            crawlVnaNet()
+            crawlPublicSecurity()
         ]);
         
-        const [vnItems, vnvnItems, yhItems, ivItems, ttItems, tnItems, vnaItems] = results;
-        const allItems = [...vnItems, ...vnvnItems, ...yhItems, ...ivItems, ...ttItems, ...tnItems, ...vnaItems];
+        const [vnItems, vnvnItems, yhItems, ivItems, ttItems, tnItems, psItems] = results;
+        const allItems = [...vnItems, ...vnvnItems, ...yhItems, ...ivItems, ...ttItems, ...tnItems, ...psItems];
         
         console.log(`Total items found: ${allItems.length}`);
         
@@ -508,7 +493,7 @@ export async function POST(request) {
             'InsideVina': ivItems.length,
             'TuoiTre': ttItems.length,
             'ThanhNien': tnItems.length,
-            'VNA': vnaItems.length
+            'PublicSecurity': psItems.length
         };
         
         // 1. 중복 필터링
