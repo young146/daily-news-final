@@ -631,6 +631,8 @@ function jenny_get_styles() {
         }
         .jenny-link:hover {
             color: #6b7280 !important;
+            opacity: 1 !important;
+            visibility: visible !important;
         }
     </style>';
 }
