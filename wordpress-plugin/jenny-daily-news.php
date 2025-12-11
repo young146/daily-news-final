@@ -633,7 +633,7 @@ function jenny_get_styles() {
             color: #4b5563;
         }
         .jenny-link:hover .jenny-link-text {
-            color: #6b7280;
+            color: #ea580c;
         }
     </style>';
 }
