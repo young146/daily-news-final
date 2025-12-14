@@ -7,7 +7,6 @@ const crawlTuoitre = require('./crawlers/tuoitre');
 const crawlThanhNien = require('./crawlers/thanhnien');
 const crawlVnaNet = require('./crawlers/vnanet');
 const crawlVnExpressVN = require('./crawlers/vnexpress-vn');
-const crawlGoogleDiscovery = require('./crawlers/google-discovery');
 const { sendCrawlerAlert } = require('../lib/telegram');
 
 const prisma = new PrismaClient();
@@ -21,7 +20,7 @@ async function loadTranslator() {
 
 async function main() {
   await loadTranslator();
-
+  
   console.log('🚀 크롤러 시작 (7개 소스 + AI 번역/요약/분류)...');
   console.log('================================================');
 
@@ -32,12 +31,11 @@ async function main() {
     { name: 'TuoiTre', fn: crawlTuoitre },
     { name: 'ThanhNien', fn: crawlThanhNien },
     { name: 'VNA', fn: crawlVnaNet },
-    { name: 'VnExpressVN', fn: crawlVnExpressVN },
-    { name: 'GoogleDiscovery', fn: crawlGoogleDiscovery }
+    { name: 'VnExpressVN', fn: crawlVnExpressVN }
   ];
 
   const results = await Promise.allSettled(crawlers.map(c => c.fn()));
-
+  
   const allItems = [];
   const successSources = [];
   const failedSources = [];
@@ -87,7 +85,7 @@ async function main() {
 
     // GPT로 제목 번역 + 카테고리 분류 (통합 모듈 사용)
     const processed = await translateAndCategorize(item);
-
+    
     if (processed.translatedTitle) {
       console.log(`   → 제목: ${processed.translatedTitle.substring(0, 50)}...`);
     }
@@ -106,14 +104,14 @@ async function main() {
         category: finalCategory,
       }
     });
-
+    
     savedCount++;
     console.log(`   ✅ 저장 완료`);
   }
 
-  const status = failedSources.length === 0 ? 'SUCCESS' :
-    failedSources.length === crawlers.length ? 'FAILED' : 'PARTIAL';
-
+  const status = failedSources.length === 0 ? 'SUCCESS' : 
+                 failedSources.length === crawlers.length ? 'FAILED' : 'PARTIAL';
+  
   await prisma.crawlerLog.create({
     data: {
       status,
