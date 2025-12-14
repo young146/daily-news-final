@@ -42,7 +42,7 @@ export default function SettingsPage() {
     if (!confirm(`정말 삭제하시겠습니까?\n\n"${title}"\n\n※ WordPress에서는 별도로 삭제해야 합니다.`)) {
       return;
     }
-
+    
     setDeletingId(id);
     try {
       const res = await fetch('/api/published-news', {
@@ -102,32 +102,31 @@ export default function SettingsPage() {
     { id: 'publicsecurity', name: '공안신문 (PublicSecurity)', file: 'publicsecurity' },
     { id: 'saigoneer', name: 'Saigoneer 한글판 (음식/여행)', file: 'saigoneer' },
     { id: 'soranews24', name: 'SoraNews24 (음식/펫/여행)', file: 'soranews24' },
-    { id: 'google-discovery', name: '구글 뉴스 정찰대 (맛집/여행/펫)', file: 'google-discovery' },
   ];
 
   const commands = [
-    {
-      title: '전체 크롤링',
+    { 
+      title: '전체 크롤링', 
       command: 'node scripts/crawler.js',
       description: '모든 뉴스 소스에서 크롤링'
     },
-    {
-      title: '공안신문만 크롤링',
+    { 
+      title: '공안신문만 크롤링', 
       command: 'node -e "require(\'./scripts/crawlers/publicsecurity\')().then(i => console.log(i.length, \'items\'))"',
       description: '공안신문만 테스트 (DB 저장 없음)'
     },
-    {
-      title: 'Yonhap만 크롤링',
+    { 
+      title: 'Yonhap만 크롤링', 
       command: 'node -e "require(\'./scripts/crawlers/yonhap\')().then(i => console.log(i.length, \'items\'))"',
       description: '연합뉴스만 테스트 (DB 저장 없음)'
     },
-    {
-      title: '데이터베이스 초기화',
+    { 
+      title: '데이터베이스 초기화', 
       command: 'npx prisma db push',
       description: 'Prisma 스키마를 DB에 적용'
     },
-    {
-      title: 'DB 스튜디오',
+    { 
+      title: 'DB 스튜디오', 
       command: 'npx prisma studio',
       description: 'Prisma Studio (DB 관리 UI)'
     },
@@ -137,10 +136,10 @@ export default function SettingsPage() {
     <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
         <h1 style={{ fontSize: '28px', fontWeight: 'bold' }}>시스템 설정</h1>
-        <Link href="/admin" style={{
-          padding: '10px 20px',
-          background: '#6b7280',
-          color: 'white',
+        <Link href="/admin" style={{ 
+          padding: '10px 20px', 
+          background: '#6b7280', 
+          color: 'white', 
           textDecoration: 'none',
           borderRadius: '6px'
         }}>
@@ -149,10 +148,10 @@ export default function SettingsPage() {
       </div>
 
       {/* 크롤러 로그 */}
-      <section style={{
-        background: 'white',
-        padding: '24px',
-        borderRadius: '12px',
+      <section style={{ 
+        background: 'white', 
+        padding: '24px', 
+        borderRadius: '12px', 
         marginBottom: '24px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
@@ -160,7 +159,7 @@ export default function SettingsPage() {
           <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1f2937' }}>
             📊 크롤러 실행 로그
           </h2>
-          <button
+          <button 
             onClick={fetchCrawlerLogs}
             style={{
               padding: '6px 12px',
@@ -177,7 +176,7 @@ export default function SettingsPage() {
         <p style={{ color: '#6b7280', marginBottom: '20px', fontSize: '14px' }}>
           최근 20개 크롤링 실행 기록입니다. 실패한 소스의 상세 에러를 확인할 수 있습니다.
         </p>
-
+        
         {crawlerLogs.length === 0 ? (
           <p style={{ color: '#9ca3af', textAlign: 'center', padding: '20px' }}>
             크롤러 로그가 없습니다.
@@ -198,11 +197,11 @@ export default function SettingsPage() {
                   const hasErrors = log.errorDetails && log.errorDetails !== 'null';
                   const errors = hasErrors ? JSON.parse(log.errorDetails) : null;
                   const isExpanded = expandedLog === log.id;
-
+                  
                   return (
                     <React.Fragment key={log.id}>
-                      <tr
-                        style={{
+                      <tr 
+                        style={{ 
                           borderBottom: '1px solid #f3f4f6',
                           cursor: hasErrors ? 'pointer' : 'default',
                           background: isExpanded ? '#fef3c7' : 'transparent'
@@ -220,10 +219,10 @@ export default function SettingsPage() {
                             borderRadius: '12px',
                             fontSize: '12px',
                             fontWeight: '500',
-                            background: log.status === 'SUCCESS' ? '#dcfce7' :
-                              log.status === 'PARTIAL' ? '#fef3c7' : '#fee2e2',
-                            color: log.status === 'SUCCESS' ? '#166534' :
-                              log.status === 'PARTIAL' ? '#92400e' : '#991b1b'
+                            background: log.status === 'SUCCESS' ? '#dcfce7' : 
+                                       log.status === 'PARTIAL' ? '#fef3c7' : '#fee2e2',
+                            color: log.status === 'SUCCESS' ? '#166534' : 
+                                   log.status === 'PARTIAL' ? '#92400e' : '#991b1b'
                           }}>
                             {log.status}
                           </span>
@@ -244,9 +243,9 @@ export default function SettingsPage() {
                       {isExpanded && errors && (
                         <tr>
                           <td colSpan={4} style={{ padding: '0' }}>
-                            <div style={{
-                              background: '#1f2937',
-                              padding: '16px',
+                            <div style={{ 
+                              background: '#1f2937', 
+                              padding: '16px', 
                               margin: '0 10px 10px 10px',
                               borderRadius: '8px'
                             }}>
@@ -259,9 +258,9 @@ export default function SettingsPage() {
                                     {err.message}
                                   </div>
                                   {err.stack && (
-                                    <pre style={{
-                                      color: '#9ca3af',
-                                      fontSize: '11px',
+                                    <pre style={{ 
+                                      color: '#9ca3af', 
+                                      fontSize: '11px', 
                                       margin: 0,
                                       whiteSpace: 'pre-wrap',
                                       wordBreak: 'break-all'
@@ -288,10 +287,10 @@ export default function SettingsPage() {
       </section>
 
       {/* 소스별 크롤링 */}
-      <section style={{
-        background: 'white',
-        padding: '24px',
-        borderRadius: '12px',
+      <section style={{ 
+        background: 'white', 
+        padding: '24px', 
+        borderRadius: '12px', 
         marginBottom: '24px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
@@ -301,12 +300,12 @@ export default function SettingsPage() {
         <p style={{ color: '#6b7280', marginBottom: '20px', fontSize: '14px' }}>
           개별 뉴스 소스만 선택적으로 크롤링할 수 있습니다.
         </p>
-
+        
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
           {sources.map(source => (
-            <div key={source.id} style={{
-              display: 'flex',
-              alignItems: 'center',
+            <div key={source.id} style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
               justifyContent: 'space-between',
               padding: '12px 16px',
               background: '#f9fafb',
@@ -319,8 +318,8 @@ export default function SettingsPage() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {crawlStatus[source.id] && (
-                  <span style={{
-                    fontSize: '12px',
+                  <span style={{ 
+                    fontSize: '12px', 
                     color: crawlStatus[source.id].includes('오류') ? '#ef4444' : '#10b981'
                   }}>
                     {crawlStatus[source.id]}
@@ -349,10 +348,10 @@ export default function SettingsPage() {
       </section>
 
       {/* 발행된 뉴스 관리 */}
-      <section style={{
-        background: 'white',
-        padding: '24px',
-        borderRadius: '12px',
+      <section style={{ 
+        background: 'white', 
+        padding: '24px', 
+        borderRadius: '12px', 
         marginBottom: '24px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
@@ -362,7 +361,7 @@ export default function SettingsPage() {
         <p style={{ color: '#6b7280', marginBottom: '20px', fontSize: '14px' }}>
           오늘 발행된 뉴스를 DB에서 삭제할 수 있습니다. (WordPress 글은 별도 삭제 필요)
         </p>
-
+        
         {publishedNews.length === 0 ? (
           <p style={{ color: '#9ca3af', textAlign: 'center', padding: '20px' }}>
             발행된 뉴스가 없습니다.
@@ -400,7 +399,7 @@ export default function SettingsPage() {
                     </td>
                     <td style={{ padding: '10px', textAlign: 'center' }}>
                       {news.wordpressUrl ? (
-                        <a
+                        <a 
                           href={news.wordpressUrl}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -436,40 +435,40 @@ export default function SettingsPage() {
       </section>
 
       {/* 시스템 정보 */}
-      <section style={{
-        background: 'white',
-        padding: '24px',
-        borderRadius: '12px',
+      <section style={{ 
+        background: 'white', 
+        padding: '24px', 
+        borderRadius: '12px', 
         marginBottom: '24px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
         <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>
           ⚙️ 시스템 정보
         </h2>
-
+        
         {loading ? (
           <p style={{ color: '#6b7280' }}>로딩 중...</p>
         ) : systemInfo ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '16px' }}>
-            <InfoCard
-              title="데이터베이스"
+            <InfoCard 
+              title="데이터베이스" 
               value={systemInfo.database?.connected ? '연결됨' : '연결 실패'}
               status={systemInfo.database?.connected ? 'success' : 'error'}
               detail={`총 ${systemInfo.database?.totalNews || 0}개 뉴스`}
             />
-            <InfoCard
-              title="WordPress"
+            <InfoCard 
+              title="WordPress" 
               value={systemInfo.wordpress?.configured ? '설정됨' : '미설정'}
               status={systemInfo.wordpress?.configured ? 'success' : 'warning'}
               detail={systemInfo.wordpress?.url || '-'}
             />
-            <InfoCard
-              title="OpenAI API"
+            <InfoCard 
+              title="OpenAI API" 
               value={systemInfo.openai?.configured ? '설정됨' : '미설정'}
               status={systemInfo.openai?.configured ? 'success' : 'error'}
             />
-            <InfoCard
-              title="오늘 게시된 뉴스"
+            <InfoCard 
+              title="오늘 게시된 뉴스" 
               value={`${systemInfo.database?.publishedToday || 0}개`}
               status="info"
             />
@@ -480,17 +479,17 @@ export default function SettingsPage() {
       </section>
 
       {/* WordPress 설정 */}
-      <section style={{
-        background: 'white',
-        padding: '24px',
-        borderRadius: '12px',
+      <section style={{ 
+        background: 'white', 
+        padding: '24px', 
+        borderRadius: '12px', 
         marginBottom: '24px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
         <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>
           🌐 WordPress 설정
         </h2>
-
+        
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
             <TableRow label="사이트 URL" value="https://chaovietnam.co.kr" />
@@ -503,10 +502,10 @@ export default function SettingsPage() {
       </section>
 
       {/* 유용한 명령어 */}
-      <section style={{
-        background: 'white',
-        padding: '24px',
-        borderRadius: '12px',
+      <section style={{ 
+        background: 'white', 
+        padding: '24px', 
+        borderRadius: '12px', 
         marginBottom: '24px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
@@ -516,10 +515,10 @@ export default function SettingsPage() {
         <p style={{ color: '#6b7280', marginBottom: '20px', fontSize: '14px' }}>
           Replit Shell에서 직접 실행할 수 있는 명령어입니다.
         </p>
-
+        
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {commands.map((cmd, index) => (
-            <div key={index} style={{
+            <div key={index} style={{ 
               padding: '16px',
               background: '#1f2937',
               borderRadius: '8px',
@@ -528,9 +527,9 @@ export default function SettingsPage() {
                 <span style={{ color: '#10b981', fontWeight: '600', fontSize: '14px' }}>{cmd.title}</span>
                 <span style={{ color: '#9ca3af', fontSize: '12px' }}>{cmd.description}</span>
               </div>
-              <code style={{
-                color: '#fbbf24',
-                fontFamily: 'monospace',
+              <code style={{ 
+                color: '#fbbf24', 
+                fontFamily: 'monospace', 
                 fontSize: '13px',
                 wordBreak: 'break-all'
               }}>
@@ -542,20 +541,20 @@ export default function SettingsPage() {
       </section>
 
       {/* 크롤러 파일 위치 */}
-      <section style={{
-        background: 'white',
-        padding: '24px',
-        borderRadius: '12px',
+      <section style={{ 
+        background: 'white', 
+        padding: '24px', 
+        borderRadius: '12px', 
         marginBottom: '24px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
         <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>
           📁 파일 구조
         </h2>
-
-        <div style={{
-          background: '#f9fafb',
-          padding: '20px',
+        
+        <div style={{ 
+          background: '#f9fafb', 
+          padding: '20px', 
           borderRadius: '8px',
           fontFamily: 'monospace',
           fontSize: '13px',
@@ -566,36 +565,36 @@ export default function SettingsPage() {
             <div style={{ color: '#3b82f6' }}>crawler.js</div>
             <div style={{ color: '#6b7280' }}>crawlers/</div>
             <div style={{ paddingLeft: '20px', color: '#10b981' }}>
-              vnexpress.js<br />
-              vnexpress-vn.js<br />
-              yonhap.js<br />
-              insidevina.js<br />
-              tuoitre.js<br />
-              thanhnien.js<br />
-              publicsecurity.js<br />
-              saigoneer.js<br />
+              vnexpress.js<br/>
+              vnexpress-vn.js<br/>
+              yonhap.js<br/>
+              insidevina.js<br/>
+              tuoitre.js<br/>
+              thanhnien.js<br/>
+              publicsecurity.js<br/>
+              saigoneer.js<br/>
               japantoday.js
             </div>
           </div>
           <div style={{ color: '#6b7280', marginTop: '10px' }}>lib/</div>
           <div style={{ paddingLeft: '20px', color: '#f59e0b' }}>
-            publisher.js<br />
-            openai.js<br />
+            publisher.js<br/>
+            openai.js<br/>
             prisma.js
           </div>
           <div style={{ color: '#6b7280', marginTop: '10px' }}>wordpress-plugin/</div>
           <div style={{ paddingLeft: '20px', color: '#ec4899' }}>
-            jenny-daily-news.php (v1.4)<br />
+            jenny-daily-news.php (v1.4)<br/>
             xinchao-image-uploader.php
           </div>
         </div>
       </section>
 
       {/* 유지보수 가이드 */}
-      <section style={{
-        background: 'white',
-        padding: '24px',
-        borderRadius: '12px',
+      <section style={{ 
+        background: 'white', 
+        padding: '24px', 
+        borderRadius: '12px', 
         marginBottom: '24px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
@@ -605,31 +604,31 @@ export default function SettingsPage() {
         <p style={{ color: '#6b7280', marginBottom: '20px', fontSize: '14px' }}>
           크롤러 오류 발생 시 참고하세요. 웹사이트 구조가 바뀌면 셀렉터 수정이 필요합니다.
         </p>
-
+        
         {/* 일반적인 에러 유형 */}
         <div style={{ marginBottom: '24px' }}>
           <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>
             자주 발생하는 에러
           </h3>
           <div style={{ display: 'grid', gap: '12px' }}>
-            <ErrorGuide
-              error="No content found"
-              cause="웹사이트 HTML 구조 변경"
+            <ErrorGuide 
+              error="No content found" 
+              cause="웹사이트 HTML 구조 변경" 
               solution="브라우저 개발자 도구(F12)로 새 셀렉터 찾기"
             />
-            <ErrorGuide
-              error="SSL_UNSAFE_LEGACY_RENEGOTIATION"
-              cause="오래된 SSL 설정"
+            <ErrorGuide 
+              error="SSL_UNSAFE_LEGACY_RENEGOTIATION" 
+              cause="오래된 SSL 설정" 
               solution="axios에 httpsAgent 옵션 추가 (yonhap.js 참고)"
             />
-            <ErrorGuide
-              error="403 Forbidden"
-              cause="User-Agent 차단"
+            <ErrorGuide 
+              error="403 Forbidden" 
+              cause="User-Agent 차단" 
               solution="User-Agent 헤더 변경 또는 추가 헤더 설정"
             />
-            <ErrorGuide
-              error="ETIMEDOUT / ECONNRESET"
-              cause="네트워크 문제 또는 서버 다운"
+            <ErrorGuide 
+              error="ETIMEDOUT / ECONNRESET" 
+              cause="네트워크 문제 또는 서버 다운" 
               solution="timeout 옵션 늘리기 또는 나중에 재시도"
             />
           </div>
@@ -640,9 +639,9 @@ export default function SettingsPage() {
           <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>
             크롤러별 셀렉터 위치
           </h3>
-          <div style={{
-            background: '#f9fafb',
-            borderRadius: '8px',
+          <div style={{ 
+            background: '#f9fafb', 
+            borderRadius: '8px', 
             overflow: 'hidden',
             fontSize: '13px'
           }}>
@@ -673,9 +672,9 @@ export default function SettingsPage() {
           <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>
             셀렉터 수정 방법
           </h3>
-          <ol style={{
-            paddingLeft: '24px',
-            color: '#4b5563',
+          <ol style={{ 
+            paddingLeft: '24px', 
+            color: '#4b5563', 
             lineHeight: '2',
             fontSize: '14px'
           }}>
@@ -689,9 +688,9 @@ export default function SettingsPage() {
         </div>
 
         {/* AI 도구 활용 */}
-        <div style={{
-          background: '#eff6ff',
-          padding: '16px',
+        <div style={{ 
+          background: '#eff6ff', 
+          padding: '16px', 
           borderRadius: '8px',
           border: '1px solid #bfdbfe'
         }}>
@@ -699,26 +698,26 @@ export default function SettingsPage() {
             💡 AI 도구 활용 팁
           </h3>
           <p style={{ color: '#1e40af', fontSize: '13px', margin: 0 }}>
-            수정이 어려우면 Claude나 ChatGPT에 다음 정보를 제공하세요:<br />
-            1) 에러 메시지 전체<br />
-            2) 해당 크롤러 파일 코드<br />
+            수정이 어려우면 Claude나 ChatGPT에 다음 정보를 제공하세요:<br/>
+            1) 에러 메시지 전체<br/>
+            2) 해당 크롤러 파일 코드<br/>
             3) 대상 웹사이트 URL
           </p>
         </div>
       </section>
 
       {/* 일일 워크플로우 */}
-      <section style={{
-        background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-        padding: '24px',
-        borderRadius: '12px',
+      <section style={{ 
+        background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', 
+        padding: '24px', 
+        borderRadius: '12px', 
         marginBottom: '24px',
         border: '1px solid #f59e0b'
       }}>
         <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', color: '#92400e' }}>
           📋 일일 워크플로우
         </h2>
-
+        
         <ol style={{ paddingLeft: '24px', color: '#78350f', lineHeight: '2' }}>
           <li><strong>크롤링</strong>: 대시보드에서 "Crawl News" 버튼 클릭 (매일 아침)</li>
           <li><strong>선택</strong>: 게시할 뉴스 ~20개 선택 (TopNews 1개, CardNews 4개 포함)</li>
@@ -739,11 +738,11 @@ function InfoCard({ title, value, status, detail }) {
     warning: { bg: '#fef3c7', text: '#92400e', border: '#fcd34d' },
     info: { bg: '#dbeafe', text: '#1e40af', border: '#93c5fd' },
   };
-
+  
   const color = colors[status] || colors.info;
-
+  
   return (
-    <div style={{
+    <div style={{ 
       padding: '16px',
       background: color.bg,
       borderRadius: '8px',
@@ -773,8 +772,8 @@ function TableRow({ label, value, link }) {
 
 function ErrorGuide({ error, cause, solution }) {
   return (
-    <div style={{
-      display: 'grid',
+    <div style={{ 
+      display: 'grid', 
       gridTemplateColumns: '1fr 1fr 2fr',
       gap: '12px',
       padding: '12px',

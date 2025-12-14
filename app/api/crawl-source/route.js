@@ -14,7 +14,6 @@ const sourceNames = {
   'publicsecurity': 'PublicSecurity',
   'saigoneer': 'Saigoneer',
   'soranews24': 'SoraNews24',
-  'google-discovery': 'Google Discovery',
 };
 
 const crawlers = {
@@ -27,34 +26,33 @@ const crawlers = {
   'publicsecurity': () => require('@/scripts/crawlers/publicsecurity')(),
   'saigoneer': () => require('@/scripts/crawlers/saigoneer')(),
   'soranews24': () => require('@/scripts/crawlers/soranews24')(),
-  'google-discovery': () => require('@/scripts/crawlers/google-discovery')(),
 };
 
 export async function POST(request) {
   try {
     const { source } = await request.json();
-
+    
     if (!source || !crawlers[source]) {
-      return NextResponse.json({
-        success: false,
-        error: 'Invalid source'
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Invalid source' 
       }, { status: 400 });
     }
-
+    
     console.log(`[Crawl] Starting ${source} crawl...`);
-
+    
     const crawlFn = crawlers[source];
     const items = await crawlFn();
-
+    
     console.log(`[Crawl] ${source}: Found ${items.length} items`);
-
+    
     let savedCount = 0;
     for (const item of items) {
       try {
         const existing = await prisma.newsItem.findFirst({
           where: { originalUrl: item.originalUrl }
         });
-
+        
         if (existing) {
           await prisma.newsItem.update({
             where: { id: existing.id },
@@ -68,7 +66,7 @@ export async function POST(request) {
         } else {
           let translatedTitle = null;
           let category = item.category || 'Society';
-
+          
           if (koreanSources.includes(item.source)) {
             translatedTitle = item.title;
           } else {
@@ -76,8 +74,8 @@ export async function POST(request) {
             translatedTitle = translated.translatedTitle;
             category = translated.category || category;
           }
-
-          await prisma.newsItem.create({
+          
+          await prisma.newsItem.create({ 
             data: {
               ...item,
               translatedTitle,
@@ -91,9 +89,9 @@ export async function POST(request) {
         console.error(`[Crawl] Error saving item:`, err.message);
       }
     }
-
+    
     console.log(`[Crawl] ${source}: Saved ${savedCount} items`);
-
+    
     // Save to CrawlerLog
     const sourceName = sourceNames[source] || source;
     await prisma.crawlerLog.create({
@@ -103,18 +101,18 @@ export async function POST(request) {
         message: `${sourceName} crawl completed. Total: ${items.length}, New: ${savedCount}`,
       }
     });
-
-    return NextResponse.json({
-      success: true,
+    
+    return NextResponse.json({ 
+      success: true, 
       count: savedCount,
-      message: `${source} crawl completed`
+      message: `${source} crawl completed` 
     });
-
+    
   } catch (error) {
     console.error('[Crawl] Error:', error);
-    return NextResponse.json({
-      success: false,
-      error: error.message
+    return NextResponse.json({ 
+      success: false, 
+      error: error.message 
     }, { status: 500 });
   }
 }
