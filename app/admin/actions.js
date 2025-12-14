@@ -220,20 +220,29 @@ export async function batchTranslateTitlesAction(ids) {
 }
 
 export async function batchPublishDailyAction(ids) {
-    try {
-        // Run in parallel
-        await Promise.all(ids.map(async (id) => {
-            try {
-                await publishItemAction(id, 'daily');
-            } catch (e) {
-                console.error(`Failed to publish item ${id}:`, e);
+    let successCount = 0;
+    let failCount = 0;
+    const errors = [];
+
+    // Run sequentially to avoid overwhelming the WordPress server
+    for (const id of ids) {
+        try {
+            const result = await publishItemAction(id, 'daily');
+            if (result.success) {
+                successCount++;
+            } else {
+                failCount++;
+                errors.push(`Item ${id}: ${result.error}`);
             }
-        }));
-        revalidatePath('/admin');
-        return { success: true };
-    } catch (error) {
-        return { success: false, error: error.message };
+        } catch (e) {
+            failCount++;
+            errors.push(`Item ${id}: ${e.message}`);
+            console.error(`Failed to publish item ${id}:`, e);
+        }
     }
+
+    revalidatePath('/admin');
+    return { success: failCount === 0, successCount, failCount, errors };
 }
 
 export async function batchDeleteAction(ids) {

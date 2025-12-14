@@ -28,11 +28,13 @@ export default function CategorySelector({ id, initialCategory }) {
             disabled={loading}
             className={`text-xs border rounded p-1 bg-white w-full ${loading ? 'opacity-50' : ''}`}
         >
-            <option value="Economy">Economy</option>
-            <option value="Culture">Culture</option>
-            <option value="Society">Society</option>
-            <option value="Policy">Policy</option>
-            <option value="Korea-Vietnam">Korea-Vietnam</option>
+            <option value="Society">Society (사회)</option>
+            <option value="Economy">Economy (경제)</option>
+            <option value="Culture">Culture (문화)</option>
+            <option value="Politics">Politics (정치)</option>
+            <option value="International">International (국제)</option>
+            <option value="Korea-Vietnam">Korea-Vietnam (한-베)</option>
+            <option value="Community">Community (교민)</option>
         </select>
     );
 }

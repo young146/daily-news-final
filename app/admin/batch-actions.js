@@ -193,7 +193,12 @@ These will NOT be published now. You can review them later.
                 message += `\nDo you want to PUBLISH these ${completedItems.length} items to the Daily News site now?`;
 
                 if (confirm(message.trim())) {
-                    await batchPublishDailyAction(completedItems.map(n => n.id));
+                    const result = await batchPublishDailyAction(completedItems.map(n => n.id));
+                    if (result.failCount > 0) {
+                        alert(`⚠️ 일부 뉴스 발행 실패\n\n성공: ${result.successCount}개\n실패: ${result.failCount}개\n\n[에러 내용]\n${result.errors.join('\n')}`);
+                    } else {
+                        alert(`✅ ${result.successCount}개 뉴스 발행 완료!`);
+                    }
                 } else if (hasSkippedItems && confirm("Do you want to review the SKIPPED items now instead?")) {
                     router.push(`/admin/news/${skippedItems[0].id}/translate`);
                 }
