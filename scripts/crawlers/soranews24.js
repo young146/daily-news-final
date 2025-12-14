@@ -5,12 +5,11 @@ async function crawlSoraNews24() {
     console.log('Starting crawl of SoraNews24 (음식/펫/여행)...');
     try {
         const categories = [
+            { url: 'https://soranews24.com/category/animals/', category: 'Culture' },
             { url: 'https://soranews24.com/category/food-drink/', category: 'Culture' },
-            { url: 'https://soranews24.com/category/cats/', category: 'Culture' },
-            { url: 'https://soranews24.com/tag/pets/', category: 'Culture' },
-            { url: 'https://soranews24.com/tag/travel/', category: 'Culture' },
+            { url: 'https://soranews24.com/category/travel/', category: 'Culture' },
         ];
-        
+
         const listItems = [];
         const seen = new Set();
 
@@ -26,16 +25,16 @@ async function crawlSoraNews24() {
                 const $ = cheerio.load(data);
 
                 $('a').each((index, element) => {
-                    if (listItems.length >= 10) return;
+                    if (listItems.length >= 20) return;
 
                     const href = $(element).attr('href') || '';
                     const title = $(element).text().trim();
 
                     if (!title || title.length < 30 || title.length > 200) return;
-                    
+
                     const currentYear = new Date().getFullYear();
                     const lastYear = currentYear - 1;
-                    if (!href.includes(`soranews24.com/${currentYear}/`) && 
+                    if (!href.includes(`soranews24.com/${currentYear}/`) &&
                         !href.includes(`soranews24.com/${lastYear}/`)) return;
 
                     if (seen.has(href)) return;

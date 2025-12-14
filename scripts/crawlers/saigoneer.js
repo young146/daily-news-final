@@ -11,7 +11,7 @@ async function crawlSaigoneer() {
             { url: `${BASE_URL}/%EA%B8%B8%EA%B1%B0%EB%A6%AC-%EC%9D%8C%EC%8B%9D`, category: 'Culture' },
             { url: `${BASE_URL}/%EA%B4%80%EA%B4%91`, category: 'Culture' },
         ];
-        
+
         const listItems = [];
         const seen = new Set();
 
@@ -27,17 +27,17 @@ async function crawlSaigoneer() {
                 const $ = cheerio.load(data);
 
                 $('a').each((index, element) => {
-                    if (listItems.length >= 10) return;
+                    if (listItems.length >= 20) return;
 
                     let href = $(element).attr('href') || '';
                     const title = $(element).text().trim().replace(/\s+/g, ' ');
 
                     if (!title || title.length < 15 || title.length > 200) return;
                     if (!href) return;
-                    
+
                     const hasArticleId = href.match(/\/\d+-/);
                     if (!hasArticleId) return;
-                    
+
                     if (href.includes('/explore/') || href.includes('/support')) return;
 
                     if (href.startsWith('/')) {
