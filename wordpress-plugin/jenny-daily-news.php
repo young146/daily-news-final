@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 1.7
+ * Version: 1.8
  * Author: Jenny (Antigravity)
  */
 
@@ -305,7 +305,6 @@ function jenny_daily_news_shortcode($atts)
 
         $thumb_url = get_the_post_thumbnail_url($post_data['post_id'], 'medium_large');
         if (!$thumb_url) {
-            // Find first image in content or placeholder
             $thumb_url = 'https://via.placeholder.com/600x400?text=News';
         }
 
@@ -316,71 +315,142 @@ function jenny_daily_news_shortcode($atts)
             $cat_name = '뉴스';
         }
 
-        // Excerpt from content if manual excerpt empty
         $excerpt = get_the_excerpt($post_data['post_id']);
         if (empty($excerpt)) {
             $excerpt = wp_trim_words($post_obj->post_content, 22, '...');
         }
 
-        $link_url = get_permalink($post_data['post_id']);
+        // Prefer original source URL if available, else permalink
+        $permalink = get_permalink($post_data['post_id']);
+        $original_url = get_post_meta($post_data['post_id'], 'news_original_url', true);
+        $link_url = !empty($original_url) ? $original_url : $permalink;
+
+        // Source meta
+        $news_source = get_post_meta($post_data['post_id'], 'news_source', true);
+        if (empty($news_source)) {
+            $categories = get_the_category($post_data['post_id']);
+            $news_source = !empty($categories) ? $categories[0]->name : '출처 미상';
+        }
+
+        $date_str = get_the_date('Y.m.d', $post_data['post_id']);
+
+        // Metadata Line: Source | Date | Original Link
+        $meta_line = '<div class="jenny-meta-line">';
+        $meta_line .= '<span class="jenny-source">' . esc_html($news_source) . '</span>';
+        $meta_line .= '<span class="jenny-separator">|</span>';
+        $meta_line .= '<span class="jenny-date">' . $date_str . '</span>';
+        if (!empty($original_url)) {
+            $meta_line .= '<span class="jenny-separator">|</span>';
+            $meta_line .= '<a href="' . esc_url($original_url) . '" target="_blank" rel="noopener noreferrer" class="jenny-original-link">원문 보기</a>';
+        }
+        $meta_line .= '</div>';
 
         $html = '<div class="jenny-news-card">';
         $html .= '<div class="jenny-card-image">';
         $html .= '<a href="' . esc_url($link_url) . '">';
         $html .= '<img src="' . esc_url($thumb_url) . '" alt="' . esc_attr(get_the_title($post_data['post_id'])) . '">';
         $html .= '</a>';
+        // Badge removed for flat design preference? Or kept? User asked for "flat". Let's keep badge but simple.
         $html .= '<span class="jenny-badge">' . esc_html($cat_name) . '</span>';
         $html .= '</div>';
+
         $html .= '<div class="jenny-content">';
-        $html .= '<div class="jenny-date">' . get_the_date('Y.m.d', $post_data['post_id']) . '</div>';
         $html .= '<h3 class="jenny-title"><a href="' . esc_url($link_url) . '">' . get_the_title($post_data['post_id']) . '</a></h3>';
+        $html .= $meta_line; // Insert Meta Line below title
         $html .= '<div class="jenny-excerpt">' . $excerpt . '</div>';
-        $html .= '<a href="' . esc_url($link_url) . '" class="jenny-link"><span class="jenny-link-text">자세히 보기 →</span></a>';
+        // "자세히 보기"는 WP 본문으로 이동
+        $html .= '<a href="' . esc_url($permalink) . '" class="jenny-link"><span class="jenny-link-text">자세히 보기</span></a>';
         $html .= '</div>';
         $html .= '</div>';
 
         return $html;
     }
 
+    // Numbers 1 & 2 logic remains same...
+
     // --- 1. Top News Section (First 2 Top News) ---
     if (!empty($top_news_posts)) {
         $output .= '<h2 class="jenny-section-title">🔥 주요 뉴스</h2>';
         $output .= '<div class="jenny-top-news-row">';
-        // Limit to 2 top news
         $top_count = 0;
         foreach ($top_news_posts as $post) {
             if ($top_count >= 2) {
-                // If more than 2, put the rest in regular pile? Or just show row?
-                // User said "Top news side by side (2 items)". 
-                // Let's add the overflow to regular posts for safety, or just display them here?
-                // Displaying here might break layout if not 2. Let's strictly show max 2 here, push rest to regular.
-                $regular_posts[] = $post; // Re-assign to regular
+                // If extra top news, add to regular posts instead of discarding
+                // Note: In the new logic, we need to add them to the correct CATEGORY bucket
+                // For simplicity, let's treat them as regular posts and process them below
+                $regular_posts[] = $post;
                 continue;
             }
             $output .= render_jenny_card($post, $category_map);
             $top_count++;
         }
         $output .= '</div>';
+
+        // Ad Slot after Top News
+        $output .= '<div class="jenny-ad-section"><div class="jenny-ad-placeholder"><span>Google Ads / Banner Area (Top News)</span></div></div>';
     }
 
-    // --- 2. Regular News Section (Grid of 4) ---
-    if (!empty($regular_posts)) {
-        // Re-sort regular posts because we might have added overflow from top news
-        usort($regular_posts, function ($a, $b) {
-            global $category_order;
-            // Same sorting logic
-            if ($a['order'] === $b['order']) {
-                return strcmp($b['date'], $a['date']);
-            }
-            return $a['order'] - $b['order'];
-        });
+    // --- 2. Section-Based Logic ---
 
-        $output .= '<h2 class="jenny-section-title">📰 데일리 소식</h2>';
-        $output .= '<div class="jenny-news-grid">';
-        foreach ($regular_posts as $post) {
-            $output .= render_jenny_card($post, $category_map);
+    // Define Sections and their Category Keys
+    // Keys match the 'news_category' or mapped name
+    $sections = array(
+        'economy' => array('title' => '📈 경제 (Economy)', 'keys' => array('Economy', '경제')),
+        'society' => array('title' => '👥 사회 (Society)', 'keys' => array('Society', '사회')),
+        'culture' => array('title' => '🎭 문화/라이프 (Culture)', 'keys' => array('Culture', '문화')),
+        'politics' => array('title' => '⚖️ 정치/정책 (Politics)', 'keys' => array('Politics', 'Policy', '정치', '정책')),
+        'international' => array('title' => '🌏 국제 (International)', 'keys' => array('International', '국제')),
+        'korea_vietnam' => array('title' => '🇰🇷🇻🇳 한-베 관계 (Korea-Vietnam)', 'keys' => array('Korea-Vietnam', '한-베', '한베')),
+        'community' => array('title' => '📢 교민 소식 (Community)', 'keys' => array('Community', '교민', '교민소식')),
+        'other' => array('title' => '✨ 기타 뉴스', 'keys' => array()) // Fallback
+    );
+
+    // Bucket posts into sections
+    $grouped_posts = array();
+    foreach ($regular_posts as $post) {
+        $cat = $post['category']; // Original category string
+        $found = false;
+
+        // Find which section this post belongs to
+        foreach ($sections as $sec_key => $sec_info) {
+            if ($sec_key === 'other')
+                continue;
+
+            if (in_array($cat, $sec_info['keys'])) {
+                $grouped_posts[$sec_key][] = $post;
+                $found = true;
+                break;
+            }
         }
-        $output .= '</div>';
+
+        if (!$found) {
+            $grouped_posts['other'][] = $post;
+        }
+    }
+
+    // sort function reused
+    $sort_func = function ($a, $b) {
+        return strcmp($b['date'], $a['date']); // Sort by date DESC within section
+    };
+
+    // --- 3. Render Sections ---
+    foreach ($sections as $sec_key => $sec_info) {
+        if (!empty($grouped_posts[$sec_key])) {
+            // Sort
+            usort($grouped_posts[$sec_key], $sort_func);
+
+            $output .= '<h2 class="jenny-section-title">' . esc_html($sec_info['title']) . '</h2>';
+            $output .= '<div class="jenny-news-grid">'; // 4-column grid
+
+            foreach ($grouped_posts[$sec_key] as $post) {
+                $output .= render_jenny_card($post, $category_map);
+            }
+
+            $output .= '</div>';
+
+            // AD SLOT after each section
+            $output .= '<div class="jenny-ad-section"><div class="jenny-ad-placeholder"><span>Google Ads / Banner Area (' . esc_html($sec_info['title']) . ')</span></div></div>';
+        }
     }
 
     wp_reset_postdata();
@@ -395,6 +465,8 @@ function jenny_register_meta_fields()
     if (function_exists('register_post_meta')) {
         register_post_meta('post', 'news_category', array('show_in_rest' => true, 'single' => true, 'type' => 'string'));
         register_post_meta('post', 'is_top_news', array('show_in_rest' => true, 'single' => true, 'type' => 'string'));
+        register_post_meta('post', 'news_source', array('show_in_rest' => true, 'single' => true, 'type' => 'string'));
+        register_post_meta('post', 'news_original_url', array('show_in_rest' => true, 'single' => true, 'type' => 'string'));
     }
 }
 add_action('init', 'jenny_register_meta_fields');
@@ -435,111 +507,153 @@ function jenny_get_styles()
         .jenny-section-title {
             font-size: 20px;
             font-weight: 800;
-            color: #1f2937;
+            color: #111827;
             margin: 32px 0 16px 0;
             padding-left: 12px;
             border-left: 4px solid #ea580c;
         }
 
-        /* TOP NEWS LAYOUT (2 Columns) */
+        /* GRID LAYOUTS */
         .jenny-top-news-row {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
+            gap: 30px; /* Increased gap for cleaner look */
+            margin-bottom: 50px;
+        }
+        .jenny-news-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
             gap: 24px;
-            margin-bottom: 40px;
+            padding-bottom: 40px;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1024px) {
+            .jenny-news-grid { grid-template-columns: repeat(2, 1fr); }
         }
         @media (max-width: 768px) {
             .jenny-top-news-row { grid-template-columns: 1fr; }
+            .jenny-news-grid { grid-template-columns: 1fr; }
         }
 
-        /* REGULAR GRID LAYOUT (4 Columns preferred, auto-fill for responsiveness) */
-        .jenny-news-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* Smaller min-width to fit 4 on large screens */
-            gap: 20px;
-            padding-bottom: 40px;
-        }
-        /* Override specifically for large screens to try for 4 columns if space permits */
-        @media (min-width: 1200px) {
-            .jenny-news-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
-        }
-
-        /* CARD STYLES */
+        /* FLAT CARD STYLE - REMOVED BORDERS/SHADOWS */
         .jenny-news-card {
             background: #ffffff !important;
-            border: 1px solid #e5e7eb;
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
             display: flex;
             flex-direction: column;
-            border-radius: 8px; /* Slightly rounded */
-            overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
+            overflow: visible !important; /* Allow overflow if needed */
         }
         .jenny-news-card:hover {
-            border-color: #d1d5db;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            transform: none !important;
+            box-shadow: none !important;
         }
+        
+        /* IMAGE - NO RADIUS */
         .jenny-card-image {
             position: relative;
             padding-top: 56.25%; /* 16:9 */
             overflow: hidden;
             background: #f3f4f6;
+            border-radius: 0 !important;
+            margin-bottom: 12px;
         }
         .jenny-card-image img {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
+            transition: transform 0.3s ease;
         }
+        .jenny-card-image:hover img {
+            transform: scale(1.02); /* Subtle zoom only */
+        }
+
         .jenny-badge {
             position: absolute; top: 12px; left: 12px;
-            background: rgba(255,255,255,0.95);
-            color: #ea580c;
-            padding: 4px 10px;
-            font-size: 11px;
+            background: #000000;
+            color: #ffffff;
+            padding: 4px 8px;
+            font-size: 10px;
             font-weight: 700;
-            border-radius: 4px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            z-index: 10;
+            border-radius: 0; /* Flat badge */
+            text-transform: uppercase;
         }
-        /* Top News custom styling for emphasis */
-        .jenny-top-news-row .jenny-news-card {
-            border: 1px solid #fed7aa; /* Orange tint border */
+
+        /* CONTENT */
+        .jenny-content { 
+            padding: 0; /* No padding needed without border */
+            flex-grow: 1; 
+            display: flex; 
+            flex-direction: column; 
+            text-align: left; 
         }
-        .jenny-top-news-row .jenny-title {
-            font-size: 20px; /* Larger title for top news */
-        }
-        
-        .jenny-content { padding: 20px; flex-grow: 1; display: flex; flex-direction: column; text-align: left; }
-        .jenny-date { font-size: 12px; color: #9ca3af !important; margin-bottom: 8px; }
+
+        /* TITLE */
         .jenny-title {
-            font-size: 16px;
-            font-weight: 700;
+            font-size: 18px;
+            font-weight: 800;
             color: #111827 !important;
-            margin: 0 0 10px 0;
-            line-height: 1.4;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+            margin: 0 0 6px 0;
+            line-height: 1.35;
         }
         .jenny-title a { color: inherit !important; text-decoration: none; }
-        .jenny-title a:hover { color: #ea580c !important; }
+        .jenny-title a:hover { color: #ea580c !important; text-decoration: underline; }
+
+        /* TOP NEWS BIGGER TITLE */
+        .jenny-top-news-row .jenny-title {
+            font-size: 22px;
+        }
+
+        /* METADATA LINE: Source | Date | Original Link */
+        .jenny-meta-line {
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .jenny-separator {
+            margin: 0 6px;
+            color: #d1d5db;
+            font-size: 10px;
+        }
+        .jenny-source { color: #1f2937; font-weight: 700; }
+        .jenny-original-link {
+            color: #ea580c !important;
+            text-decoration: none !important;
+            font-weight: 700;
+        }
+        .jenny-original-link:hover { text-decoration: underline !important; }
+
+        /* EXCERPT */
         .jenny-excerpt {
             font-size: 14px;
             color: #4b5563 !important;
             line-height: 1.6;
-            margin-bottom: 16px;
-            flex-grow: 1;
-            /* Limit lines */
+            margin-bottom: 12px;
             display: -webkit-box;
             -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
-        .jenny-link, .jenny-news-card .jenny-link {
-            font-size: 13px; font-weight: 600; color: #6b7280 !important;
-            text-decoration: none !important; margin-top: auto;
+
+        /* READ MORE - Independent Line */
+        .jenny-link {
+            display: block;
+            margin-top: auto;
+            text-decoration: none !important;
         }
-        .jenny-link:hover .jenny-link-text { color: #ea580c; }
+        .jenny-link-text {
+            font-size: 13px;
+            font-weight: 700;
+            color: #111827;
+            border-bottom: 2px solid #ea580c;
+            padding-bottom: 2px;
+        }
+        .jenny-link:hover .jenny-link-text {
+            background: #ea580c;
+            color: #ffffff;
+        }
     </style>';
 }
