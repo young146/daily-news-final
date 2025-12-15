@@ -5,8 +5,20 @@ import { useState } from 'react';
 export default function CardNewsSimple({ data, mode = 'preview' }) {
     const [isGenerating, setIsGenerating] = useState(false);
     const [publishResult, setPublishResult] = useState(null);
+    const [selectedTopNews, setSelectedTopNews] = useState(null); // 선택된 탑뉴스
     
-    const { topNews, weather, rates } = data || {};
+    const { topNews, secondTopNews, topNewsList, weather, rates } = data || {};
+    
+    // 초기 선택: 첫 번째 탑뉴스
+    const currentTopNews = selectedTopNews || topNews;
+    
+    // 디버깅: 현재 상태 확인
+    console.log('[CardNews] Component render:', {
+        hasTopNews: !!topNews,
+        hasSelectedTopNews: !!selectedTopNews,
+        currentTopNews: currentTopNews?.id,
+        topNewsListLength: topNewsList?.length
+    });
     
     const now = new Date();
     const vietnamTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
@@ -17,23 +29,64 @@ export default function CardNewsSimple({ data, mode = 'preview' }) {
     const weekday = weekdays[vietnamTime.getDay()];
     const dateStr = `${year}년 ${month}월 ${day}일 ${weekday}`;
     
-    const newsTitle = topNews?.translatedTitle || topNews?.title || '오늘의 뉴스';
-    const newsImage = topNews?.imageUrl || '';
+    const newsTitle = currentTopNews?.translatedTitle || currentTopNews?.title || '오늘의 뉴스';
+    const newsImage = currentTopNews?.imageUrl || '';
     const weatherTemp = weather?.temp ?? '--';
     const usdRate = typeof rates?.usdVnd === 'number' ? rates.usdVnd.toLocaleString() : (rates?.usdVnd ?? '--');
     const krwRate = typeof rates?.krwVnd === 'number' ? rates.krwVnd.toFixed(1) : (rates?.krwVnd ?? '--');
 
-    const handlePublishToWordPress = async () => {
-        if (!confirm('카드 엽서를 WordPress에 게시하시겠습니까?')) return;
+    const handlePublishToWordPress = async (e) => {
+        // 이벤트가 전달된 경우 기본 동작 방지
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         
+        console.log('[CardNews] handlePublishToWordPress called', {
+            currentTopNews: currentTopNews?.id,
+            isGenerating,
+            hasTopNews: !!topNews
+        });
+        
+        if (!currentTopNews) {
+            alert('탑뉴스가 없습니다. 관리자 페이지에서 탑뉴스를 선택해주세요.');
+            return;
+        }
+        
+        if (isGenerating) {
+            console.log('[CardNews] Already generating, ignoring click');
+            return;
+        }
+        
+        // 바로 게시 진행 (confirm 없이)
+        console.log('[CardNews] Confirm skipped, proceeding to publish');
+        
+        console.log('[CardNews] Publishing with topNewsId:', currentTopNews.id);
         setIsGenerating(true);
         setPublishResult(null);
         
         try {
+            // 선택된 탑뉴스 정보를 서버에 전달
             const response = await fetch('/api/publish-card-news', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    topNewsId: currentTopNews.id // 선택된 탑뉴스 ID 전달
+                })
             });
+            
+            console.log('[CardNews] Response status:', response.status);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch {
+                    errorData = { error: errorText || `HTTP ${response.status}` };
+                }
+                throw new Error(errorData.error || `서버 오류: ${response.status}`);
+            }
             
             const result = await response.json();
             
@@ -44,18 +97,69 @@ export default function CardNewsSimple({ data, mode = 'preview' }) {
                     imageUrl: result.imageUrl
                 });
             } else {
-                throw new Error(result.error || 'Unknown error');
+                throw new Error(result.error || '알 수 없는 오류가 발생했습니다.');
             }
         } catch (error) {
-            setPublishResult({ success: false, error: error.message });
-            alert(`게시 실패: ${error.message}`);
+            console.error('[CardNews] Publish error:', error);
+            const errorMessage = error.message || '알 수 없는 오류가 발생했습니다.';
+            setPublishResult({ success: false, error: errorMessage });
+            alert(`게시 실패: ${errorMessage}`);
+        } finally {
+            setIsGenerating(false);
         }
-        
-        setIsGenerating(false);
     };
 
     return (
         <div className="flex flex-col items-center py-8 px-4 min-h-screen">
+            
+            {/* 탑뉴스 선택 UI */}
+            {topNewsList && topNewsList.length > 1 && (
+                <div className="mb-6 w-full max-w-4xl bg-white rounded-lg shadow-lg p-6">
+                    <h3 className="text-lg font-bold mb-4 text-gray-800">📰 카드뉴스에 사용할 탑뉴스 선택</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {topNewsList.map((news, index) => {
+                            const isSelected = selectedTopNews?.id === news.id || (!selectedTopNews && index === 0);
+                            return (
+                                <button
+                                    key={news.id}
+                                    onClick={() => setSelectedTopNews(news)}
+                                    className={`p-4 rounded-lg border-2 transition-all text-left ${
+                                        isSelected 
+                                            ? 'border-blue-500 bg-blue-50 shadow-md' 
+                                            : 'border-gray-200 bg-white hover:border-gray-300'
+                                    }`}
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <div className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                                            isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
+                                        }`}>
+                                            {isSelected && <span className="text-white text-xs">✓</span>}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-semibold text-gray-600 mb-1">
+                                                탑뉴스 {index + 1}
+                                            </div>
+                                            <div className={`text-base font-bold line-clamp-2 ${
+                                                isSelected ? 'text-blue-700' : 'text-gray-800'
+                                            }`}>
+                                                {news.translatedTitle || news.title}
+                                            </div>
+                                            {news.source && (
+                                                <div className="text-xs text-gray-500 mt-1">
+                                                    출처: {news.source}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <div className="mt-4 text-sm text-gray-600">
+                        💡 선택한 탑뉴스로 카드뉴스가 재생성됩니다.
+                    </div>
+                </div>
+            )}
             
             {/* 카드 뉴스 미리보기 */}
             <div 
@@ -206,10 +310,22 @@ export default function CardNewsSimple({ data, mode = 'preview' }) {
 
             {/* 버튼 */}
             <div className="mt-6 flex flex-col items-center gap-4">
+                {!currentTopNews && (
+                    <div className="mb-4 p-4 bg-yellow-100 border border-yellow-400 rounded-lg text-yellow-800">
+                        ⚠️ 탑뉴스가 없습니다. 먼저 관리자 페이지에서 탑뉴스를 선택해주세요.
+                    </div>
+                )}
                 <button 
-                    onClick={handlePublishToWordPress} 
+                    onClick={handlePublishToWordPress}
                     disabled={isGenerating}
-                    className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-base font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className={`px-8 py-3 text-white rounded-lg text-base font-bold shadow-lg flex items-center gap-2 transition-all ${
+                        isGenerating 
+                            ? 'bg-gray-400 cursor-not-allowed opacity-50' 
+                            : currentTopNews 
+                                ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer' 
+                                : 'bg-gray-400 cursor-not-allowed opacity-50'
+                    }`}
+                    type="button"
                 >
                     {isGenerating ? (
                         <>
