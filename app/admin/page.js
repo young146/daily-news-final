@@ -60,23 +60,54 @@ async function removeFromTop(formData) {
 
 async function toggleTopNews(formData) {
     'use server';
-    const id = formData.get('id');
+    try {
+        const id = formData.get('id');
 
-    const item = await prisma.newsItem.findUnique({ where: { id } });
-    if (item.isTopNews) {
-        await prisma.newsItem.update({ where: { id }, data: { isTopNews: false } });
-    } else {
-        const count = await prisma.newsItem.count({
-            where: {
-                isTopNews: true,
-                status: { notIn: ['PUBLISHED', 'ARCHIVED'] }
-            }
-        });
-        if (count < 2) {
-            await prisma.newsItem.update({ where: { id }, data: { isTopNews: true } });
+        const item = await prisma.newsItem.findUnique({ where: { id } });
+        if (!item) {
+            return { success: false, error: '뉴스를 찾을 수 없습니다.' };
         }
+
+        if (item.isTopNews) {
+            // 탑뉴스 해제
+            await prisma.newsItem.update({ where: { id }, data: { isTopNews: false } });
+            revalidatePath('/admin');
+            return { success: true, message: '탑뉴스가 해제되었습니다.' };
+        } else {
+            // 탑뉴스 설정 시도
+            const count = await prisma.newsItem.count({
+                where: {
+                    isTopNews: true,
+                    status: { notIn: ['PUBLISHED', 'ARCHIVED'] }
+                }
+            });
+            
+            if (count >= 2) {
+                // 현재 탑뉴스 목록 조회
+                const currentTopNews = await prisma.newsItem.findMany({
+                    where: {
+                        isTopNews: true,
+                        status: { notIn: ['PUBLISHED', 'ARCHIVED'] }
+                    },
+                    select: { translatedTitle: true, title: true, id: true },
+                    take: 2
+                });
+                
+                const topNewsTitles = currentTopNews.map(n => n.translatedTitle || n.title).join(', ');
+                return { 
+                    success: false, 
+                    error: `탑뉴스는 최대 2개까지만 지정할 수 있습니다.\n\n현재 지정된 탑뉴스:\n${topNewsTitles}\n\n기존 탑뉴스를 해제한 후 다시 시도해주세요.` 
+                };
+            }
+            
+            await prisma.newsItem.update({ where: { id }, data: { isTopNews: true } });
+            revalidatePath('/admin');
+            return { success: true, message: '탑뉴스로 지정되었습니다.' };
+        }
+    } catch (error) {
+        console.error('Toggle top news failed:', error);
+        return { success: false, error: `탑뉴스 지정 실패: ${error.message}` };
     }
-    revalidatePath('/admin');
 }
 
 async function deleteNewsItem(formData) {

@@ -192,8 +192,9 @@ function jenny_daily_news_shortcode($atts)
                 $news_category = !empty($categories) ? $categories[0]->name : '뉴스';
             }
 
-            // Top News 확인
-            $is_top = get_post_meta($post_id, 'is_top_news', true);
+            // Top News 확인 - 명시적으로 체크 (문자열 '1', 숫자 1, boolean true 모두 처리)
+            $is_top_raw = get_post_meta($post_id, 'is_top_news', true);
+            $is_top = ($is_top_raw === '1' || $is_top_raw === 1 || $is_top_raw === true || $is_top_raw === 'true');
 
             // 순서 결정
             $order = isset($category_order[$news_category]) ? $category_order[$news_category] : 99;
@@ -202,7 +203,8 @@ function jenny_daily_news_shortcode($atts)
                 'post_id' => $post_id,
                 'order' => $order,
                 'date' => get_the_date('Y-m-d H:i:s'),
-                'category' => $news_category
+                'category' => $news_category,
+                'is_top' => $is_top  // 디버깅용으로 저장
             );
 
             if ($is_top) {
@@ -371,7 +373,8 @@ function jenny_daily_news_shortcode($atts)
     // --- 1. Top News Section (First 2 Top News) ---
     if (!empty($top_news_posts)) {
         $output .= '<h2 class="jenny-section-title">🔥 주요 뉴스</h2>';
-        $output .= '<div class="jenny-top-news-row">';
+        // 탑뉴스는 반드시 2열 그리드로 표시 (jenny-top-news-row 클래스 사용)
+        $output .= '<div class="jenny-top-news-row jenny-top-news-container">';
         $top_count = 0;
         foreach ($top_news_posts as $post) {
             if ($top_count >= 2) {
@@ -384,7 +387,7 @@ function jenny_daily_news_shortcode($atts)
             $output .= render_jenny_card($post, $category_map);
             $top_count++;
         }
-        $output .= '</div>';
+        $output .= '</div>'; // Close jenny-top-news-row
 
         // Ad Slot after Top News
         $output .= '<div class="jenny-ad-section"><div class="jenny-ad-placeholder"><span>Google Ads / Banner Area (Top News)</span></div></div>';
@@ -474,6 +477,17 @@ add_action('init', 'jenny_register_meta_fields');
 function jenny_get_styles()
 {
     return '<style>
+        /* Container - 전체 범주를 벗어나지 않도록 */
+        .jenny-date-filter,
+        .jenny-top-news-row,
+        .jenny-top-news-container,
+        .jenny-news-grid {
+            box-sizing: border-box !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+        }
+        
         /* Existing Styles ... */
         .jenny-date-filter { margin-bottom: 24px; padding: 16px 0; border-bottom: 1px solid #e5e7eb; }
         .jenny-info-bar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
@@ -503,28 +517,52 @@ function jenny_get_styles()
         .jenny-filter-info { margin-top: 12px; padding: 10px 16px; background: #fef3c7; color: #92400e; font-size: 14px; border-left: 3px solid #ea580c; }
         .jenny-filter-info a { color: #ea580c; font-weight: 600; }
         
-        /* SECTION TITLES */
+        /* SECTION TITLES - 섹션 제목은 항상 흰색 */
         .jenny-section-title {
             font-size: 20px;
             font-weight: 800;
-            color: #111827;
+            color: #ffffff !important; /* 흰색으로 확실하게 고정 */
             margin: 32px 0 16px 0;
             padding-left: 12px;
             border-left: 4px solid #ea580c;
         }
 
         /* GRID LAYOUTS */
-        .jenny-top-news-row {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 30px; /* Increased gap for cleaner look */
-            margin-bottom: 50px;
+        /* 탑뉴스는 반드시 2열 그리드로 표시 - !important로 다른 CSS 오버라이드 방지 */
+        .jenny-top-news-row,
+        .jenny-top-news-container {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 30px !important;
+            margin-bottom: 50px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
         }
+        /* 탑뉴스 섹션 내부의 카드는 그리드 아이템으로 표시 */
+        .jenny-top-news-row .jenny-news-card,
+        .jenny-top-news-container .jenny-news-card {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+        }
+        /* 일반 뉴스는 4열 그리드 - 탑뉴스의 절반 크기 (2열 = 50%, 4열 = 25% = 절반) */
         .jenny-news-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 24px;
-            padding-bottom: 40px;
+            display: grid !important;
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 16px !important; /* 탑뉴스 gap(30px)의 절반보다 작게 */
+            padding-bottom: 40px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            margin: 0 !important;
+        }
+        /* 일반 뉴스 카드는 탑뉴스의 절반 크기로 제한 */
+        .jenny-news-grid .jenny-news-card {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            min-width: 0 !important; /* 그리드 오버플로우 방지 */
         }
 
         /* RESPONSIVE */
@@ -532,7 +570,10 @@ function jenny_get_styles()
             .jenny-news-grid { grid-template-columns: repeat(2, 1fr); }
         }
         @media (max-width: 768px) {
-            .jenny-top-news-row { grid-template-columns: 1fr; }
+            .jenny-top-news-row,
+            .jenny-top-news-container {
+                grid-template-columns: 1fr !important;
+            }
             .jenny-news-grid { grid-template-columns: 1fr; }
         }
 
@@ -559,13 +600,22 @@ function jenny_get_styles()
             background: #f3f4f6;
             border-radius: 0 !important;
             margin-bottom: 12px;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
         }
         .jenny-card-image img {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
             transition: transform 0.3s ease;
+            max-width: 100% !important;
         }
         .jenny-card-image:hover img {
             transform: scale(1.02); /* Subtle zoom only */
+        }
+        /* 일반 뉴스 그리드의 이미지는 더 작은 비율 */
+        .jenny-news-grid .jenny-card-image {
+            padding-top: 60% !important; /* 약간 더 작은 비율 */
+            margin-bottom: 10px !important;
         }
 
         .jenny-badge {
@@ -588,20 +638,32 @@ function jenny_get_styles()
             text-align: left; 
         }
 
-        /* TITLE */
+        /* TITLE - 뉴스 제목은 항상 검정색으로 확실하게 고정 */
         .jenny-title {
-            font-size: 18px;
+            font-size: 16px; /* 일반 뉴스 기본 크기 */
             font-weight: 800;
-            color: #111827 !important;
+            color: #111827 !important; /* 검정색으로 확실하게 고정 */
             margin: 0 0 6px 0;
             line-height: 1.35;
         }
-        .jenny-title a { color: inherit !important; text-decoration: none; }
-        .jenny-title a:hover { color: #ea580c !important; text-decoration: underline; }
+        .jenny-title a { 
+            color: #111827 !important; /* 검정색으로 확실하게 고정 */
+            text-decoration: none; 
+        }
+        .jenny-title a:hover { 
+            color: #ea580c !important; 
+            text-decoration: underline; 
+        }
 
-        /* TOP NEWS BIGGER TITLE */
-        .jenny-top-news-row .jenny-title {
-            font-size: 22px;
+        /* TOP NEWS BIGGER TITLE - 탑뉴스는 더 큰 제목 */
+        .jenny-top-news-row .jenny-title,
+        .jenny-top-news-container .jenny-title {
+            font-size: 22px !important;
+        }
+        
+        /* 일반 뉴스 그리드의 제목은 더 작게 (탑뉴스의 약 70%) */
+        .jenny-news-grid .jenny-title {
+            font-size: 16px !important;
         }
 
         /* METADATA LINE: Source | Date | Original Link */
@@ -619,12 +681,22 @@ function jenny_get_styles()
             font-size: 10px;
         }
         .jenny-source { color: #1f2937; font-weight: 700; }
-        .jenny-original-link {
+        .jenny-original-link,
+        a.jenny-original-link {
             color: #ea580c !important;
             text-decoration: none !important;
             font-weight: 700;
+            transition: color 0.2s ease !important;
         }
-        .jenny-original-link:hover { text-decoration: underline !important; }
+        .jenny-original-link:hover,
+        a.jenny-original-link:hover,
+        .jenny-meta-line .jenny-original-link:hover,
+        .jenny-meta-line a.jenny-original-link:hover {
+            color: #22c55e !important; /* 호버 시 초록색 - 확실하게! */
+            text-decoration: underline !important;
+            background-color: transparent !important;
+            border-color: transparent !important;
+        }
 
         /* EXCERPT */
         .jenny-excerpt {
@@ -636,6 +708,15 @@ function jenny_get_styles()
             -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
             overflow: hidden;
+        }
+        /* 일반 뉴스 그리드의 요약은 더 작게 */
+        .jenny-news-grid .jenny-excerpt {
+            font-size: 13px !important;
+            -webkit-line-clamp: 2 !important; /* 일반 뉴스는 2줄로 제한 */
+        }
+        /* 일반 뉴스 그리드의 메타라인도 더 작게 */
+        .jenny-news-grid .jenny-meta-line {
+            font-size: 11px !important;
         }
 
         /* READ MORE - Independent Line */
@@ -654,6 +735,48 @@ function jenny_get_styles()
         .jenny-link:hover .jenny-link-text {
             background: #ea580c;
             color: #ffffff;
+        }
+
+        /* DARK MODE SUPPORT - prefers-color-scheme와 클래스 기반 모두 지원 */
+        @media (prefers-color-scheme: dark),
+        html[data-theme="dark"],
+        html.dark-mode,
+        body.dark-mode,
+        .dark-mode {
+            /* Badge - 다크 모드에서 배지가 보이도록 흰 배경으로 변경 */
+            .jenny-badge {
+                background: #ffffff !important;
+                color: #000000 !important;
+                border: 1px solid #e5e7eb !important;
+            }
+
+            /* Section Title과 Card Title은 다크모드 스타일 제거 - 항상 고정 색상 사용 */
+
+            /* Meta Line - 다크 모드에서 메타 정보가 보이도록 */
+            .jenny-meta-line {
+                color: #9ca3af !important;
+            }
+            .jenny-source {
+                color: #e5e7eb !important;
+            }
+            .jenny-separator {
+                color: #6b7280 !important;
+            }
+
+            /* Excerpt - 다크 모드에서 요약이 보이도록 */
+            .jenny-excerpt {
+                color: #d1d5db !important;
+            }
+
+            /* Card Background - 다크 모드에서 카드 배경 */
+            .jenny-news-card {
+                background: #1f2937 !important;
+            }
+
+            /* Read More Link - 다크 모드에서 링크가 보이도록 */
+            .jenny-link-text {
+                color: #e5e7eb !important;
+            }
         }
     </style>';
 }

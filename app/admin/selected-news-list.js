@@ -28,11 +28,39 @@ export default function SelectedNewsList({
 
     const handleToggleTopNews = async (formData) => {
         const id = formData.get('id');
+        const currentItem = topNews.find(item => item.id === id);
+        const willBeTopNews = !currentItem?.isTopNews;
+        
+        // Optimistic update
         setTopNews(prev => prev.map(item => 
-            item.id === id ? { ...item, isTopNews: !item.isTopNews } : item
+            item.id === id ? { ...item, isTopNews: willBeTopNews } : item
         ));
-        await toggleTopNewsAction(formData);
-        router.refresh();
+        
+        try {
+            const result = await toggleTopNewsAction(formData);
+            
+            if (result.success) {
+                // 성공 시 메시지 표시 (선택사항)
+                if (result.message) {
+                    // 짧은 성공 메시지는 표시하지 않거나, 필요시 토스트로 표시 가능
+                }
+                router.refresh();
+            } else {
+                // 실패 시 원래 상태로 되돌림
+                setTopNews(prev => prev.map(item => 
+                    item.id === id ? { ...item, isTopNews: !willBeTopNews } : item
+                ));
+                
+                // 에러 메시지 표시
+                alert(`❌ ${result.error || '탑뉴스 지정에 실패했습니다.'}`);
+            }
+        } catch (error) {
+            // 예외 발생 시 원래 상태로 되돌림
+            setTopNews(prev => prev.map(item => 
+                item.id === id ? { ...item, isTopNews: !willBeTopNews } : item
+            ));
+            alert(`❌ 오류가 발생했습니다: ${error.message}`);
+        }
     };
 
     return (
