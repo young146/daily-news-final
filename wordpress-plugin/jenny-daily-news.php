@@ -650,8 +650,11 @@ function jenny_get_styles()
             color: #111827 !important; /* 검정색으로 확실하게 고정 */
             text-decoration: none; 
         }
-        .jenny-title a:hover { 
-            color: #ea580c !important; 
+        .jenny-title a:hover,
+        .jenny-title:hover,
+        .jenny-news-card .jenny-title a:hover,
+        .jenny-news-card .jenny-title:hover {
+            color: #3b82f6 !important; /* 호버 시 파란색 */
             text-decoration: underline; 
         }
 
@@ -659,6 +662,11 @@ function jenny_get_styles()
         .jenny-top-news-row .jenny-title,
         .jenny-top-news-container .jenny-title {
             font-size: 22px !important;
+        }
+        /* 탑뉴스 제목 호버도 파란색 */
+        .jenny-top-news-row .jenny-title a:hover,
+        .jenny-top-news-container .jenny-title a:hover {
+            color: #3b82f6 !important; /* 호버 시 파란색 */
         }
         
         /* 일반 뉴스 그리드의 제목은 더 작게 (탑뉴스의 약 70%) */
