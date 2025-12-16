@@ -319,17 +319,28 @@ function jenny_daily_news_shortcode($atts)
 
         $excerpt = get_the_excerpt($post_data['post_id']);
         if (empty($excerpt)) {
-            $excerpt = wp_trim_words($post_obj->post_content, 50, '...'); // 더 많은 단어 가져오기
+            // 본문에서 HTML 태그 제거 후 요약 생성
+            $content = strip_tags($post_obj->post_content);
+            $excerpt = wp_trim_words($content, 50, '...');
         }
         
-        // excerpt에서 중복된 출처/날짜/원문 정보 제거
-        // "출처:", "날짜:", "원문 기사", "원문 보기" 등의 패턴 제거
-        $excerpt = preg_replace('/출처\s*:\s*[^|]*/i', '', $excerpt);
-        $excerpt = preg_replace('/날짜\s*:\s*[^|]*/i', '', $excerpt);
-        $excerpt = preg_replace('/원문\s*(기사\s*)?(전체\s*)?보기[^.]*/i', '', $excerpt);
-        $excerpt = preg_replace('/\s*[|]\s*/', '', $excerpt); // 남은 구분선 제거
-        $excerpt = preg_replace('/\s{2,}/', ' ', $excerpt); // 연속된 공백 제거
-        $excerpt = trim($excerpt);
+        // excerpt가 비어있지 않은 경우에만 정제 작업 수행
+        if (!empty($excerpt)) {
+            // excerpt에서 중복된 출처/날짜/원문 정보 제거 (더 안전한 패턴 사용)
+            // 메타 라인 형식: "출처: InsideVina | 날짜: 2025.12.15 | 원문 보기" 같은 패턴만 제거
+            $excerpt = preg_replace('/출처\s*:\s*[^|]*\s*\|/i', '', $excerpt); // "출처: ... |" 패턴만 제거
+            $excerpt = preg_replace('/날짜\s*:\s*[^|]*\s*\|/i', '', $excerpt); // "날짜: ... |" 패턴만 제거
+            $excerpt = preg_replace('/원문\s*(기사\s*)?(전체\s*)?보기[^.]*/i', '', $excerpt); // "원문 보기" 제거
+            $excerpt = preg_replace('/\s*[|]\s*/', ' ', $excerpt); // 남은 구분선을 공백으로 변경
+            $excerpt = preg_replace('/\s{2,}/', ' ', $excerpt); // 연속된 공백 제거
+            $excerpt = trim($excerpt);
+        }
+        
+        // 여전히 비어있으면 본문에서 직접 가져오기
+        if (empty($excerpt) && !empty($post_obj->post_content)) {
+            $content = strip_tags($post_obj->post_content);
+            $excerpt = wp_trim_words($content, 50, '...');
+        }
 
         // WordPress 본문 링크 (모든 카드 요소는 이 링크 사용)
         $permalink = get_permalink($post_data['post_id']);
@@ -370,7 +381,10 @@ function jenny_daily_news_shortcode($atts)
         // 제목 링크는 항상 WordPress 본문으로 연결
         $html .= '<h3 class="jenny-title"><a href="' . esc_url($permalink) . '">' . get_the_title($post_data['post_id']) . '</a></h3>';
         $html .= $meta_line; // Insert Meta Line below title
-        $html .= '<div class="jenny-excerpt">' . $excerpt . '</div>';
+        // excerpt가 있을 때만 표시
+        if (!empty($excerpt)) {
+            $html .= '<div class="jenny-excerpt">' . esc_html($excerpt) . '</div>';
+        }
         // "자세히 보기"는 WP 본문으로 이동
         $html .= '<a href="' . esc_url($permalink) . '" class="jenny-link"><span class="jenny-link-text">자세히 보기</span></a>';
         $html .= '</div>';
@@ -792,5 +806,6 @@ function jenny_get_styles()
             background: #ea580c;
             color: #ffffff;
         }
+
     </style>';
 }
