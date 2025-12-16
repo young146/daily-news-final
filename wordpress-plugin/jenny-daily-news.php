@@ -319,13 +319,22 @@ function jenny_daily_news_shortcode($atts)
 
         $excerpt = get_the_excerpt($post_data['post_id']);
         if (empty($excerpt)) {
-            $excerpt = wp_trim_words($post_obj->post_content, 22, '...');
+            $excerpt = wp_trim_words($post_obj->post_content, 50, '...'); // 더 많은 단어 가져오기
         }
+        
+        // excerpt에서 중복된 출처/날짜/원문 정보 제거
+        // "출처:", "날짜:", "원문 기사", "원문 보기" 등의 패턴 제거
+        $excerpt = preg_replace('/출처\s*:\s*[^|]*/i', '', $excerpt);
+        $excerpt = preg_replace('/날짜\s*:\s*[^|]*/i', '', $excerpt);
+        $excerpt = preg_replace('/원문\s*(기사\s*)?(전체\s*)?보기[^.]*/i', '', $excerpt);
+        $excerpt = preg_replace('/\s*[|]\s*/', '', $excerpt); // 남은 구분선 제거
+        $excerpt = preg_replace('/\s{2,}/', ' ', $excerpt); // 연속된 공백 제거
+        $excerpt = trim($excerpt);
 
-        // Prefer original source URL if available, else permalink
+        // WordPress 본문 링크 (모든 카드 요소는 이 링크 사용)
         $permalink = get_permalink($post_data['post_id']);
+        // 원문 링크는 메타 라인의 "원문 보기"에만 사용
         $original_url = get_post_meta($post_data['post_id'], 'news_original_url', true);
-        $link_url = !empty($original_url) ? $original_url : $permalink;
 
         // Source meta
         $news_source = get_post_meta($post_data['post_id'], 'news_source', true);
@@ -349,15 +358,17 @@ function jenny_daily_news_shortcode($atts)
 
         $html = '<div class="jenny-news-card">';
         $html .= '<div class="jenny-card-image">';
-        $html .= '<a href="' . esc_url($link_url) . '">';
-        $html .= '<img src="' . esc_url($thumb_url) . '" alt="' . esc_attr(get_the_title($post_data['post_id'])) . '">';
+        // 이미지 링크는 항상 WordPress 본문으로 연결
+        $html .= '<a href="' . esc_url($permalink) . '">';
+        $html .= '<img src="' . esc_url($thumb_url) . '" alt="' . esc_attr(get_the_title($post_data['post_id'])) . '" loading="lazy">';
         $html .= '</a>';
         // Badge removed for flat design preference? Or kept? User asked for "flat". Let's keep badge but simple.
         $html .= '<span class="jenny-badge">' . esc_html($cat_name) . '</span>';
         $html .= '</div>';
 
         $html .= '<div class="jenny-content">';
-        $html .= '<h3 class="jenny-title"><a href="' . esc_url($link_url) . '">' . get_the_title($post_data['post_id']) . '</a></h3>';
+        // 제목 링크는 항상 WordPress 본문으로 연결
+        $html .= '<h3 class="jenny-title"><a href="' . esc_url($permalink) . '">' . get_the_title($post_data['post_id']) . '</a></h3>';
         $html .= $meta_line; // Insert Meta Line below title
         $html .= '<div class="jenny-excerpt">' . $excerpt . '</div>';
         // "자세히 보기"는 WP 본문으로 이동
@@ -517,11 +528,11 @@ function jenny_get_styles()
         .jenny-filter-info { margin-top: 12px; padding: 10px 16px; background: #fef3c7; color: #92400e; font-size: 14px; border-left: 3px solid #ea580c; }
         .jenny-filter-info a { color: #ea580c; font-weight: 600; }
         
-        /* SECTION TITLES - 섹션 제목은 항상 흰색 */
+        /* SECTION TITLES - 섹션 제목은 항상 검정색 */
         .jenny-section-title {
             font-size: 20px;
             font-weight: 800;
-            color: #ffffff !important; /* 흰색으로 확실하게 고정 */
+            color: #111827 !important; /* 검정색으로 확실하게 고정 */
             margin: 32px 0 16px 0;
             padding-left: 12px;
             border-left: 4px solid #ea580c;
@@ -570,11 +581,31 @@ function jenny_get_styles()
             .jenny-news-grid { grid-template-columns: repeat(2, 1fr); }
         }
         @media (max-width: 768px) {
+            /* 모바일에서는 모든 뉴스가 하나씩 세로로 표시 */
             .jenny-top-news-row,
             .jenny-top-news-container {
                 grid-template-columns: 1fr !important;
+                gap: 20px !important; /* 모바일에서 간격 축소 */
+                margin-bottom: 30px !important; /* 하단 여백 축소 */
             }
-            .jenny-news-grid { grid-template-columns: 1fr; }
+            .jenny-news-grid { 
+                grid-template-columns: 1fr !important; /* 모바일에서 1열로 강제 */
+                gap: 20px !important; /* 모바일에서 간격 축소 */
+                padding-bottom: 30px !important; /* 하단 여백 축소 */
+            }
+            /* 모바일에서 섹션 제목 크기 조정 */
+            .jenny-section-title {
+                font-size: 18px !important;
+                margin: 24px 0 12px 0 !important;
+            }
+            /* 모바일에서 제목 크기 조정 */
+            .jenny-title {
+                font-size: 18px !important;
+            }
+            .jenny-top-news-row .jenny-title,
+            .jenny-top-news-container .jenny-title {
+                font-size: 20px !important;
+            }
         }
 
         /* FLAT CARD STYLE - REMOVED BORDERS/SHADOWS */
@@ -649,6 +680,8 @@ function jenny_get_styles()
         .jenny-title a { 
             color: #111827 !important; /* 검정색으로 확실하게 고정 */
             text-decoration: none; 
+            display: block; /* 터치 영역 확보 */
+            padding: 4px 0; /* 모바일 터치 영역 확보 */
         }
         .jenny-title a:hover,
         .jenny-title:hover,
@@ -679,16 +712,27 @@ function jenny_get_styles()
             display: flex;
             align-items: center;
             font-size: 12px;
-            color: #6b7280;
+            color: #111827 !important; /* 검정색으로 통일 */
             margin-bottom: 10px;
             font-weight: 500;
+            flex-wrap: wrap; /* 모바일에서 줄바꿈 허용 */
+        }
+        /* 모바일에서 메타 라인 링크 터치 영역 확보 */
+        @media (max-width: 768px) {
+            .jenny-meta-line a {
+                padding: 4px 2px; /* 터치 영역 확보 */
+                min-height: 32px; /* 최소 터치 영역 */
+                display: inline-flex;
+                align-items: center;
+            }
         }
         .jenny-separator {
             margin: 0 6px;
-            color: #d1d5db;
+            color: #9ca3af !important; /* 구분선은 회색 */
             font-size: 10px;
         }
-        .jenny-source { color: #1f2937; font-weight: 700; }
+        .jenny-source { color: #111827 !important; font-weight: 700; }
+        .jenny-date { color: #111827 !important; }
         .jenny-original-link,
         a.jenny-original-link {
             color: #ea580c !important;
@@ -709,18 +753,18 @@ function jenny_get_styles()
         /* EXCERPT */
         .jenny-excerpt {
             font-size: 14px;
-            color: #4b5563 !important;
+            color: #111827 !important; /* 검정색으로 통일 */
             line-height: 1.6;
             margin-bottom: 12px;
             display: -webkit-box;
-            -webkit-line-clamp: 3;
+            -webkit-line-clamp: 5; /* 5줄로 증가 */
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
-        /* 일반 뉴스 그리드의 요약은 더 작게 */
+        /* 일반 뉴스 그리드의 요약도 5줄 */
         .jenny-news-grid .jenny-excerpt {
             font-size: 13px !important;
-            -webkit-line-clamp: 2 !important; /* 일반 뉴스는 2줄로 제한 */
+            -webkit-line-clamp: 5 !important; /* 일반 뉴스도 5줄로 증가 */
         }
         /* 일반 뉴스 그리드의 메타라인도 더 작게 */
         .jenny-news-grid .jenny-meta-line {
@@ -732,6 +776,9 @@ function jenny_get_styles()
             display: block;
             margin-top: auto;
             text-decoration: none !important;
+            min-height: 44px; /* 모바일 터치 영역 확보 (최소 44x44px 권장) */
+            display: flex;
+            align-items: center;
         }
         .jenny-link-text {
             font-size: 13px;
@@ -739,52 +786,11 @@ function jenny_get_styles()
             color: #111827;
             border-bottom: 2px solid #ea580c;
             padding-bottom: 2px;
+            padding: 8px 0; /* 터치 영역 확보를 위한 패딩 추가 */
         }
         .jenny-link:hover .jenny-link-text {
             background: #ea580c;
             color: #ffffff;
-        }
-
-        /* DARK MODE SUPPORT - prefers-color-scheme와 클래스 기반 모두 지원 */
-        @media (prefers-color-scheme: dark),
-        html[data-theme="dark"],
-        html.dark-mode,
-        body.dark-mode,
-        .dark-mode {
-            /* Badge - 다크 모드에서 배지가 보이도록 흰 배경으로 변경 */
-            .jenny-badge {
-                background: #ffffff !important;
-                color: #000000 !important;
-                border: 1px solid #e5e7eb !important;
-            }
-
-            /* Section Title과 Card Title은 다크모드 스타일 제거 - 항상 고정 색상 사용 */
-
-            /* Meta Line - 다크 모드에서 메타 정보가 보이도록 */
-            .jenny-meta-line {
-                color: #9ca3af !important;
-            }
-            .jenny-source {
-                color: #e5e7eb !important;
-            }
-            .jenny-separator {
-                color: #6b7280 !important;
-            }
-
-            /* Excerpt - 다크 모드에서 요약이 보이도록 */
-            .jenny-excerpt {
-                color: #d1d5db !important;
-            }
-
-            /* Card Background - 다크 모드에서 카드 배경 */
-            .jenny-news-card {
-                background: #1f2937 !important;
-            }
-
-            /* Read More Link - 다크 모드에서 링크가 보이도록 */
-            .jenny-link-text {
-                color: #e5e7eb !important;
-            }
         }
     </style>';
 }
