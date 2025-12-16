@@ -1,22 +1,30 @@
-import { PrismaClient } from '@prisma/client';
-import { getSeoulWeather, getExchangeRates } from '@/lib/external-data';
-import CardNewsSimple from './CardNewsSimple';
+import { PrismaClient } from "@prisma/client";
+import { getSeoulWeather, getExchangeRates } from "@/lib/external-data";
+import CardNewsSimple from "./CardNewsSimple";
 
 const prisma = new PrismaClient();
 
 async function getData() {
-    const topNews = await prisma.newsItem.findFirst({
-        where: { isTopNews: true },
-        orderBy: { publishedAt: 'desc' }
-    }) || await prisma.newsItem.findFirst({ orderBy: { createdAt: 'desc' } });
+  // 탑뉴스 리스트 가져오기 (최대 2개)
+  const topNewsList = await prisma.newsItem.findMany({
+    where: { isTopNews: true },
+    orderBy: { publishedAt: "desc" },
+    take: 2,
+  });
 
-    const weather = await getSeoulWeather();
-    const rates = await getExchangeRates();
+  // 첫 번째 탑뉴스 (기본값)
+  const topNews =
+    topNewsList.length > 0
+      ? topNewsList[0]
+      : await prisma.newsItem.findFirst({ orderBy: { createdAt: "desc" } });
 
-    return { topNews, weather, rates };
+  const weather = await getSeoulWeather();
+  const rates = await getExchangeRates();
+
+  return { topNews, topNewsList, weather, rates };
 }
 
 export default async function CardNewsPreviewPage() {
-    const data = await getData();
-    return <CardNewsSimple data={data} />;
+  const data = await getData();
+  return <CardNewsSimple data={data} />;
 }
