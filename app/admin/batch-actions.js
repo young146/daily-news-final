@@ -161,11 +161,13 @@ export function WorkflowButton({ topNews }) {
                 // If there are skipped items, we mention them.
 
                 const topCount = completedItems.filter(n => n.isTopNews).length;
-                const socCount = completedItems.filter(n => n.category === 'Society' && !n.isTopNews).length;
-                const ecoCount = completedItems.filter(n => n.category === 'Economy' && !n.isTopNews).length;
-                const culCount = completedItems.filter(n => n.category === 'Culture' && !n.isTopNews).length;
-                const polCount = completedItems.filter(n => n.category === 'Policy' && !n.isTopNews).length;
-                const kvCount = completedItems.filter(n => n.category === 'Korea-Vietnam' && !n.isTopNews).length;
+                const socCount = completedItems.filter(n => (n.category === 'Society' || n.category === '사회') && !n.isTopNews).length;
+                const ecoCount = completedItems.filter(n => (n.category === 'Economy' || n.category === '경제') && !n.isTopNews).length;
+                const culCount = completedItems.filter(n => (n.category === 'Culture' || n.category === '문화') && !n.isTopNews).length;
+                const polCount = completedItems.filter(n => (n.category === 'Politics' || n.category === 'Policy' || n.category === '정치' || n.category === '정책') && !n.isTopNews).length;
+                const intCount = completedItems.filter(n => (n.category === 'International' || n.category === '국제') && !n.isTopNews).length;
+                const kvCount = completedItems.filter(n => (n.category === 'Korea-Vietnam' || n.category === '한-베' || n.category === '한베') && !n.isTopNews).length;
+                const comCount = completedItems.filter(n => (n.category === 'Community' || n.category === '교민' || n.category === '교민소식') && !n.isTopNews).length;
 
                 let message = `
 ✨ Ready to Publish!
@@ -177,8 +179,10 @@ Summary of COMPLETED Reviews:
 • Society: ${socCount}
 • Economy: ${ecoCount}
 • Culture: ${culCount}
-• Policy: ${polCount}
+• Politics: ${polCount}
+• International: ${intCount}
 • Korea-Vietnam: ${kvCount}
+• Community: ${comCount}
 -----------------------------
 Total Completed: ${completedItems.length} items
 `;

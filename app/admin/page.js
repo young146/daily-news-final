@@ -136,21 +136,29 @@ async function deleteNewsItem(formData) {
 export default async function AdminPage() {
   const { selectionPark, topNews, todayPublishedCount } = await getNews();
 
+  // 선정된 뉴스(topNews, isSelected=true)만 기준으로 카운트
+  // 뉴스가 "Select →" 버튼으로 selected 박스로 이동하는 순간부터 현황에 반영
   const topCount = topNews.filter((n) => n.isTopNews).length;
   const socCount = topNews.filter(
-    (n) => n.category === "Society" && !n.isTopNews
+    (n) => (n.category === "Society" || n.category === "사회") && !n.isTopNews
   ).length;
   const ecoCount = topNews.filter(
-    (n) => n.category === "Economy" && !n.isTopNews
+    (n) => (n.category === "Economy" || n.category === "경제") && !n.isTopNews
   ).length;
   const culCount = topNews.filter(
-    (n) => n.category === "Culture" && !n.isTopNews
+    (n) => (n.category === "Culture" || n.category === "문화") && !n.isTopNews
   ).length;
   const polCount = topNews.filter(
-    (n) => n.category === "Policy" && !n.isTopNews
+    (n) => (n.category === "Politics" || n.category === "Policy" || n.category === "정치" || n.category === "정책") && !n.isTopNews
+  ).length;
+  const intCount = topNews.filter(
+    (n) => (n.category === "International" || n.category === "국제") && !n.isTopNews
   ).length;
   const kvCount = topNews.filter(
-    (n) => n.category === "Korea-Vietnam" && !n.isTopNews
+    (n) => (n.category === "Korea-Vietnam" || n.category === "한-베" || n.category === "한베") && !n.isTopNews
+  ).length;
+  const comCount = topNews.filter(
+    (n) => (n.category === "Community" || n.category === "교민" || n.category === "교민소식") && !n.isTopNews
   ).length;
   const cardNewsCount = topNews.filter((n) => n.isCardNews).length;
 
@@ -206,12 +214,14 @@ export default async function AdminPage() {
       {/* Status Dashboard (Sticky) */}
       <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm py-3 mb-6 -mx-6 px-6 border-b border-gray-200">
         <div className="flex justify-between gap-2 overflow-x-auto">
-          <Counter label="탑뉴스" count={topCount} target={1} />
+          <Counter label="탑뉴스" count={topCount} target={2} />
           <Counter label="Society" count={socCount} target={4} />
           <Counter label="Economy" count={ecoCount} target={4} />
           <Counter label="Culture" count={culCount} target={4} />
-          <Counter label="Policy" count={polCount} target={4} />
+          <Counter label="Politics" count={polCount} target={4} />
+          <Counter label="International" count={intCount} target={4} />
           <Counter label="Korea-Vietnam" count={kvCount} target={4} />
+          <Counter label="Community" count={comCount} target={4} />
           <Counter
             label="Card News"
             count={cardNewsCount}

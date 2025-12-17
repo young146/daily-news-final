@@ -17,7 +17,7 @@ model NewsItem {
   content     String?  // HTML or Markdown
   originalUrl String?
   imageUrl    String?
-  category    String   // Society, Economy, Culture, Policy
+  category    String   // Society, Economy, Culture, Politics, International, Korea-Vietnam, Community
   source      String?  // VnExpress, Yonhap, etc.
   
   // Translation Fields

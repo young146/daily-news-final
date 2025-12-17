@@ -80,10 +80,13 @@ export default function AdminEditor({ params }) {
                             onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                             className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                         >
-                            <option value="Society">Society</option>
-                            <option value="Economy">Economy</option>
-                            <option value="Culture">Culture</option>
-                            <option value="Policy">Policy</option>
+                            <option value="Society">Society (사회)</option>
+                            <option value="Economy">Economy (경제)</option>
+                            <option value="Culture">Culture (문화)</option>
+                            <option value="Politics">Politics (정치)</option>
+                            <option value="International">International (국제)</option>
+                            <option value="Korea-Vietnam">Korea-Vietnam (한-베)</option>
+                            <option value="Community">Community (교민)</option>
                         </select>
                     </div>
 

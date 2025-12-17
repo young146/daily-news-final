@@ -154,22 +154,30 @@ function jenny_daily_news_shortcode($atts)
 
     $query = new WP_Query($args);
 
-    // 카테고리 순서 정의
+    // 카테고리 순서 정의 (sections와 일치하도록 모든 변형 포함)
     $category_order = array(
+        // Society
         '사회' => 1,
         'Society' => 1,
+        // Economy
         '경제' => 2,
         'Economy' => 2,
+        // Culture
         '문화' => 3,
         'Culture' => 3,
+        // Politics (Policy 포함, 정책 포함)
         '정치' => 4,
+        '정책' => 4,
         'Politics' => 4,
         'Policy' => 4, // Backward compat with Policy
+        // International
         '국제' => 5,
         'International' => 5,
+        // Korea-Vietnam (모든 변형 포함)
         '한베' => 6,
-        'Korea-Vietnam' => 6,
         '한-베' => 6,
+        'Korea-Vietnam' => 6,
+        // Community (모든 변형 포함)
         '교민' => 7,
         '교민소식' => 7,
         'Community' => 7,
@@ -185,11 +193,21 @@ function jenny_daily_news_shortcode($atts)
             $query->the_post();
             $post_id = get_the_ID();
 
-            // 카테고리 확인
+            // 카테고리 확인 - news_category 메타 필드 우선 확인
             $news_category = get_post_meta($post_id, 'news_category', true);
-            if (empty($news_category)) {
-                $categories = get_the_category();
+            
+            // 메타 필드가 비어있거나 잘못된 경우 WordPress 카테고리에서 가져오기
+            if (empty($news_category) || trim($news_category) === '') {
+                $categories = get_the_category($post_id);
                 $news_category = !empty($categories) ? $categories[0]->name : '뉴스';
+            }
+            
+            // 카테고리 값 정규화 (공백 제거, 대소문자 통일)
+            $news_category = trim($news_category);
+            
+            // 디버깅: 카테고리 값 로깅 (개발 환경에서만)
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log("Jenny Plugin - Post ID: $post_id, Category: $news_category");
             }
 
             // Top News 확인 - 명시적으로 체크 (문자열 '1', 숫자 1, boolean true 모두 처리)
@@ -288,15 +306,33 @@ function jenny_daily_news_shortcode($atts)
         return $output;
     }
 
+    // 카테고리 표시 이름 매핑 (모든 가능한 입력값에 대해 한글 표시명 제공)
     $category_map = array(
+        // Society
         'Society' => '사회',
+        '사회' => '사회',
+        // Economy
         'Economy' => '경제',
-        'Culture' => '문화',
-        'Policy' => '정치',
-        'Politics' => '정치',
+        '경제' => '경제',
+        // Culture
+        'Culture' => '문화/스포츠',
+        '문화' => '문화/스포츠',
+        // Politics
+        'Politics' => '정치/정책',
+        'Policy' => '정치/정책',
+        '정치' => '정치/정책',
+        '정책' => '정치/정책',
+        // International
         'International' => '국제',
+        '국제' => '국제',
+        // Korea-Vietnam
         'Korea-Vietnam' => '한-베',
+        '한-베' => '한-베',
+        '한베' => '한-베',
+        // Community
         'Community' => '교민소식',
+        '교민' => '교민소식',
+        '교민소식' => '교민소식',
     );
 
     // Helpers for rendering
@@ -310,9 +346,21 @@ function jenny_daily_news_shortcode($atts)
             $thumb_url = 'https://via.placeholder.com/600x400?text=News';
         }
 
-        $news_category = $post_data['category'];
+        $news_category = trim($post_data['category']);
         if (!empty($news_category)) {
-            $cat_name = isset($category_map[$news_category]) ? $category_map[$news_category] : $news_category;
+            // 정확한 매칭 시도
+            if (isset($category_map[$news_category])) {
+                $cat_name = $category_map[$news_category];
+            } else {
+                // 대소문자 무시 매칭 시도
+                $cat_name = $news_category; // 기본값
+                foreach ($category_map as $key => $value) {
+                    if (strcasecmp($news_category, $key) === 0) {
+                        $cat_name = $value;
+                        break;
+                    }
+                }
+            }
         } else {
             $cat_name = '뉴스';
         }
@@ -425,7 +473,7 @@ function jenny_daily_news_shortcode($atts)
     $sections = array(
         'economy' => array('title' => '📈 경제 (Economy)', 'keys' => array('Economy', '경제')),
         'society' => array('title' => '👥 사회 (Society)', 'keys' => array('Society', '사회')),
-        'culture' => array('title' => '🎭 문화/라이프 (Culture)', 'keys' => array('Culture', '문화')),
+        'culture' => array('title' => '🎭 문화/스포츠 (Culture)', 'keys' => array('Culture', '문화')),
         'politics' => array('title' => '⚖️ 정치/정책 (Politics)', 'keys' => array('Politics', 'Policy', '정치', '정책')),
         'international' => array('title' => '🌏 국제 (International)', 'keys' => array('International', '국제')),
         'korea_vietnam' => array('title' => '🇰🇷🇻🇳 한-베 관계 (Korea-Vietnam)', 'keys' => array('Korea-Vietnam', '한-베', '한베')),
@@ -436,7 +484,7 @@ function jenny_daily_news_shortcode($atts)
     // Bucket posts into sections
     $grouped_posts = array();
     foreach ($regular_posts as $post) {
-        $cat = $post['category']; // Original category string
+        $cat = trim($post['category']); // Original category string (공백 제거)
         $found = false;
 
         // Find which section this post belongs to
@@ -444,14 +492,29 @@ function jenny_daily_news_shortcode($atts)
             if ($sec_key === 'other')
                 continue;
 
-            if (in_array($cat, $sec_info['keys'])) {
+            // 정확한 매칭 시도
+            if (in_array($cat, $sec_info['keys'], true)) {
                 $grouped_posts[$sec_key][] = $post;
                 $found = true;
                 break;
             }
+            
+            // 대소문자 무시 매칭 (대소문자 차이로 인한 매칭 실패 방지)
+            foreach ($sec_info['keys'] as $key) {
+                if (strcasecmp($cat, $key) === 0) {
+                    $grouped_posts[$sec_key][] = $post;
+                    $found = true;
+                    break 2; // 두 개의 루프 모두 종료
+                }
+            }
         }
 
+        // 매칭 실패 시 디버깅 정보 출력 및 기타로 분류
         if (!$found) {
+            // 디버깅: 매칭 실패한 카테고리 로깅
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log("Jenny Plugin - Unmatched category: '$cat' for post ID: " . $post['post_id']);
+            }
             $grouped_posts['other'][] = $post;
         }
     }
