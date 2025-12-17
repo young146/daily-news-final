@@ -391,3 +391,5 @@ if (item.originalUrl) {
 - **해결**: `@media (prefers-color-scheme: dark)` 스타일 추가 필요
 - **영향 요소**: 배지, 섹션 제목, 카드 제목, 메타라인 등
 
+
+

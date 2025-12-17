@@ -807,5 +807,108 @@ function jenny_get_styles()
             color: #ffffff;
         }
 
+        /* WordPress 본문 페이지 모바일 표시 보장 */
+        @media (max-width: 768px) {
+            /* 본문 콘텐츠가 모바일에서 보이도록 보장 - 모든 가능한 WordPress 본문 클래스 포함 */
+            .entry-content,
+            .post-content,
+            .content-area .entry-content,
+            article .entry-content,
+            .single-post .entry-content,
+            .post .entry-content,
+            .single .entry-content,
+            .page .entry-content,
+            .type-post .entry-content,
+            .news-body-content,
+            .post-content-area,
+            .article-content,
+            main .entry-content,
+            .site-main .entry-content,
+            #content .entry-content,
+            .content .entry-content {
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                overflow: visible !important;
+                position: relative !important;
+                z-index: 1 !important;
+                background-color: transparent !important;
+                font-size: 16px !important;
+                line-height: 1.6 !important;
+            }
+            /* 본문 내부 텍스트 요소가 모바일에서 보이도록 (이미지 제외) */
+            .entry-content p,
+            .entry-content div:not(.wp-block-image):not(.wp-block-gallery),
+            .post-content p,
+            .post-content div:not(.wp-block-image):not(.wp-block-gallery),
+            .news-body-content p,
+            .news-body-content div:not(.wp-block-image):not(.wp-block-gallery) {
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+            }
+            /* 본문 텍스트가 모바일에서 보이도록 - 모든 텍스트 요소 포함 */
+            .entry-content p,
+            .post-content p,
+            .entry-content div,
+            .post-content div,
+            .entry-content span,
+            .post-content span,
+            .entry-content li,
+            .post-content li,
+            .entry-content td,
+            .post-content td,
+            .news-body-content p,
+            .news-body-content div,
+            .news-body-content span {
+                display: block !important;
+                visibility: visible !important;
+                color: #111827 !important;
+                opacity: 1 !important;
+            }
+            /* 인라인 요소도 보이도록 */
+            .entry-content strong,
+            .entry-content em,
+            .entry-content a,
+            .post-content strong,
+            .post-content em,
+            .post-content a,
+            .news-body-content strong,
+            .news-body-content em,
+            .news-body-content a {
+                display: inline !important;
+                visibility: visible !important;
+                color: #111827 !important;
+                opacity: 1 !important;
+            }
+            /* 링크는 파란색으로 */
+            .entry-content a,
+            .post-content a,
+            .news-body-content a {
+                color: #2563eb !important;
+                text-decoration: underline !important;
+            }
+            /* 리스트도 보이도록 */
+            .entry-content ul,
+            .entry-content ol,
+            .post-content ul,
+            .post-content ol,
+            .news-body-content ul,
+            .news-body-content ol {
+                display: block !important;
+                visibility: visible !important;
+                margin: 16px 0 !important;
+                padding-left: 24px !important;
+            }
+            .entry-content li,
+            .post-content li,
+            .news-body-content li {
+                display: list-item !important;
+                visibility: visible !important;
+                color: #111827 !important;
+            }
+        }
     </style>';
 }
