@@ -41,8 +41,7 @@ export default function CrawlNewsButton() {
         'Yonhap News': '연합뉴스',
         'InsideVina': '인사이드비나',
         'TuoiTre': 'Tuổi Trẻ',
-        'ThanhNien': 'Thanh Niên',
-        'VNA': 'VNA 통신'
+        'ThanhNien': 'Thanh Niên'
     };
 
     return (

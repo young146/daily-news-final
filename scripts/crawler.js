@@ -5,7 +5,6 @@ const crawlYonhap = require('./crawlers/yonhap');
 const crawlInsideVina = require('./crawlers/insidevina');
 const crawlTuoitre = require('./crawlers/tuoitre');
 const crawlThanhNien = require('./crawlers/thanhnien');
-const crawlVnaNet = require('./crawlers/vnanet');
 const crawlVnExpressVN = require('./crawlers/vnexpress-vn');
 const crawlPublicSecurity = require('./crawlers/publicsecurity');
 const crawlSaigoneer = require('./crawlers/saigoneer');
@@ -25,7 +24,7 @@ async function loadTranslator() {
 async function main() {
   await loadTranslator();
   
-  console.log('🚀 크롤러 시작 (11개 소스 + AI 번역/요약/분류)...');
+  console.log('🚀 크롤러 시작 (10개 소스 + AI 번역/요약/분류)...');
   console.log('================================================');
 
   const crawlers = [
@@ -34,7 +33,6 @@ async function main() {
     { name: 'InsideVina', fn: crawlInsideVina },
     { name: 'TuoiTre', fn: crawlTuoitre },
     { name: 'ThanhNien', fn: crawlThanhNien },
-    { name: 'VNA', fn: crawlVnaNet },
     { name: 'VnExpressVN', fn: crawlVnExpressVN },
     { name: 'PublicSecurity', fn: crawlPublicSecurity },
     { name: 'Saigoneer', fn: crawlSaigoneer },
