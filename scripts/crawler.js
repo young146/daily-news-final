@@ -7,6 +7,10 @@ const crawlTuoitre = require('./crawlers/tuoitre');
 const crawlThanhNien = require('./crawlers/thanhnien');
 const crawlVnaNet = require('./crawlers/vnanet');
 const crawlVnExpressVN = require('./crawlers/vnexpress-vn');
+const crawlPublicSecurity = require('./crawlers/publicsecurity');
+const crawlSaigoneer = require('./crawlers/saigoneer');
+const crawlSoraNews24 = require('./crawlers/soranews24');
+const crawlPetNews = require('./crawlers/petnews');
 const { sendCrawlerAlert } = require('../lib/telegram');
 
 const prisma = new PrismaClient();
@@ -21,7 +25,7 @@ async function loadTranslator() {
 async function main() {
   await loadTranslator();
   
-  console.log('🚀 크롤러 시작 (7개 소스 + AI 번역/요약/분류)...');
+  console.log('🚀 크롤러 시작 (11개 소스 + AI 번역/요약/분류)...');
   console.log('================================================');
 
   const crawlers = [
@@ -31,7 +35,11 @@ async function main() {
     { name: 'TuoiTre', fn: crawlTuoitre },
     { name: 'ThanhNien', fn: crawlThanhNien },
     { name: 'VNA', fn: crawlVnaNet },
-    { name: 'VnExpressVN', fn: crawlVnExpressVN }
+    { name: 'VnExpressVN', fn: crawlVnExpressVN },
+    { name: 'PublicSecurity', fn: crawlPublicSecurity },
+    { name: 'Saigoneer', fn: crawlSaigoneer },
+    { name: 'SoraNews24', fn: crawlSoraNews24 },
+    { name: 'PetNews', fn: crawlPetNews }
   ];
 
   const results = await Promise.allSettled(crawlers.map(c => c.fn()));

@@ -14,6 +14,7 @@ const sourceNames = {
   'publicsecurity': 'PublicSecurity',
   'saigoneer': 'Saigoneer',
   'soranews24': 'SoraNews24',
+  'petnews': 'PetNews',
 };
 
 const crawlers = {
@@ -26,6 +27,7 @@ const crawlers = {
   'publicsecurity': () => require('@/scripts/crawlers/publicsecurity')(),
   'saigoneer': () => require('@/scripts/crawlers/saigoneer')(),
   'soranews24': () => require('@/scripts/crawlers/soranews24')(),
+  'petnews': () => require('@/scripts/crawlers/petnews')(),
 };
 
 export async function POST(request) {
@@ -42,7 +44,21 @@ export async function POST(request) {
     console.log(`[Crawl] Starting ${source} crawl...`);
     
     const crawlFn = crawlers[source];
-    const items = await crawlFn();
+    let items = [];
+    
+    try {
+        items = await crawlFn();
+        // items가 배열이 아닌 경우 처리
+        if (!Array.isArray(items)) {
+            console.warn(`[Crawl] ${source}: Crawler returned non-array, converting to array`);
+            items = [];
+        }
+    } catch (error) {
+        console.error(`[Crawl] ${source} crawl error:`, error.message);
+        console.error(`[Crawl] ${source} error stack:`, error.stack);
+        // 에러가 발생해도 빈 배열로 처리하여 계속 진행
+        items = [];
+    }
     
     console.log(`[Crawl] ${source}: Found ${items.length} items`);
     

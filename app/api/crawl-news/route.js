@@ -530,28 +530,46 @@ async function crawlSoraNews24() {
     const cheerio = await import('cheerio');
     const items = [];
     try {
-        console.log('Crawling SoraNews24 (Japan Lifestyle)...');
+        console.log('Crawling SoraNews24 (펫/여행만)...');
         
-        const { data } = await fetchWithRetry('https://soranews24.com/');
-        const $ = cheerio.load(data);
+        // 펫과 여행 카테고리만 크롤링
+        const categories = [
+            { url: 'https://soranews24.com/category/animals/', name: 'Animals/Pets' },
+            { url: 'https://soranews24.com/category/travel/', name: 'Travel' },
+        ];
         
         const listItems = [];
         const seen = new Set();
         
-        $('a').each((i, el) => {
-            if (listItems.length >= 6) return;
-            
-            const href = $(el).attr('href') || '';
-            let title = $(el).text().trim();
-            
-            if (!title || title.length < 30 || title.length > 200) return;
-            if (!href.includes('soranews24.com/20')) return;
-            
-            if (seen.has(href)) return;
-            seen.add(href);
-            
-            listItems.push({ title, url: href, category: 'Culture' });
-        });
+        for (const cat of categories) {
+            try {
+                const { data } = await fetchWithRetry(cat.url);
+                const $ = cheerio.load(data);
+                
+                $('a').each((i, el) => {
+                    if (listItems.length >= 15) return;
+                    
+                    const href = $(el).attr('href') || '';
+                    let title = $(el).text().trim();
+                    
+                    if (!title || title.length < 30 || title.length > 200) return;
+                    
+                    const currentYear = new Date().getFullYear();
+                    const lastYear = currentYear - 1;
+                    if (!href.includes(`soranews24.com/${currentYear}/`) &&
+                        !href.includes(`soranews24.com/${lastYear}/`)) return;
+                    
+                    if (seen.has(href)) return;
+                    seen.add(href);
+                    
+                    listItems.push({ title, url: href, category: 'Culture' });
+                });
+                
+                await new Promise(r => setTimeout(r, 500));
+            } catch (e) {
+                console.error(`SoraNews24 category error (${cat.name}):`, e.message);
+            }
+        }
         
         console.log(`SoraNews24 list items found: ${listItems.length}`);
         
@@ -582,9 +600,23 @@ async function crawlSoraNews24() {
     return items;
 }
 
+async function crawlPetNews() {
+    // PetNews 크롤러는 별도 파일에서 import (CommonJS 모듈)
+    try {
+        // Next.js에서 CommonJS 모듈을 동적으로 import
+        const petNewsModule = await import('@/scripts/crawlers/petnews');
+        // CommonJS default export 처리
+        const crawlFn = petNewsModule.default || petNewsModule;
+        return await crawlFn();
+    } catch (error) {
+        console.error('PetNews crawl error:', error.message);
+        return [];
+    }
+}
+
 export async function POST(request) {
     try {
-        console.log('🚀 Starting News Crawl (9 Sources with Detail Pages)...');
+        console.log('🚀 Starting News Crawl (11 Sources with Detail Pages)...');
         
         const results = await Promise.all([
             crawlVnExpress(),
@@ -595,11 +627,12 @@ export async function POST(request) {
             crawlThanhNien(),
             crawlPublicSecurity(),
             crawlSaigoneer(),
-            crawlSoraNews24()
+            crawlSoraNews24(),
+            crawlPetNews()
         ]);
         
-        const [vnItems, vnvnItems, yhItems, ivItems, ttItems, tnItems, psItems, sgItems, jtItems] = results;
-        const allItems = [...vnItems, ...vnvnItems, ...yhItems, ...ivItems, ...ttItems, ...tnItems, ...psItems, ...sgItems, ...jtItems];
+        const [vnItems, vnvnItems, yhItems, ivItems, ttItems, tnItems, psItems, sgItems, jtItems, petItems] = results;
+        const allItems = [...vnItems, ...vnvnItems, ...yhItems, ...ivItems, ...ttItems, ...tnItems, ...psItems, ...sgItems, ...jtItems, ...petItems];
         
         console.log(`Total items found: ${allItems.length}`);
         
@@ -613,7 +646,8 @@ export async function POST(request) {
             'ThanhNien': tnItems.length,
             'PublicSecurity': psItems.length,
             'Saigoneer': sgItems.length,
-            'SoraNews24': jtItems.length
+            'SoraNews24': jtItems.length,
+            'PetNews': petItems.length
         };
         
         // 1. 중복 필터링
