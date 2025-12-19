@@ -153,6 +153,42 @@ function jenny_daily_news_shortcode($atts)
     }
 
     $query = new WP_Query($args);
+    
+    // 오늘 뉴스가 없고 사용자가 날짜를 선택하지 않았을 때, 전날 뉴스 자동 표시 (최대 7일 전까지)
+    $actual_filter_date = $filter_date;
+    $is_fallback = false;
+    if (!$is_filtered && !$query->have_posts()) {
+        // 오늘 뉴스가 없으면 어제부터 최근 7일 전까지 순차적으로 조회
+        for ($days_back = 1; $days_back <= 7; $days_back++) {
+            $fallback_date = date('Y-m-d', strtotime("-$days_back days", strtotime($today)));
+            $fallback_args = array(
+                'post_type' => 'post',
+                'posts_per_page' => -1,
+                'cat' => intval($atts['category']),
+                'post_status' => 'publish',
+                'orderby' => 'date',
+                'order' => 'DESC',
+                'date_query' => array(
+                    array(
+                        'year' => intval(date('Y', strtotime($fallback_date))),
+                        'month' => intval(date('m', strtotime($fallback_date))),
+                        'day' => intval(date('d', strtotime($fallback_date))),
+                    ),
+                ),
+            );
+            
+            $fallback_query = new WP_Query($fallback_args);
+            if ($fallback_query->have_posts()) {
+                // 전날 뉴스를 찾았으면 해당 쿼리 사용
+                wp_reset_postdata();
+                $query = $fallback_query;
+                $actual_filter_date = $fallback_date;
+                $is_fallback = true;
+                break;
+            }
+            wp_reset_postdata();
+        }
+    }
 
     // 카테고리 순서 정의 (sections와 일치하도록 모든 변형 포함)
     $category_order = array(
@@ -296,6 +332,14 @@ function jenny_daily_news_shortcode($atts)
         $sel_date_obj = new DateTime($selected_date);
         $display_date = $sel_date_obj->format('Y') . '년 ' . $sel_date_obj->format('m') . '월 ' . $sel_date_obj->format('d') . '일';
         $output .= '<div class="jenny-filter-info">' . esc_html($display_date) . ' 뉴스를 보고 있습니다. <a href="' . esc_url($page_url) . '">오늘의 뉴스로 돌아가기</a></div>';
+    } elseif ($is_fallback) {
+        // 오늘 뉴스가 없어서 전날 뉴스를 표시하는 경우
+        $fallback_date_obj = new DateTime($actual_filter_date);
+        $fallback_display_date = $fallback_date_obj->format('Y') . '년 ' . $fallback_date_obj->format('m') . '월 ' . $fallback_date_obj->format('d') . '일';
+        $output .= '<div class="jenny-filter-info" style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 16px 0; border-radius: 4px;">';
+        $output .= '<strong>📅 ' . esc_html($fallback_display_date) . ' 뉴스를 표시하고 있습니다.</strong><br>';
+        $output .= '<small style="color: #92400e;">오늘의 뉴스가 아직 게시되지 않아 최근 뉴스를 보여드립니다. 오늘의 뉴스가 게시되면 자동으로 업데이트됩니다.</small>';
+        $output .= '</div>';
     }
 
     $output .= '</div>'; // Close jenny-date-filter
