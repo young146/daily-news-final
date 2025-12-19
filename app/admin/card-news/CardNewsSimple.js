@@ -65,9 +65,10 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
       hasTopNews: !!topNews,
     });
 
+    // 탑뉴스가 없어도 서버로 요청을 보내서 fallback 로직이 작동하도록 함
     if (!currentTopNews) {
-      alert("탑뉴스가 없습니다. 관리자 페이지에서 탑뉴스를 선택해주세요.");
-      return;
+      console.warn("[CardNews] No top news selected, but proceeding to let server use fallback");
+      // alert는 제거하고 서버의 fallback 로직에 맡김
     }
 
     if (isGenerating) {
@@ -83,12 +84,12 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
     setPublishResult(null);
 
     try {
-      // 선택된 탑뉴스 정보를 서버에 전달
+      // 선택된 탑뉴스 정보를 서버에 전달 (없으면 null로 보내서 서버 fallback 사용)
       const response = await fetch("/api/publish-card-news", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topNewsId: currentTopNews.id, // 선택된 탑뉴스 ID 전달
+          topNewsId: currentTopNews?.id || null, // 선택된 탑뉴스 ID 전달 (없으면 null)
         }),
       });
 
@@ -369,8 +370,8 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
       {/* 버튼 */}
       <div className="mt-6 flex flex-col items-center gap-4">
         {!currentTopNews && (
-          <div className="mb-4 p-4 bg-yellow-100 border border-yellow-400 rounded-lg text-yellow-800">
-            ⚠️ 탑뉴스가 없습니다. 먼저 관리자 페이지에서 탑뉴스를 선택해주세요.
+          <div className="mb-4 p-4 bg-blue-100 border border-blue-400 rounded-lg text-blue-800">
+            ℹ️ 탑뉴스가 지정되지 않았습니다. 게시 시 최근 뉴스가 자동으로 사용됩니다.
           </div>
         )}
         <button

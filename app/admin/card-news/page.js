@@ -17,22 +17,18 @@ async function getData() {
   );
   today.setHours(0, 0, 0, 0);
 
-  // 탑뉴스 리스트 가져오기 (하이브리드 방식: 오늘 날짜 또는 발행된 항목)
-  // - publishedAt이 오늘 이후이거나 null인 경우
-  // - 또는 isPublishedMain이 true인 경우 (WordPress에 발행된 경우)
+  // 탑뉴스 리스트 가져오기 (더 넓은 조건: isTopNews=true인 모든 항목)
+  // - publishedAt 조건 없이 isTopNews=true인 모든 항목 조회
+  // - 최근에 지정된 탑뉴스도 포함되도록 함
   const topNewsList = await prisma.newsItem.findMany({
     where: {
       isTopNews: true,
-      OR: [
-        { publishedAt: { gte: today } },
-        {
-          AND: [{ isPublishedMain: true }, { publishedAt: null }],
-        },
-      ],
+      status: { notIn: ['PUBLISHED', 'ARCHIVED'] }, // 발행/아카이브된 것은 제외
     },
     orderBy: [
+      { updatedAt: "desc" }, // 최근에 지정된 것 우선
       { publishedAt: "desc" },
-      { updatedAt: "desc" }, // publishedAt이 null인 경우 updatedAt으로 정렬
+      { createdAt: "desc" },
     ],
     take: 2,
   });
@@ -44,14 +40,16 @@ async function getData() {
       ? topNewsList[0]
       : await prisma.newsItem.findFirst({
           where: {
+            status: { notIn: ['PUBLISHED', 'ARCHIVED'] },
             OR: [
               { publishedAt: { gte: today } },
               {
                 AND: [{ isPublishedMain: true }, { publishedAt: null }],
               },
+              { publishedAt: null }, // publishedAt이 null인 경우도 포함
             ],
           },
-          orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
+          orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
         });
 
   const weather = await getSeoulWeather();

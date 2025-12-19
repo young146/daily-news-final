@@ -82,22 +82,21 @@ export async function POST(request) {
       }
     }
 
-    // 선택된 뉴스가 없거나 찾을 수 없으면 기본 탑뉴스 사용 (하이브리드 방식)
+    // 선택된 뉴스가 없거나 찾을 수 없으면 기본 탑뉴스 사용 (더 넓은 조건)
     if (!topNews) {
       console.log(
-        `[CardNews API] No topNewsId provided or not found, fetching today's top news...`
+        `[CardNews API] No topNewsId provided or not found, fetching top news...`
       );
       topNews = await prisma.newsItem.findFirst({
         where: {
           isTopNews: true,
-          OR: [
-            { publishedAt: { gte: today } },
-            {
-              AND: [{ isPublishedMain: true }, { publishedAt: null }],
-            },
-          ],
+          status: { notIn: ['PUBLISHED', 'ARCHIVED'] }, // 발행/아카이브된 것은 제외
         },
-        orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
+        orderBy: [
+          { updatedAt: "desc" }, // 최근에 지정된 것 우선
+          { publishedAt: "desc" },
+          { createdAt: "desc" },
+        ],
       });
       console.log(
         `[CardNews API] Using default top news: ${
@@ -113,14 +112,16 @@ export async function POST(request) {
       );
       topNews = await prisma.newsItem.findFirst({
         where: {
+          status: { notIn: ['PUBLISHED', 'ARCHIVED'] },
           OR: [
             { publishedAt: { gte: today } },
             {
               AND: [{ isPublishedMain: true }, { publishedAt: null }],
             },
+            { publishedAt: null }, // publishedAt이 null인 경우도 포함
           ],
         },
-        orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
+        orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
       });
       console.log(
         `[CardNews API] Using fallback news: ${topNews?.title || "Not found"}`
