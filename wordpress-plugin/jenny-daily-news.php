@@ -326,12 +326,12 @@ function jenny_daily_news_shortcode($atts)
     $output .= '<div class="jenny-filter-buttons">';
     $output .= $is_filtered ? '<a href="' . esc_url($page_url) . '" class="jenny-filter-btn">오늘의 뉴스</a>' : '<span class="jenny-filter-btn active">오늘의 뉴스</span>';
 
-    // 아코디언 스타일로 변경
+    // 인라인 확장 방식으로 변경
     $output .= '<div class="jenny-archive-wrapper">';
     $output .= '<button type="button" class="jenny-filter-btn jenny-archive-btn' . ($is_filtered ? ' active' : '') . '" aria-expanded="false">';
     $output .= '지난 뉴스 보기 <span class="jenny-arrow">▼</span>';
     $output .= '</button>';
-    $output .= '<div class="jenny-date-accordion">';
+    $output .= '<div class="jenny-date-list">'; // 인라인으로 펼쳐지는 리스트
     if (!empty($available_dates)) {
         foreach ($available_dates as $date) {
             $date_obj = new DateTime($date);
@@ -632,9 +632,9 @@ function jenny_get_scripts()
             var archiveWrappers = document.querySelectorAll(".jenny-archive-wrapper");
             archiveWrappers.forEach(function(wrapper) {
                 var btn = wrapper.querySelector(".jenny-archive-btn");
-                var accordion = wrapper.querySelector(".jenny-date-accordion");
+                var dateList = wrapper.querySelector(".jenny-date-list");
                 
-                if (!btn || !accordion) return;
+                if (!btn || !dateList) return;
                 
                 // 클릭 이벤트 처리 (모바일 + PC)
                 btn.addEventListener("click", function(e) {
@@ -666,8 +666,8 @@ function jenny_get_scripts()
                     }
                 });
                 
-                // 날짜 옵션 클릭 시 아코디언 닫기
-                var dateOptions = accordion.querySelectorAll(".jenny-date-option");
+                // 날짜 옵션 클릭 시 리스트 닫기
+                var dateOptions = dateList.querySelectorAll(".jenny-date-option");
                 dateOptions.forEach(function(option) {
                     option.addEventListener("click", function() {
                         wrapper.classList.remove("active");
@@ -750,31 +750,38 @@ function jenny_get_styles()
         .jenny-archive-wrapper.active .jenny-arrow {
             transform: rotate(180deg);
         }
-        /* 아코디언 스타일 - 위로 펼쳐지도록 */
-        .jenny-date-accordion { 
+        /* 인라인 확장 방식 - 페이지 플로우에 자연스럽게 포함 (가려지지 않음) */
+        .jenny-date-list { 
             display: none; 
-            position: absolute; 
-            bottom: 100%; 
-            left: 0; 
-            right: 0;
+            width: 100%;
             background: #ffffff; 
             border: 1px solid #e5e7eb; 
-            border-bottom: none;
-            box-shadow: 0 -4px 12px rgba(0,0,0,0.1); 
-            z-index: 10000; 
-            max-height: 50vh; 
-            overflow-y: auto; 
-            -webkit-overflow-scrolling: touch; /* iOS 부드러운 스크롤 */
-            margin-bottom: 4px;
-            border-radius: 8px 8px 0 0;
+            border-top: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+            margin-top: 0;
+            border-radius: 0 0 8px 8px;
+            /* 스크롤 가능하도록 설정 - 모든 날짜가 보이도록 */
+            max-height: 70vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
         }
-        .jenny-archive-wrapper.active .jenny-date-accordion { 
+        .jenny-archive-wrapper.active .jenny-date-list { 
             display: block !important; 
         }
         /* PC에서도 호버로 열기 */
         @media (min-width: 769px) {
-            .jenny-archive-wrapper:hover .jenny-date-accordion { 
+            .jenny-archive-wrapper:hover .jenny-date-list { 
                 display: block !important; 
+            }
+            .jenny-date-list {
+                max-height: 60vh; /* PC에서는 조금 더 작게 */
+            }
+        }
+        /* 모바일에서는 더 많은 공간 사용 */
+        @media (max-width: 768px) {
+            .jenny-date-list {
+                max-height: 70vh; /* 모바일에서는 더 많은 공간 */
             }
         }
         .jenny-date-option { 
