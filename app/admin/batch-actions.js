@@ -168,6 +168,9 @@ export function WorkflowButton({ topNews }) {
                 const intCount = completedItems.filter(n => (n.category === 'International' || n.category === '국제') && !n.isTopNews).length;
                 const kvCount = completedItems.filter(n => (n.category === 'Korea-Vietnam' || n.category === '한-베' || n.category === '한베') && !n.isTopNews).length;
                 const comCount = completedItems.filter(n => (n.category === 'Community' || n.category === '교민' || n.category === '교민소식') && !n.isTopNews).length;
+                const travelCount = completedItems.filter(n => (n.category === 'Travel' || n.category === '여행') && !n.isTopNews).length;
+                const healthCount = completedItems.filter(n => (n.category === 'Health' || n.category === '건강') && !n.isTopNews).length;
+                const foodCount = completedItems.filter(n => (n.category === 'Food' || n.category === '음식') && !n.isTopNews).length;
 
                 let message = `
 ✨ Ready to Publish!
@@ -183,6 +186,9 @@ Summary of COMPLETED Reviews:
 • International: ${intCount}
 • Korea-Vietnam: ${kvCount}
 • Community: ${comCount}
+• Travel: ${travelCount}
+• Health: ${healthCount}
+• Food: ${foodCount}
 -----------------------------
 Total Completed: ${completedItems.length} items
 `;

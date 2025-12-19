@@ -161,6 +161,15 @@ export default async function AdminPage() {
   const comCount = topNews.filter(
     (n) => (n.category === "Community" || n.category === "교민" || n.category === "교민소식") && !n.isTopNews
   ).length;
+  const travelCount = topNews.filter(
+    (n) => (n.category === "Travel" || n.category === "여행") && !n.isTopNews
+  ).length;
+  const healthCount = topNews.filter(
+    (n) => (n.category === "Health" || n.category === "건강") && !n.isTopNews
+  ).length;
+  const foodCount = topNews.filter(
+    (n) => (n.category === "Food" || n.category === "음식") && !n.isTopNews
+  ).length;
   const cardNewsCount = topNews.filter((n) => n.isCardNews).length;
 
   const Counter = ({ label, count, target, href }) => {
@@ -224,6 +233,9 @@ export default async function AdminPage() {
           <Counter label="International" count={intCount} target={4} />
           <Counter label="Korea-Vietnam" count={kvCount} target={4} />
           <Counter label="Community" count={comCount} target={4} />
+          <Counter label="Travel" count={travelCount} target={4} />
+          <Counter label="Health" count={healthCount} target={4} />
+          <Counter label="Food" count={foodCount} target={4} />
           <Counter
             label="Card News"
             count={cardNewsCount}

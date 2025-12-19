@@ -33,6 +33,9 @@ export default function ManualNewsForm({ onClose, onSuccess, editData = null }) 
     "International",
     "Korea-Vietnam",
     "Community",
+    "Travel",
+    "Health",
+    "Food",
   ];
 
   const handleImageUpload = (e) => {

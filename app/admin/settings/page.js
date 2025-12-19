@@ -103,6 +103,8 @@ export default function SettingsPage() {
     { id: 'saigoneer', name: 'Saigoneer 한글판 (음식/여행)', file: 'saigoneer' },
     { id: 'soranews24', name: 'SoraNews24 (펫/여행)', file: 'soranews24' },
     { id: 'petnews', name: 'PetNews (펫 뉴스 전문)', file: 'petnews' },
+    { id: 'vnexpress-travel', name: 'VnExpress Travel (여행)', file: 'vnexpress-travel' },
+    { id: 'vnexpress-health', name: 'VnExpress Health (건강)', file: 'vnexpress-health' },
   ];
 
   const commands = [

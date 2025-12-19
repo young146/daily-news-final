@@ -78,7 +78,8 @@ async function crawlVnExpress() {
             }
         });
         
-        for (const item of listItems) {
+        for (let i = 0; i < listItems.length; i++) {
+            const item = listItems[i];
             const detail = await fetchDetailPage(item.url, ['.fck_detail', '.content_detail']);
             items.push({
                 title: item.title,
@@ -88,6 +89,7 @@ async function crawlVnExpress() {
                 imageUrl: detail.imageUrl,
                 source: 'VnExpress',
                 category: item.category,
+                viewCount: i + 1, // 메인 페이지 순서 (낮을수록 높은 우선순위)
                 publishedAt: new Date(),
                 status: 'DRAFT'
             });
@@ -122,7 +124,8 @@ async function crawlVnExpressVN() {
             }
         });
         
-        for (const item of listItems) {
+        for (let i = 0; i < listItems.length; i++) {
+            const item = listItems[i];
             const detail = await fetchDetailPage(item.url, ['.fck_detail', 'article.fck_detail']);
             items.push({
                 title: item.title,
@@ -132,6 +135,7 @@ async function crawlVnExpressVN() {
                 imageUrl: detail.imageUrl,
                 source: 'VnExpress VN',
                 category: 'Economy',
+                viewCount: i + 1, // 메인 페이지 순서
                 publishedAt: new Date(),
                 status: 'DRAFT'
             });
@@ -187,7 +191,8 @@ async function crawlYonhap() {
 
         console.log(`Yonhap list items found: ${listItems.length}`);
         
-        for (const item of listItems) {
+        for (let i = 0; i < listItems.length; i++) {
+            const item = listItems[i];
             try {
                 const { data: detailData } = await axios.get(item.url, {
                     timeout: 15000,
@@ -208,6 +213,7 @@ async function crawlYonhap() {
                     imageUrl: imageUrl || null,
                     source: 'Yonhap News',
                     category: 'Korea-Vietnam',
+                    viewCount: i + 1, // 메인 페이지 순서
                     publishedAt: new Date(),
                     status: 'DRAFT'
                 });
@@ -262,7 +268,8 @@ async function crawlInsideVina() {
 
         console.log(`InsideVina list items found: ${listItems.length}`);
         
-        for (const item of listItems) {
+        for (let i = 0; i < listItems.length; i++) {
+            const item = listItems[i];
             try {
                 const { data: detailData } = await axios.get(item.url, {
                     timeout: 15000,
@@ -284,6 +291,7 @@ async function crawlInsideVina() {
                     imageUrl: imageUrl || null,
                     source: 'InsideVina',
                     category: 'Korea-Vietnam',
+                    viewCount: i + 1, // 메인 페이지 순서
                     publishedAt: new Date(),
                     status: 'DRAFT'
                 });
@@ -327,7 +335,8 @@ async function crawlTuoitre() {
             }
         });
         
-        for (const item of listItems) {
+        for (let i = 0; i < listItems.length; i++) {
+            const item = listItems[i];
             const detail = await fetchDetailPage(item.url, ['.detail-content', '#main-detail-body', '.content-detail']);
             items.push({
                 title: item.title,
@@ -337,6 +346,7 @@ async function crawlTuoitre() {
                 imageUrl: detail.imageUrl,
                 source: 'TuoiTre',
                 category: 'Society',
+                viewCount: i + 1, // 메인 페이지 순서
                 publishedAt: new Date(),
                 status: 'DRAFT'
             });
@@ -377,7 +387,8 @@ async function crawlThanhNien() {
             }
         });
         
-        for (const item of listItems) {
+        for (let i = 0; i < listItems.length; i++) {
+            const item = listItems[i];
             const detail = await fetchDetailPage(item.url, ['.detail-content', '.content-detail', '#main-detail-body', '.detail__cmain-main']);
             items.push({
                 title: item.title,
@@ -387,6 +398,7 @@ async function crawlThanhNien() {
                 imageUrl: detail.imageUrl,
                 source: 'ThanhNien',
                 category: 'Society',
+                viewCount: i + 1, // 메인 페이지 순서
                 publishedAt: new Date(),
                 status: 'DRAFT'
             });
@@ -439,7 +451,8 @@ async function crawlPublicSecurity() {
 
         console.log(`Public Security list items found: ${listItems.length}`);
         
-        for (const item of listItems) {
+        for (let i = 0; i < listItems.length; i++) {
+            const item = listItems[i];
             const detail = await fetchDetailPage(item.url, ['.entry-content', '.post-content', '.article-content', '.detail-content']);
             
             const summary = detail.content ? 
@@ -454,6 +467,7 @@ async function crawlPublicSecurity() {
                 imageUrl: detail.imageUrl,
                 source: 'PublicSecurity',
                 category: item.category,
+                viewCount: i + 1, // 메인 페이지 순서
                 publishedAt: new Date(),
                 status: 'DRAFT'
             });
@@ -600,6 +614,128 @@ async function crawlSoraNews24() {
     return items;
 }
 
+async function crawlVnExpressTravel() {
+    const cheerio = await import('cheerio');
+    const items = [];
+    try {
+        console.log('Crawling VnExpress Travel...');
+        const { data } = await fetchWithRetry('https://vnexpress.net/du-lich');
+        const $ = cheerio.load(data);
+        
+        const listItems = [];
+        const seen = new Set();
+        
+        // 다양한 선택자로 뉴스 아이템 찾기
+        $('.item-news, .item-topstory, article.item-news, h3 a, h2 a').each((index, el) => {
+            if (listItems.length >= 10) return;
+            
+            let titleEl, url;
+            
+            if ($(el).is('a')) {
+                titleEl = $(el);
+                url = $(el).attr('href');
+            } else {
+                titleEl = $(el).find('.title-news a, .title_news a, h3 a, h2 a, a').first();
+                url = titleEl.attr('href');
+            }
+            
+            const title = titleEl.text().trim();
+            const summary = $(el).find('.description a, .lead_news_site a').text().trim() || '';
+            
+            if (title && url && title.length > 20 && !seen.has(url)) {
+                seen.add(url);
+                if (!url.startsWith('http')) {
+                    url = `https://vnexpress.net${url}`;
+                }
+                listItems.push({ title, summary, url });
+            }
+        });
+        
+        for (let i = 0; i < listItems.length; i++) {
+            const item = listItems[i];
+            const detail = await fetchDetailPage(item.url, ['.fck_detail', 'article.fck_detail', '.content_detail']);
+            items.push({
+                title: item.title,
+                summary: item.summary || item.title,
+                content: detail.content,
+                originalUrl: item.url,
+                imageUrl: detail.imageUrl,
+                source: 'VnExpress Travel',
+                category: 'Travel',
+                viewCount: i + 1, // 메인 페이지 순서
+                publishedAt: new Date(),
+                status: 'DRAFT'
+            });
+            await new Promise(r => setTimeout(r, 500));
+        }
+        console.log(`VnExpress Travel: ${items.length} items`);
+    } catch (e) {
+        console.error('VnExpress Travel crawl error:', e.message);
+    }
+    return items;
+}
+
+async function crawlVnExpressHealth() {
+    const cheerio = await import('cheerio');
+    const items = [];
+    try {
+        console.log('Crawling VnExpress Health...');
+        const { data } = await fetchWithRetry('https://vnexpress.net/suc-khoe');
+        const $ = cheerio.load(data);
+        
+        const listItems = [];
+        const seen = new Set();
+        
+        // 다양한 선택자로 뉴스 아이템 찾기
+        $('.item-news, .item-topstory, article.item-news, h3 a, h2 a').each((index, el) => {
+            if (listItems.length >= 10) return;
+            
+            let titleEl, url;
+            
+            if ($(el).is('a')) {
+                titleEl = $(el);
+                url = $(el).attr('href');
+            } else {
+                titleEl = $(el).find('.title-news a, .title_news a, h3 a, h2 a, a').first();
+                url = titleEl.attr('href');
+            }
+            
+            const title = titleEl.text().trim();
+            const summary = $(el).find('.description a, .lead_news_site a').text().trim() || '';
+            
+            if (title && url && title.length > 20 && !seen.has(url)) {
+                seen.add(url);
+                if (!url.startsWith('http')) {
+                    url = `https://vnexpress.net${url}`;
+                }
+                listItems.push({ title, summary, url });
+            }
+        });
+        
+        for (let i = 0; i < listItems.length; i++) {
+            const item = listItems[i];
+            const detail = await fetchDetailPage(item.url, ['.fck_detail', 'article.fck_detail', '.content_detail']);
+            items.push({
+                title: item.title,
+                summary: item.summary || item.title,
+                content: detail.content,
+                originalUrl: item.url,
+                imageUrl: detail.imageUrl,
+                source: 'VnExpress Health',
+                category: 'Health',
+                viewCount: i + 1, // 메인 페이지 순서
+                publishedAt: new Date(),
+                status: 'DRAFT'
+            });
+            await new Promise(r => setTimeout(r, 500));
+        }
+        console.log(`VnExpress Health: ${items.length} items`);
+    } catch (e) {
+        console.error('VnExpress Health crawl error:', e.message);
+    }
+    return items;
+}
+
 async function crawlPetNews() {
     // PetNews 크롤러는 별도 파일에서 import (CommonJS 모듈)
     try {
@@ -616,7 +752,7 @@ async function crawlPetNews() {
 
 export async function POST(request) {
     try {
-        console.log('🚀 Starting News Crawl (11 Sources with Detail Pages)...');
+        console.log('🚀 Starting News Crawl (12 Sources with Detail Pages)...');
         
         const results = await Promise.all([
             crawlVnExpress(),
@@ -628,11 +764,13 @@ export async function POST(request) {
             crawlPublicSecurity(),
             crawlSaigoneer(),
             crawlSoraNews24(),
-            crawlPetNews()
+            crawlPetNews(),
+            crawlVnExpressTravel(),
+            crawlVnExpressHealth()
         ]);
         
-        const [vnItems, vnvnItems, yhItems, ivItems, ttItems, tnItems, psItems, sgItems, jtItems, petItems] = results;
-        const allItems = [...vnItems, ...vnvnItems, ...yhItems, ...ivItems, ...ttItems, ...tnItems, ...psItems, ...sgItems, ...jtItems, ...petItems];
+        const [vnItems, vnvnItems, yhItems, ivItems, ttItems, tnItems, psItems, sgItems, jtItems, petItems, travelItems, healthItems] = results;
+        const allItems = [...vnItems, ...vnvnItems, ...yhItems, ...ivItems, ...ttItems, ...tnItems, ...psItems, ...sgItems, ...jtItems, ...petItems, ...travelItems, ...healthItems];
         
         console.log(`Total items found: ${allItems.length}`);
         
@@ -647,7 +785,9 @@ export async function POST(request) {
             'PublicSecurity': psItems.length,
             'Saigoneer': sgItems.length,
             'SoraNews24': jtItems.length,
-            'PetNews': petItems.length
+            'PetNews': petItems.length,
+            'VnExpress Travel': travelItems.length,
+            'VnExpress Health': healthItems.length
         };
         
         // 1. 중복 필터링
@@ -661,9 +801,29 @@ export async function POST(request) {
             }
         }
         
-        console.log(`New items to translate: ${newItems.length}`);
+        // 2. 조회수 기준 정렬 (saigoneer, sora 24, thedodo 제외)
+        // viewCount가 낮을수록 높은 우선순위 (메인 페이지 상단에 표시된 순서)
+        const excludedSources = ['Saigoneer', 'SoraNews24', 'PetNews'];
+        newItems.sort((a, b) => {
+            const aExcluded = excludedSources.includes(a.source);
+            const bExcluded = excludedSources.includes(b.source);
+            
+            // 제외된 소스는 뒤로
+            if (aExcluded && !bExcluded) return 1;
+            if (!aExcluded && bExcluded) return -1;
+            
+            // 둘 다 제외된 경우: 기존 순서 유지
+            if (aExcluded && bExcluded) return 0;
+            
+            // 둘 다 포함된 경우: viewCount 기준 정렬
+            const aViewCount = a.viewCount || 999999;
+            const bViewCount = b.viewCount || 999999;
+            return aViewCount - bViewCount;
+        });
         
-        // 2. 병렬 번역 (10개씩 배치 - 제목만이라 빠름)
+        console.log(`New items to translate: ${newItems.length} (sorted by view count)`);
+        
+        // 3. 병렬 번역 (10개씩 배치 - 제목만이라 빠름)
         const batchSize = 10;
         const translatedItems = [];
         
@@ -679,7 +839,7 @@ export async function POST(request) {
             console.log(`번역 완료: ${Math.min(i + batchSize, newItems.length)}/${newItems.length}`);
         }
         
-        // 3. 저장
+        // 4. 저장
         for (const { item, processed } of translatedItems) {
             await prisma.newsItem.create({ 
               data: {

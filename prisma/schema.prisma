@@ -19,6 +19,7 @@ model NewsItem {
   imageUrl    String?
   category    String   // Society, Economy, Culture, Politics, International, Korea-Vietnam, Community
   source      String?  // VnExpress, Yonhap, etc.
+  viewCount   Int?     // 조회수 또는 메인 페이지 순서 (낮을수록 높은 우선순위)
   
   // Translation Fields
   translatedTitle   String?

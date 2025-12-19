@@ -35,6 +35,9 @@ export default function CategorySelector({ id, initialCategory }) {
             <option value="International">International (국제)</option>
             <option value="Korea-Vietnam">Korea-Vietnam (한-베)</option>
             <option value="Community">Community (교민)</option>
+            <option value="Travel">Travel (여행)</option>
+            <option value="Health">Health (건강)</option>
+            <option value="Food">Food (음식)</option>
         </select>
     );
 }

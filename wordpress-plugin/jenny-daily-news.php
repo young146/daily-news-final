@@ -217,6 +217,15 @@ function jenny_daily_news_shortcode($atts)
         '교민' => 7,
         '교민소식' => 7,
         'Community' => 7,
+        // Travel
+        '여행' => 8,
+        'Travel' => 8,
+        // Health
+        '건강' => 9,
+        'Health' => 9,
+        // Food
+        '음식' => 10,
+        'Food' => 10,
     );
 
     // 뉴스를 카테고리별로 정렬하고 Top News 분리
@@ -224,6 +233,8 @@ function jenny_daily_news_shortcode($atts)
     $top_news_posts = array();
     $regular_posts = array();
 
+    // 오늘 뉴스 (현재 쿼리 결과)
+    $today_posts = array();
     if ($query->have_posts()) {
         while ($query->have_posts()) {
             $query->the_post();
@@ -261,25 +272,206 @@ function jenny_daily_news_shortcode($atts)
                 'is_top' => $is_top  // 디버깅용으로 저장
             );
 
-            if ($is_top) {
-                $top_news_posts[] = $item;
-            } else {
-                $regular_posts[] = $item;
-            }
+            $today_posts[] = $item;
         }
         wp_reset_postdata();
-
-        // 정렬 함수
-        $sort_func = function ($a, $b) {
-            if ($a['order'] === $b['order']) {
-                return strcmp($b['date'], $a['date']);
-            }
-            return $a['order'] - $b['order'];
-        };
-
-        usort($top_news_posts, $sort_func);
-        usort($regular_posts, $sort_func);
     }
+
+    // 오늘 뉴스가 있고 날짜 필터가 없는 경우 (오늘 뉴스 표시 모드), 전날 뉴스로 보완
+    // 날짜 필터가 있는 경우(지난 뉴스 보기)에는 이 로직을 적용하지 않음
+    $past_posts = array();
+    if (!$is_filtered && !$is_fallback && !empty($today_posts)) {
+        // 전날 뉴스 가져오기 (오늘 날짜가 아닌 모든 이전 뉴스)
+        $past_args = array(
+            'post_type' => 'post',
+            'posts_per_page' => -1,
+            'cat' => intval($atts['category']),
+            'post_status' => 'publish',
+            'orderby' => 'date',
+            'order' => 'DESC',
+            'date_query' => array(
+                array(
+                    'before' => $today,
+                    'inclusive' => false,
+                ),
+            ),
+        );
+        $past_query = new WP_Query($past_args);
+        
+        if ($past_query->have_posts()) {
+            while ($past_query->have_posts()) {
+                $past_query->the_post();
+                $post_id = get_the_ID();
+
+                // 카테고리 확인
+                $news_category = get_post_meta($post_id, 'news_category', true);
+                if (empty($news_category) || trim($news_category) === '') {
+                    $categories = get_the_category($post_id);
+                    $news_category = !empty($categories) ? $categories[0]->name : '뉴스';
+                }
+                $news_category = trim($news_category);
+
+                // Top News는 제외 (오늘 뉴스의 탑뉴스만 사용)
+                $is_top_raw = get_post_meta($post_id, 'is_top_news', true);
+                $is_top = ($is_top_raw === '1' || $is_top_raw === 1 || $is_top_raw === true || $is_top_raw === 'true');
+                
+                if ($is_top) {
+                    continue; // 전날 탑뉴스는 제외
+                }
+
+                $order = isset($category_order[$news_category]) ? $category_order[$news_category] : 99;
+
+                $item = array(
+                    'post_id' => $post_id,
+                    'order' => $order,
+                    'date' => get_the_date('Y-m-d H:i:s'),
+                    'category' => $news_category,
+                    'is_top' => false
+                );
+
+                $past_posts[] = $item;
+            }
+            wp_reset_postdata();
+        }
+    }
+
+    // 섹션 정의 (나중에 사용)
+    $sections_keys = array(
+        'economy' => array('Economy', '경제'),
+        'society' => array('Society', '사회'),
+        'culture' => array('Culture', '문화'),
+        'politics' => array('Politics', 'Policy', '정치', '정책'),
+        'international' => array('International', '국제'),
+        'korea_vietnam' => array('Korea-Vietnam', '한-베', '한베'),
+        'community' => array('Community', '교민', '교민소식'),
+        'travel' => array('Travel', '여행'),
+        'health' => array('Health', '건강'),
+        'food' => array('Food', '음식'),
+    );
+
+    // 카테고리를 섹션 키로 변환하는 함수
+    $get_section_key = function($category) use ($sections_keys) {
+        $cat = trim($category);
+        foreach ($sections_keys as $sec_key => $keys) {
+            if (in_array($cat, $keys, true)) {
+                return $sec_key;
+            }
+            foreach ($keys as $key) {
+                if (strcasecmp($cat, $key) === 0) {
+                    return $sec_key;
+                }
+            }
+        }
+        return 'other';
+    };
+
+    // 날짜 필터가 있는 경우(지난 뉴스 보기)에는 기존 로직 사용
+    // 날짜 필터가 없고 오늘 뉴스가 있는 경우에만 최소 10개 유지 로직 적용
+    if ($is_filtered || $is_fallback) {
+        // 날짜 필터가 있거나 fallback인 경우 기존 로직 사용
+        foreach ($today_posts as $post) {
+            if ($post['is_top']) {
+                $top_news_posts[] = $post;
+            } else {
+                $regular_posts[] = $post;
+            }
+        }
+    } else {
+        // 오늘 뉴스 표시 모드: 각 섹션별로 최소 10개 유지
+        // 오늘 뉴스를 섹션별로 그룹화
+        $today_by_section = array();
+        foreach ($today_posts as $post) {
+            $sec_key = $get_section_key($post['category']);
+            if (!isset($today_by_section[$sec_key])) {
+                $today_by_section[$sec_key] = array();
+            }
+            $today_by_section[$sec_key][] = $post;
+        }
+
+        // 전날 뉴스를 섹션별로 그룹화
+        $past_by_section = array();
+        foreach ($past_posts as $post) {
+            $sec_key = $get_section_key($post['category']);
+            if (!isset($past_by_section[$sec_key])) {
+                $past_by_section[$sec_key] = array();
+            }
+            $past_by_section[$sec_key][] = $post;
+        }
+
+        // 각 섹션별로 최소 10개 유지하도록 보완
+        $min_posts_per_section = 10;
+        $final_posts = array();
+        
+        foreach ($today_posts as $post) {
+            if ($post['is_top']) {
+                $top_news_posts[] = $post;
+            } else {
+                $sec_key = $get_section_key($post['category']);
+                if (!isset($final_posts[$sec_key])) {
+                    $final_posts[$sec_key] = array();
+                }
+                $final_posts[$sec_key][] = $post;
+            }
+        }
+
+        // 각 섹션별로 부족한 만큼 전날 뉴스로 채우기
+        foreach ($sections_keys as $sec_key => $keys) {
+            $today_count = isset($final_posts[$sec_key]) ? count($final_posts[$sec_key]) : 0;
+            
+            if ($today_count < $min_posts_per_section && isset($past_by_section[$sec_key])) {
+                $needed = $min_posts_per_section - $today_count;
+                $past_section_posts = $past_by_section[$sec_key];
+                
+                // 날짜순 정렬 (최신순)
+                usort($past_section_posts, function($a, $b) {
+                    return strcmp($b['date'], $a['date']);
+                });
+                
+                // 필요한 만큼만 추가
+                $added = 0;
+                foreach ($past_section_posts as $past_post) {
+                    if ($added >= $needed) break;
+                    
+                    // 이미 추가된 뉴스인지 확인 (중복 방지)
+                    $already_added = false;
+                    if (isset($final_posts[$sec_key])) {
+                        foreach ($final_posts[$sec_key] as $existing) {
+                            if ($existing['post_id'] === $past_post['post_id']) {
+                                $already_added = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (!$already_added) {
+                        if (!isset($final_posts[$sec_key])) {
+                            $final_posts[$sec_key] = array();
+                        }
+                        $final_posts[$sec_key][] = $past_post;
+                        $added++;
+                    }
+                }
+            }
+        }
+
+        // final_posts를 regular_posts로 변환
+        foreach ($final_posts as $sec_posts) {
+            foreach ($sec_posts as $post) {
+                $regular_posts[] = $post;
+            }
+        }
+    }
+
+    // 정렬 함수
+    $sort_func = function ($a, $b) {
+        if ($a['order'] === $b['order']) {
+            return strcmp($b['date'], $a['date']);
+        }
+        return $a['order'] - $b['order'];
+    };
+
+    usort($top_news_posts, $sort_func);
+    usort($regular_posts, $sort_func);
 
     // 가능한 많은 날짜 가져오기 (오늘 날짜 제외)
     $date_args = array(
@@ -342,7 +534,41 @@ function jenny_daily_news_shortcode($atts)
     } else {
         $output .= '<div class="jenny-date-option jenny-no-dates">지난 뉴스가 없습니다.</div>';
     }
-    $output .= '</div></div></div></div>'; // Close info-bar, filter-buttons, date-filter
+    $output .= '</div></div></div>'; // Close filter-buttons
+    
+    // 섹션 네비게이션 메뉴 추가
+    $output .= '<div class="jenny-section-nav">';
+    $output .= '<div class="jenny-section-nav-header">';
+    $output .= '<span class="jenny-section-nav-icon">📍</span>';
+    $output .= '<span class="jenny-section-nav-title">뉴스 섹션 바로가기</span>';
+    $output .= '</div>';
+    $output .= '<div class="jenny-section-nav-list">';
+    
+    // 섹션 네비게이션 항목 (탑뉴스 제외)
+    $section_nav_items = array(
+        'economy' => array('label' => '경제', 'icon' => '📈'),
+        'society' => array('label' => '사회', 'icon' => '👥'),
+        'culture' => array('label' => '문화/스포츠', 'icon' => '🎭'),
+        'politics' => array('label' => '정치/정책', 'icon' => '⚖️'),
+        'international' => array('label' => '국제', 'icon' => '🌏'),
+        'korea_vietnam' => array('label' => '한-베', 'icon' => '🇰🇷🇻🇳'),
+        'community' => array('label' => '교민소식', 'icon' => '📢'),
+        'travel' => array('label' => '여행', 'icon' => '✈️'),
+        'health' => array('label' => '건강', 'icon' => '🏥'),
+        'food' => array('label' => '음식', 'icon' => '🍽️'),
+    );
+    
+    foreach ($section_nav_items as $sec_key => $nav_info) {
+        $output .= '<a href="#jenny-section-' . esc_attr($sec_key) . '" class="jenny-section-nav-item" data-section="' . esc_attr($sec_key) . '">';
+        $output .= '<span class="jenny-nav-icon">' . esc_html($nav_info['icon']) . '</span>';
+        $output .= '<span class="jenny-nav-label">' . esc_html($nav_info['label']) . '</span>';
+        $output .= '</a>';
+    }
+    
+    $output .= '</div>'; // Close jenny-section-nav-list
+    $output .= '</div>'; // Close jenny-section-nav
+    $output .= '</div>'; // Close jenny-info-bar
+    $output .= '</div>'; // Close jenny-date-filter
 
     if ($is_filtered) {
         $sel_date_obj = new DateTime($selected_date);
@@ -393,6 +619,15 @@ function jenny_daily_news_shortcode($atts)
         'Community' => '교민소식',
         '교민' => '교민소식',
         '교민소식' => '교민소식',
+        // Travel
+        'Travel' => '여행',
+        '여행' => '여행',
+        // Health
+        'Health' => '건강',
+        '건강' => '건강',
+        // Food
+        'Food' => '음식',
+        '음식' => '음식',
     );
 
     // Helpers for rendering
@@ -501,7 +736,100 @@ function jenny_daily_news_shortcode($atts)
         return $html;
     }
 
-    // Numbers 1 & 2 logic remains same...
+    // Define Sections and their Category Keys
+    // Keys match the 'news_category' or mapped name
+    $sections = array(
+        'economy' => array('title' => '📈 경제 (Economy)', 'keys' => array('Economy', '경제')),
+        'society' => array('title' => '👥 사회 (Society)', 'keys' => array('Society', '사회')),
+        'culture' => array('title' => '🎭 문화/스포츠 (Culture)', 'keys' => array('Culture', '문화')),
+        'politics' => array('title' => '⚖️ 정치/정책 (Politics)', 'keys' => array('Politics', 'Policy', '정치', '정책')),
+        'international' => array('title' => '🌏 국제 (International)', 'keys' => array('International', '국제')),
+        'korea_vietnam' => array('title' => '🇰🇷🇻🇳 한-베 관계 (Korea-Vietnam)', 'keys' => array('Korea-Vietnam', '한-베', '한베')),
+        'community' => array('title' => '📢 교민 소식 (Community)', 'keys' => array('Community', '교민', '교민소식')),
+        'travel' => array('title' => '✈️ 여행 (Travel)', 'keys' => array('Travel', '여행')),
+        'health' => array('title' => '🏥 건강 (Health)', 'keys' => array('Health', '건강')),
+        'food' => array('title' => '🍽️ 음식 (Food)', 'keys' => array('Food', '음식')),
+        'other' => array('title' => '✨ 기타 뉴스', 'keys' => array()) // Fallback
+    );
+
+    // Bucket posts into sections
+    $grouped_posts = array();
+    
+    // 날짜 필터가 있거나 fallback인 경우 regular_posts를 섹션별로 그룹화
+    if ($is_filtered || $is_fallback) {
+        foreach ($regular_posts as $post) {
+            $cat = trim($post['category']);
+            $found = false;
+
+            // Find which section this post belongs to
+            foreach ($sections as $sec_key => $sec_info) {
+                if ($sec_key === 'other')
+                    continue;
+
+                // 정확한 매칭 시도
+                if (in_array($cat, $sec_info['keys'], true)) {
+                    if (!isset($grouped_posts[$sec_key])) {
+                        $grouped_posts[$sec_key] = array();
+                    }
+                    $grouped_posts[$sec_key][] = $post;
+                    $found = true;
+                    break;
+                }
+                
+                // 대소문자 무시 매칭
+                foreach ($sec_info['keys'] as $key) {
+                    if (strcasecmp($cat, $key) === 0) {
+                        if (!isset($grouped_posts[$sec_key])) {
+                            $grouped_posts[$sec_key] = array();
+                        }
+                        $grouped_posts[$sec_key][] = $post;
+                        $found = true;
+                        break 2;
+                    }
+                }
+            }
+
+            // 매칭 실패 시 기타로 분류
+            if (!$found) {
+                if (!isset($grouped_posts['other'])) {
+                    $grouped_posts['other'] = array();
+                }
+                $grouped_posts['other'][] = $post;
+            }
+        }
+    } else {
+        // 오늘 뉴스 표시 모드: 이미 $final_posts에 섹션별로 그룹화되어 있음
+        $grouped_posts = isset($final_posts) ? $final_posts : array();
+        
+        // regular_posts에 있지만 섹션에 매칭되지 않은 항목들을 'other'로 추가
+        foreach ($regular_posts as $post) {
+            $cat = trim($post['category']);
+            $found = false;
+            
+            // 이미 그룹화된 항목인지 확인
+            foreach ($grouped_posts as $sec_key => $sec_posts) {
+                foreach ($sec_posts as $existing) {
+                    if ($existing['post_id'] === $post['post_id']) {
+                        $found = true;
+                        break 2;
+                    }
+                }
+            }
+            
+            // 매칭되지 않은 항목은 'other'로 분류
+            if (!$found) {
+                if (!isset($grouped_posts['other'])) {
+                    $grouped_posts['other'] = array();
+                }
+                $grouped_posts['other'][] = $post;
+            }
+        }
+    }
+
+    // sort function reused
+    $sort_func = function ($a, $b) {
+        return strcmp($b['date'], $a['date']); // Sort by date DESC within section
+    };
 
     // --- 1. Top News Section (First 2 Top News) ---
     if (!empty($top_news_posts)) {
@@ -511,10 +839,12 @@ function jenny_daily_news_shortcode($atts)
         $top_count = 0;
         foreach ($top_news_posts as $post) {
             if ($top_count >= 2) {
-                // If extra top news, add to regular posts instead of discarding
-                // Note: In the new logic, we need to add them to the correct CATEGORY bucket
-                // For simplicity, let's treat them as regular posts and process them below
-                $regular_posts[] = $post;
+                // If extra top news, add to regular posts in the correct section
+                $sec_key = $get_section_key($post['category']);
+                if (!isset($grouped_posts[$sec_key])) {
+                    $grouped_posts[$sec_key] = array();
+                }
+                $grouped_posts[$sec_key][] = $post;
                 continue;
             }
             $output .= render_jenny_card($post, $category_map);
@@ -526,71 +856,13 @@ function jenny_daily_news_shortcode($atts)
         $output .= '<div class="jenny-ad-section"><div class="jenny-ad-placeholder"><span>Google Ads / Banner Area (Top News)</span></div></div>';
     }
 
-    // --- 2. Section-Based Logic ---
-
-    // Define Sections and their Category Keys
-    // Keys match the 'news_category' or mapped name
-    $sections = array(
-        'economy' => array('title' => '📈 경제 (Economy)', 'keys' => array('Economy', '경제')),
-        'society' => array('title' => '👥 사회 (Society)', 'keys' => array('Society', '사회')),
-        'culture' => array('title' => '🎭 문화/스포츠 (Culture)', 'keys' => array('Culture', '문화')),
-        'politics' => array('title' => '⚖️ 정치/정책 (Politics)', 'keys' => array('Politics', 'Policy', '정치', '정책')),
-        'international' => array('title' => '🌏 국제 (International)', 'keys' => array('International', '국제')),
-        'korea_vietnam' => array('title' => '🇰🇷🇻🇳 한-베 관계 (Korea-Vietnam)', 'keys' => array('Korea-Vietnam', '한-베', '한베')),
-        'community' => array('title' => '📢 교민 소식 (Community)', 'keys' => array('Community', '교민', '교민소식')),
-        'other' => array('title' => '✨ 기타 뉴스', 'keys' => array()) // Fallback
-    );
-
-    // Bucket posts into sections
-    $grouped_posts = array();
-    foreach ($regular_posts as $post) {
-        $cat = trim($post['category']); // Original category string (공백 제거)
-        $found = false;
-
-        // Find which section this post belongs to
-        foreach ($sections as $sec_key => $sec_info) {
-            if ($sec_key === 'other')
-                continue;
-
-            // 정확한 매칭 시도
-            if (in_array($cat, $sec_info['keys'], true)) {
-                $grouped_posts[$sec_key][] = $post;
-                $found = true;
-                break;
-            }
-            
-            // 대소문자 무시 매칭 (대소문자 차이로 인한 매칭 실패 방지)
-            foreach ($sec_info['keys'] as $key) {
-                if (strcasecmp($cat, $key) === 0) {
-                    $grouped_posts[$sec_key][] = $post;
-                    $found = true;
-                    break 2; // 두 개의 루프 모두 종료
-                }
-            }
-        }
-
-        // 매칭 실패 시 디버깅 정보 출력 및 기타로 분류
-        if (!$found) {
-            // 디버깅: 매칭 실패한 카테고리 로깅
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log("Jenny Plugin - Unmatched category: '$cat' for post ID: " . $post['post_id']);
-            }
-            $grouped_posts['other'][] = $post;
-        }
-    }
-
-    // sort function reused
-    $sort_func = function ($a, $b) {
-        return strcmp($b['date'], $a['date']); // Sort by date DESC within section
-    };
-
-    // --- 3. Render Sections ---
+    // --- 2. Render Sections ---
     foreach ($sections as $sec_key => $sec_info) {
         if (!empty($grouped_posts[$sec_key])) {
             // Sort
             usort($grouped_posts[$sec_key], $sort_func);
 
-            $output .= '<h2 class="jenny-section-title">' . esc_html($sec_info['title']) . '</h2>';
+            $output .= '<h2 id="jenny-section-' . esc_attr($sec_key) . '" class="jenny-section-title">' . esc_html($sec_info['title']) . '</h2>';
             $output .= '<div class="jenny-news-grid">'; // 4-column grid
 
             foreach ($grouped_posts[$sec_key] as $post) {
@@ -675,6 +947,39 @@ function jenny_get_scripts()
                     });
                 });
             });
+            
+            // 섹션 네비게이션 스크롤 기능
+            var sectionNavItems = document.querySelectorAll(".jenny-section-nav-item");
+            sectionNavItems.forEach(function(item) {
+                item.addEventListener("click", function(e) {
+                    e.preventDefault();
+                    var targetId = this.getAttribute("href");
+                    var targetElement = document.querySelector(targetId);
+                    
+                    if (targetElement) {
+                        // 부드러운 스크롤
+                        var headerOffset = 80; // 상단 고정 요소 높이 고려
+                        var elementPosition = targetElement.getBoundingClientRect().top;
+                        var offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                        
+                        window.scrollTo({
+                            top: offsetPosition,
+                            behavior: "smooth"
+                        });
+                        
+                        // 활성 상태 표시 (선택사항)
+                        sectionNavItems.forEach(function(nav) {
+                            nav.classList.remove("active");
+                        });
+                        this.classList.add("active");
+                        
+                        // 1초 후 활성 상태 제거
+                        setTimeout(function() {
+                            item.classList.remove("active");
+                        }, 1000);
+                    }
+                });
+            });
         });
     })();
     </script>';
@@ -695,12 +1000,30 @@ function jenny_get_styles()
         }
         
         /* Existing Styles ... */
-        .jenny-date-filter { margin-bottom: 24px; padding: 16px 0; border-bottom: 1px solid #e5e7eb; }
-        .jenny-info-bar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
-        .jenny-info-card { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04); }
+        .jenny-date-filter { 
+            margin-bottom: 24px; 
+            padding: 20px; 
+            border-bottom: 1px solid #e5e7eb;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #fef3c7 100%);
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(234, 88, 12, 0.1);
+        }
+        .jenny-info-bar { 
+            display: flex; 
+            gap: 16px; 
+            align-items: center; 
+            flex-wrap: wrap; 
+        }
+        .jenny-info-card { 
+            background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%); 
+            border: 2px solid #0ea5e9; 
+            border-radius: 12px; 
+            padding: 12px 16px; 
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
+        }
         .jenny-card-header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
         .jenny-card-icon { font-size: 16px; }
-        .jenny-card-title { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+        .jenny-card-title { font-size: 11px; font-weight: 700; color: #0ea5e9; text-transform: uppercase; letter-spacing: 0.5px; }
         .jenny-card-chips { display: flex; gap: 8px; flex-wrap: wrap; }
         .jenny-weather-chip, .jenny-fx-chip { display: flex; align-items: center; gap: 4px; background: #ffffff; padding: 6px 10px; border-radius: 16px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); border: 1px solid #e5e7eb; }
         .jenny-chip-city { font-size: 12px; font-weight: 600; color: #374151; }
@@ -733,6 +1056,99 @@ function jenny_get_styles()
         .jenny-filter-btn { display: inline-block; padding: 10px 20px; background: #f3f4f6; color: #374151; text-decoration: none; border: 1px solid #e5e7eb; font-size: 14px; font-weight: 600; cursor: pointer; }
         .jenny-filter-btn:hover { background: #e5e7eb; color: #111827; }
         .jenny-filter-btn.active { background: #ea580c; color: #ffffff; border-color: #ea580c; }
+        
+        /* 섹션 네비게이션 스타일 */
+        .jenny-section-nav {
+            width: 100%;
+            margin-top: 16px;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #fef3c7 100%);
+            border: 2px solid #f59e0b;
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+        }
+        .jenny-section-nav-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .jenny-section-nav-icon {
+            font-size: 18px;
+        }
+        .jenny-section-nav-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #92400e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .jenny-section-nav-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .jenny-section-nav-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .jenny-section-nav-item:hover {
+            background: #f3f4f6;
+            border-color: #ea580c;
+            color: #ea580c;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(234, 88, 12, 0.1);
+        }
+        .jenny-section-nav-item.active {
+            background: #ea580c;
+            border-color: #ea580c;
+            color: #ffffff;
+        }
+        .jenny-nav-icon {
+            font-size: 14px;
+        }
+        .jenny-nav-label {
+            font-size: 12px;
+        }
+        
+        /* 모바일에서 섹션 네비게이션 스타일 */
+        @media (max-width: 768px) {
+            .jenny-section-nav {
+                padding: 10px;
+            }
+            .jenny-section-nav-list {
+                gap: 6px;
+            }
+            .jenny-section-nav-item {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+            .jenny-nav-label {
+                font-size: 11px;
+            }
+            .jenny-nav-icon {
+                font-size: 12px;
+            }
+        }
+        
+        /* 섹션 제목에 스크롤 마진 추가 */
+        .jenny-section-title {
+            scroll-margin-top: 100px; /* 네비게이션 클릭 시 상단 여백 */
+        }
+        
         .jenny-archive-wrapper { 
             position: relative; 
             width: 100%;
