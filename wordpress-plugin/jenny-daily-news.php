@@ -281,20 +281,28 @@ function jenny_daily_news_shortcode($atts)
         usort($regular_posts, $sort_func);
     }
 
+    // 가능한 많은 날짜 가져오기 (오늘 날짜 제외)
     $date_args = array(
         'post_type' => 'post',
-        'posts_per_page' => 100,
+        'posts_per_page' => -1, // 모든 게시물 가져오기
         'cat' => intval($atts['category']),
         'post_status' => 'publish',
         'orderby' => 'date',
         'order' => 'DESC',
+        'date_query' => array(
+            array(
+                'before' => $today, // 오늘 이전 날짜만
+                'inclusive' => false,
+            ),
+        ),
     );
     $date_query = new WP_Query($date_args);
     $available_dates = array();
     while ($date_query->have_posts()) {
         $date_query->the_post();
         $post_date = get_the_date('Y-m-d');
-        if (!in_array($post_date, $available_dates)) {
+        // 오늘 날짜는 제외
+        if ($post_date !== $today && !in_array($post_date, $available_dates)) {
             $available_dates[] = $post_date;
         }
     }
@@ -318,13 +326,21 @@ function jenny_daily_news_shortcode($atts)
     $output .= '<div class="jenny-filter-buttons">';
     $output .= $is_filtered ? '<a href="' . esc_url($page_url) . '" class="jenny-filter-btn">오늘의 뉴스</a>' : '<span class="jenny-filter-btn active">오늘의 뉴스</span>';
 
-    $output .= '<div class="jenny-archive-wrapper"><span class="jenny-filter-btn jenny-archive-btn' . ($is_filtered ? ' active' : '') . '">지난 뉴스 보기 ▼</span>';
-    $output .= '<div class="jenny-date-dropdown">';
-    foreach ($available_dates as $date) {
-        $date_obj = new DateTime($date);
-        $date_display = $date_obj->format('Y') . '년 ' . $date_obj->format('m') . '월 ' . $date_obj->format('d') . '일';
-        $date_class = ($selected_date === $date) ? ' selected' : '';
-        $output .= '<a href="' . esc_url(add_query_arg('news_date', $date, $page_url)) . '" class="jenny-date-option' . $date_class . '">' . esc_html($date_display) . '</a>';
+    // 아코디언 스타일로 변경
+    $output .= '<div class="jenny-archive-wrapper">';
+    $output .= '<button type="button" class="jenny-filter-btn jenny-archive-btn' . ($is_filtered ? ' active' : '') . '" aria-expanded="false">';
+    $output .= '지난 뉴스 보기 <span class="jenny-arrow">▼</span>';
+    $output .= '</button>';
+    $output .= '<div class="jenny-date-accordion">';
+    if (!empty($available_dates)) {
+        foreach ($available_dates as $date) {
+            $date_obj = new DateTime($date);
+            $date_display = $date_obj->format('Y') . '년 ' . $date_obj->format('m') . '월 ' . $date_obj->format('d') . '일';
+            $date_class = ($selected_date === $date) ? ' selected' : '';
+            $output .= '<a href="' . esc_url(add_query_arg('news_date', $date, $page_url)) . '" class="jenny-date-option' . $date_class . '">' . esc_html($date_display) . '</a>';
+        }
+    } else {
+        $output .= '<div class="jenny-date-option jenny-no-dates">지난 뉴스가 없습니다.</div>';
     }
     $output .= '</div></div></div></div>'; // Close info-bar, filter-buttons, date-filter
 
@@ -590,6 +606,7 @@ function jenny_daily_news_shortcode($atts)
 
     wp_reset_postdata();
     $output .= jenny_get_styles();
+    $output .= jenny_get_scripts();
 
     return $output;
 }
@@ -605,6 +622,63 @@ function jenny_register_meta_fields()
     }
 }
 add_action('init', 'jenny_register_meta_fields');
+
+function jenny_get_scripts()
+{
+    return '<script>
+    (function() {
+        // 아코디언 토글 기능 (모바일 + PC 모두)
+        document.addEventListener("DOMContentLoaded", function() {
+            var archiveWrappers = document.querySelectorAll(".jenny-archive-wrapper");
+            archiveWrappers.forEach(function(wrapper) {
+                var btn = wrapper.querySelector(".jenny-archive-btn");
+                var accordion = wrapper.querySelector(".jenny-date-accordion");
+                
+                if (!btn || !accordion) return;
+                
+                // 클릭 이벤트 처리 (모바일 + PC)
+                btn.addEventListener("click", function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // 다른 아코디언 닫기
+                    archiveWrappers.forEach(function(otherWrapper) {
+                        if (otherWrapper !== wrapper) {
+                            otherWrapper.classList.remove("active");
+                            var otherBtn = otherWrapper.querySelector(".jenny-archive-btn");
+                            if (otherBtn) {
+                                otherBtn.setAttribute("aria-expanded", "false");
+                            }
+                        }
+                    });
+                    
+                    // 현재 아코디언 토글
+                    var isActive = wrapper.classList.contains("active");
+                    wrapper.classList.toggle("active");
+                    btn.setAttribute("aria-expanded", !isActive ? "true" : "false");
+                });
+                
+                // 아코디언 외부 클릭 시 닫기
+                document.addEventListener("click", function(e) {
+                    if (!wrapper.contains(e.target)) {
+                        wrapper.classList.remove("active");
+                        btn.setAttribute("aria-expanded", "false");
+                    }
+                });
+                
+                // 날짜 옵션 클릭 시 아코디언 닫기
+                var dateOptions = accordion.querySelectorAll(".jenny-date-option");
+                dateOptions.forEach(function(option) {
+                    option.addEventListener("click", function() {
+                        wrapper.classList.remove("active");
+                        btn.setAttribute("aria-expanded", "false");
+                    });
+                });
+            });
+        });
+    })();
+    </script>';
+}
 
 function jenny_get_styles()
 {
@@ -635,17 +709,105 @@ function jenny_get_styles()
         .jenny-fx-label { font-size: 11px; color: #6b7280; font-weight: 500; }
         .jenny-fx-value { color: #059669; }
         .jenny-card-source { font-size: 9px; color: #9ca3af; font-weight: 400; margin-left: 4px; }
-        .jenny-filter-buttons { display: flex; gap: 12px; align-items: center; margin-left: auto; }
-        @media (max-width: 900px) { .jenny-info-bar { flex-direction: column; align-items: flex-start; } .jenny-filter-buttons { margin-left: 0; margin-top: 12px; } }
+        .jenny-filter-buttons { 
+            display: flex; 
+            gap: 12px; 
+            align-items: flex-end; /* 아코디언이 위로 펼쳐지므로 하단 정렬 */
+            margin-left: auto; 
+            flex-wrap: wrap;
+        }
+        @media (max-width: 900px) { 
+            .jenny-info-bar { 
+                flex-direction: column; 
+                align-items: flex-start; 
+            } 
+            .jenny-filter-buttons { 
+                margin-left: 0; 
+                margin-top: 12px; 
+                width: 100%;
+            }
+            .jenny-archive-wrapper {
+                width: 100%;
+            }
+        }
         .jenny-filter-btn { display: inline-block; padding: 10px 20px; background: #f3f4f6; color: #374151; text-decoration: none; border: 1px solid #e5e7eb; font-size: 14px; font-weight: 600; cursor: pointer; }
         .jenny-filter-btn:hover { background: #e5e7eb; color: #111827; }
         .jenny-filter-btn.active { background: #ea580c; color: #ffffff; border-color: #ea580c; }
-        .jenny-archive-wrapper { position: relative; }
-        .jenny-date-dropdown { display: none; position: absolute; top: 100%; left: 0; background: #ffffff; border: 1px solid #e5e7eb; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 100; min-width: 180px; max-height: 300px; overflow-y: auto; }
-        .jenny-archive-wrapper:hover .jenny-date-dropdown { display: block; }
-        .jenny-date-option { display: block; padding: 10px 16px; color: #374151; text-decoration: none; font-size: 14px; border-bottom: 1px solid #f3f4f6; }
-        .jenny-date-option:hover { background: #f3f4f6; }
-        .jenny-date-option.selected { background: #fef3c7; color: #ea580c; font-weight: 600; }
+        .jenny-archive-wrapper { 
+            position: relative; 
+            width: 100%;
+        }
+        .jenny-archive-btn {
+            width: 100%;
+            text-align: left;
+            position: relative;
+        }
+        .jenny-arrow {
+            display: inline-block;
+            transition: transform 0.3s ease;
+            margin-left: 8px;
+        }
+        .jenny-archive-wrapper.active .jenny-arrow {
+            transform: rotate(180deg);
+        }
+        /* 아코디언 스타일 - 위로 펼쳐지도록 */
+        .jenny-date-accordion { 
+            display: none; 
+            position: absolute; 
+            bottom: 100%; 
+            left: 0; 
+            right: 0;
+            background: #ffffff; 
+            border: 1px solid #e5e7eb; 
+            border-bottom: none;
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.1); 
+            z-index: 10000; 
+            max-height: 50vh; 
+            overflow-y: auto; 
+            -webkit-overflow-scrolling: touch; /* iOS 부드러운 스크롤 */
+            margin-bottom: 4px;
+            border-radius: 8px 8px 0 0;
+        }
+        .jenny-archive-wrapper.active .jenny-date-accordion { 
+            display: block !important; 
+        }
+        /* PC에서도 호버로 열기 */
+        @media (min-width: 769px) {
+            .jenny-archive-wrapper:hover .jenny-date-accordion { 
+                display: block !important; 
+            }
+        }
+        .jenny-date-option { 
+            display: block; 
+            padding: 12px 16px; 
+            color: #374151; 
+            text-decoration: none; 
+            font-size: 14px; 
+            border-bottom: 1px solid #f3f4f6; 
+            min-height: 44px; /* 모바일 터치 영역 확보 */
+            display: flex;
+            align-items: center;
+            transition: background-color 0.2s ease;
+        }
+        .jenny-date-option:hover { 
+            background: #f3f4f6; 
+        }
+        .jenny-date-option.selected { 
+            background: #fef3c7; 
+            color: #ea580c; 
+            font-weight: 600; 
+        }
+        .jenny-date-option:last-child { 
+            border-bottom: none; 
+        }
+        .jenny-no-dates {
+            color: #9ca3af;
+            font-style: italic;
+            cursor: default;
+        }
+        .jenny-no-dates:hover {
+            background: transparent;
+        }
         .jenny-filter-info { margin-top: 12px; padding: 10px 16px; background: #fef3c7; color: #92400e; font-size: 14px; border-left: 3px solid #ea580c; }
         .jenny-filter-info a { color: #ea580c; font-weight: 600; }
         

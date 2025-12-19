@@ -11,6 +11,27 @@ export async function POST(request) {
   try {
     console.log("[CardNews API] Received publish request...");
 
+    // 환경 변수 검증 (초기 단계에서 확인)
+    const requiredEnvVars = {
+      WORDPRESS_APP_PASSWORD: process.env.WORDPRESS_APP_PASSWORD,
+      WORDPRESS_USERNAME: process.env.WORDPRESS_USERNAME || "chaovietnam",
+    };
+    
+    const missingVars = Object.entries(requiredEnvVars)
+      .filter(([key, value]) => !value)
+      .map(([key]) => key);
+    
+    if (missingVars.length > 0) {
+      console.error("[CardNews API] Missing environment variables:", missingVars);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `필수 환경 변수가 설정되지 않았습니다: ${missingVars.join(", ")}. 관리자에게 문의해주세요.`,
+        }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // Content-Type 먼저 확인
     const contentType = request.headers.get("content-type") || "";
     let body = {};
@@ -57,82 +78,111 @@ export async function POST(request) {
     const dateStr = `${year}-${month}-${day}`;
     console.log(`[CardNews API] Using date: ${dateStr} (Vietnam timezone)`);
 
-    // 1. Get Top News Info (선택된 탑뉴스 ID가 있으면 해당 뉴스 사용)
-    let topNews;
-    if (body.topNewsId) {
-      topNews = await prisma.newsItem.findUnique({
-        where: { id: body.topNewsId },
-      });
-      console.log(
-        `[CardNews API] Using selected top news: ${
-          topNews?.title || "Not found"
-        }`
-      );
+    // 1. Get Top News Info - 단순화된 fallback 로직
+    let topNews = null;
+    let fallbackReason = "";
 
-      // 선택된 탑뉴스가 어제 날짜인지 검증
-      if (topNews && topNews.publishedAt) {
-        const topNewsDate = new Date(topNews.publishedAt);
-        topNewsDate.setHours(0, 0, 0, 0);
-        if (topNewsDate.getTime() < today.getTime()) {
-          console.warn(
-            `[CardNews API] Selected top news is from yesterday (${topNews.publishedAt}), ignoring and using fallback...`
-          );
-          topNews = null; // 어제 날짜면 무시하고 폴백 사용
+    // Step 1: 선택된 탑뉴스 ID가 있으면 해당 뉴스 사용
+    if (body.topNewsId) {
+      try {
+        topNews = await prisma.newsItem.findUnique({
+          where: { id: body.topNewsId },
+        });
+        
+        if (topNews) {
+          // 선택된 뉴스가 유효한지 확인 (PUBLISHED/ARCHIVED 상태가 아니어야 함)
+          if (topNews.status === 'PUBLISHED' || topNews.status === 'ARCHIVED') {
+            console.warn(
+              `[CardNews API] Selected news is ${topNews.status}, ignoring...`
+            );
+            topNews = null;
+            fallbackReason = "선택된 뉴스가 이미 발행/아카이브되었습니다";
+          } else {
+            console.log(
+              `[CardNews API] ✅ Using selected top news: ${topNews.translatedTitle || topNews.title}`
+            );
+          }
+        } else {
+          fallbackReason = "선택된 뉴스를 찾을 수 없습니다";
         }
+      } catch (error) {
+        console.error(`[CardNews API] Error fetching selected news:`, error);
+        fallbackReason = `선택된 뉴스 조회 실패: ${error.message}`;
+        topNews = null;
       }
     }
 
-    // 선택된 뉴스가 없거나 찾을 수 없으면 기본 탑뉴스 사용 (더 넓은 조건)
+    // Step 2: 선택된 뉴스가 없으면 isTopNews=true인 최신 뉴스 사용
     if (!topNews) {
-      console.log(
-        `[CardNews API] No topNewsId provided or not found, fetching top news...`
-      );
-      topNews = await prisma.newsItem.findFirst({
-        where: {
-          isTopNews: true,
-          status: { notIn: ['PUBLISHED', 'ARCHIVED'] }, // 발행/아카이브된 것은 제외
-        },
-        orderBy: [
-          { updatedAt: "desc" }, // 최근에 지정된 것 우선
-          { publishedAt: "desc" },
-          { createdAt: "desc" },
-        ],
-      });
-      console.log(
-        `[CardNews API] Using default top news: ${
-          topNews?.title || "Not found"
-        }`
-      );
-    }
-
-    // 탑뉴스가 없으면 오늘 날짜의 가장 먼저 올라온 뉴스 사용 (하이브리드 방식)
-    if (!topNews) {
-      console.log(
-        `[CardNews API] No top news found, using first published news from today...`
-      );
-      topNews = await prisma.newsItem.findFirst({
-        where: {
-          status: { notIn: ['PUBLISHED', 'ARCHIVED'] },
-          OR: [
-            { publishedAt: { gte: today } },
-            {
-              AND: [{ isPublishedMain: true }, { publishedAt: null }],
-            },
-            { publishedAt: null }, // publishedAt이 null인 경우도 포함
+      try {
+        topNews = await prisma.newsItem.findFirst({
+          where: {
+            isTopNews: true,
+            status: { notIn: ['PUBLISHED', 'ARCHIVED'] },
+          },
+          orderBy: [
+            { updatedAt: "desc" }, // 최근에 지정된 것 우선
+            { publishedAt: "desc" },
+            { createdAt: "desc" },
           ],
-        },
-        orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
-      });
-      console.log(
-        `[CardNews API] Using fallback news: ${topNews?.title || "Not found"}`
-      );
+        });
+        
+        if (topNews) {
+          console.log(
+            `[CardNews API] ✅ Using default top news: ${topNews.translatedTitle || topNews.title}`
+          );
+          if (fallbackReason) {
+            console.log(`[CardNews API] Fallback reason: ${fallbackReason}`);
+          }
+        }
+      } catch (error) {
+        console.error(`[CardNews API] Error fetching top news:`, error);
+        // 계속해서 다음 fallback 시도
+      }
     }
 
+    // Step 3: 탑뉴스가 없으면 최신 뉴스 사용 (더 넓은 조건)
     if (!topNews) {
+      try {
+        topNews = await prisma.newsItem.findFirst({
+          where: {
+            status: { notIn: ['PUBLISHED', 'ARCHIVED'] },
+            OR: [
+              { publishedAt: { gte: today } },
+              { publishedAt: null },
+              { isPublishedMain: true },
+            ],
+          },
+          orderBy: [
+            { publishedAt: "desc" },
+            { updatedAt: "desc" },
+            { createdAt: "desc" },
+          ],
+        });
+        
+        if (topNews) {
+          console.log(
+            `[CardNews API] ✅ Using fallback news: ${topNews.translatedTitle || topNews.title}`
+          );
+          if (fallbackReason) {
+            console.log(`[CardNews API] Fallback reason: ${fallbackReason}`);
+          }
+        }
+      } catch (error) {
+        console.error(`[CardNews API] Error fetching fallback news:`, error);
+      }
+    }
+
+    // 최종 검증
+    if (!topNews) {
+      const errorMsg = fallbackReason 
+        ? `뉴스를 찾을 수 없습니다. (${fallbackReason})`
+        : "오늘 날짜의 뉴스를 찾을 수 없습니다. 관리자 페이지에서 뉴스를 선택해주세요.";
+      
       return new Response(
         JSON.stringify({
           success: false,
-          error: "오늘 날짜의 뉴스를 찾을 수 없습니다.",
+          error: errorMsg,
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
@@ -207,16 +257,58 @@ export async function POST(request) {
         krw: String(krwRate),
       });
 
+      // 내부 API 호출: 로컬에서는 localhost, 프로덕션에서는 절대 URL 사용
+      // Vercel에서는 내부 요청이므로 절대 URL이 필요할 수 있음
       const baseUrl =
-        process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"; // Default to 3000 for local
-      console.log(
-        "[CardNews API] Fetching from:",
-        `${baseUrl}/api/generate-card-image`
-      );
+        process.env.NEXT_PUBLIC_BASE_URL || 
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+      
+      const imageApiUrl = `${baseUrl}/api/generate-card-image?${params.toString()}`;
+      console.log("[CardNews API] Fetching from:", imageApiUrl);
 
-      const imageResponse = await fetch(
-        `${baseUrl}/api/generate-card-image?${params.toString()}`
-      );
+      // 타임아웃과 재시도 로직이 포함된 fetch
+      let imageResponse;
+      let lastError;
+      const maxRetries = 2;
+      
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          if (attempt > 0) {
+            console.log(`[CardNews API] Retry attempt ${attempt}/${maxRetries}...`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // 지수 백오프
+          }
+
+          // AbortController로 타임아웃 설정 (30초)
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
+          
+          imageResponse = await fetch(imageApiUrl, {
+            signal: controller.signal,
+            headers: {
+              'Cache-Control': 'no-cache',
+            },
+          });
+          
+          clearTimeout(timeoutId);
+          break; // 성공하면 루프 탈출
+        } catch (error) {
+          lastError = error;
+          if (error.name === 'AbortError') {
+            console.error(`[CardNews API] Request timeout (attempt ${attempt + 1})`);
+          } else {
+            console.error(`[CardNews API] Fetch error (attempt ${attempt + 1}):`, error.message);
+          }
+          
+          if (attempt === maxRetries) {
+            throw new Error(
+              `이미지 생성 API 호출 실패 (${maxRetries + 1}회 시도): ${error.message}. ` +
+              `API URL: ${imageApiUrl}. ` +
+              `환경 변수 확인: NEXT_PUBLIC_BASE_URL=${process.env.NEXT_PUBLIC_BASE_URL || 'not set'}`
+            );
+          }
+        }
+      }
+
       console.log(
         `[CardNews API] Image generation response status: ${imageResponse.status}`
       );
@@ -229,6 +321,15 @@ export async function POST(request) {
             0,
             200
           )}`
+        );
+      }
+
+      const contentType = imageResponse.headers.get("content-type") || "";
+      if (!contentType.includes("image/") && !contentType.includes("application/octet-stream")) {
+        const errorText = await imageResponse.text().catch(() => "");
+        console.error(`[CardNews API] Unexpected content type: ${contentType}`, errorText);
+        throw new Error(
+          `이미지 생성 API가 이미지가 아닌 응답을 반환했습니다 (${contentType}): ${errorText.substring(0, 200)}`
         );
       }
 

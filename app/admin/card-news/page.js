@@ -17,45 +17,69 @@ async function getData() {
   );
   today.setHours(0, 0, 0, 0);
 
-  // 탑뉴스 리스트 가져오기 (더 넓은 조건: isTopNews=true인 모든 항목)
-  // - publishedAt 조건 없이 isTopNews=true인 모든 항목 조회
-  // - 최근에 지정된 탑뉴스도 포함되도록 함
+  // 1. 탑뉴스 리스트 가져오기 (최대 2개)
   const topNewsList = await prisma.newsItem.findMany({
     where: {
       isTopNews: true,
-      status: { notIn: ['PUBLISHED', 'ARCHIVED'] }, // 발행/아카이브된 것은 제외
+      status: { notIn: ['PUBLISHED', 'ARCHIVED'] },
     },
     orderBy: [
-      { updatedAt: "desc" }, // 최근에 지정된 것 우선
+      { updatedAt: "desc" },
       { publishedAt: "desc" },
       { createdAt: "desc" },
     ],
     take: 2,
   });
 
-  // 첫 번째 탑뉴스 (기본값)
-  // 탑뉴스가 없으면 오늘 날짜의 가장 먼저 올라온 뉴스 사용 (하이브리드 방식)
-  const topNews =
-    topNewsList.length > 0
-      ? topNewsList[0]
-      : await prisma.newsItem.findFirst({
-          where: {
-            status: { notIn: ['PUBLISHED', 'ARCHIVED'] },
-            OR: [
-              { publishedAt: { gte: today } },
-              {
-                AND: [{ isPublishedMain: true }, { publishedAt: null }],
-              },
-              { publishedAt: null }, // publishedAt이 null인 경우도 포함
-            ],
-          },
-          orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
-        });
+  // 2. 탑뉴스가 아닌 최신 뉴스 가져오기 (최대 5개, 탑뉴스 제외)
+  const topNewsIds = topNewsList.map(n => n.id);
+  const recentNewsList = await prisma.newsItem.findMany({
+    where: {
+      id: { notIn: topNewsIds.length > 0 ? topNewsIds : [] },
+      status: { notIn: ['PUBLISHED', 'ARCHIVED'] },
+      OR: [
+        { publishedAt: { gte: today } },
+        { publishedAt: null },
+        { isPublishedMain: true },
+      ],
+    },
+    orderBy: [
+      { publishedAt: "desc" },
+      { updatedAt: "desc" },
+      { createdAt: "desc" },
+    ],
+    take: 5,
+  });
+
+  // 3. 전체 뉴스 리스트 (탑뉴스 + 최신 뉴스, 최대 5개)
+  const allNewsList = [
+    ...topNewsList,
+    ...recentNewsList.filter(n => !topNewsIds.includes(n.id))
+  ].slice(0, 5);
+
+  // 4. 기본 선택 뉴스 (탑뉴스가 있으면 첫 번째 탑뉴스, 없으면 첫 번째 최신 뉴스)
+  const defaultTopNews = topNewsList.length > 0 
+    ? topNewsList[0]
+    : (recentNewsList.length > 0 ? recentNewsList[0] : null);
+
+  // 5. fallback 여부 확인
+  const isUsingFallback = topNewsList.length === 0 && recentNewsList.length > 0;
+  const fallbackReason = isUsingFallback 
+    ? "탑뉴스가 지정되지 않아 최신 뉴스를 사용합니다."
+    : null;
 
   const weather = await getSeoulWeather();
   const rates = await getExchangeRates();
 
-  return { topNews, topNewsList, weather, rates };
+  return { 
+    topNews: defaultTopNews, 
+    topNewsList, 
+    allNewsList, // 전체 뉴스 리스트 (선택용)
+    isUsingFallback,
+    fallbackReason,
+    weather, 
+    rates 
+  };
 }
 
 export default async function CardNewsPreviewPage() {

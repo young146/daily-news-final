@@ -5,19 +5,28 @@ import { useState } from "react";
 export default function CardNewsSimple({ data, mode = "preview" }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [publishResult, setPublishResult] = useState(null);
-  const [selectedTopNews, setSelectedTopNews] = useState(null); // 선택된 탑뉴스
+  const [selectedNews, setSelectedNews] = useState(null); // 선택된 뉴스 (탑뉴스 또는 최신 뉴스)
 
-  const { topNews, secondTopNews, topNewsList, weather, rates } = data || {};
+  const { 
+    topNews, 
+    topNewsList = [], 
+    allNewsList = [], // 전체 뉴스 리스트 (탑뉴스 + 최신 뉴스)
+    isUsingFallback = false,
+    fallbackReason = null,
+    weather, 
+    rates 
+  } = data || {};
 
-  // 초기 선택: 첫 번째 탑뉴스
-  const currentTopNews = selectedTopNews || topNews;
+  // 초기 선택: 선택된 뉴스가 없으면 기본 뉴스 사용
+  const currentTopNews = selectedNews || topNews;
 
   // 디버깅: 현재 상태 확인
   console.log("[CardNews] Component render:", {
     hasTopNews: !!topNews,
-    hasSelectedTopNews: !!selectedTopNews,
+    hasSelectedNews: !!selectedNews,
     currentTopNews: currentTopNews?.id,
     topNewsListLength: topNewsList?.length,
+    allNewsListLength: allNewsList?.length,
   });
 
   const now = new Date();
@@ -79,17 +88,17 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
     // 바로 게시 진행 (confirm 없이)
     console.log("[CardNews] Confirm skipped, proceeding to publish");
 
-    console.log("[CardNews] Publishing with topNewsId:", currentTopNews.id);
+    console.log("[CardNews] Publishing with selectedNewsId:", currentTopNews?.id || null);
     setIsGenerating(true);
     setPublishResult(null);
 
     try {
-      // 선택된 탑뉴스 정보를 서버에 전달 (없으면 null로 보내서 서버 fallback 사용)
+      // 선택된 뉴스 정보를 서버에 전달
       const response = await fetch("/api/publish-card-news", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topNewsId: currentTopNews?.id || null, // 선택된 탑뉴스 ID 전달 (없으면 null)
+          topNewsId: currentTopNews?.id || null, // 선택된 뉴스 ID 전달
         }),
       });
 
@@ -127,72 +136,112 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
     }
   };
 
+  // 뉴스 리스트가 없으면 빈 배열 사용
+  const newsListToShow = allNewsList.length > 0 ? allNewsList : (topNewsList.length > 0 ? topNewsList : []);
+
   return (
     <div className="flex flex-col items-center py-8 px-4 min-h-screen">
-      {/* 탑뉴스 선택 UI */}
-      {topNewsList && topNewsList.length > 0 && (
-        <div className="mb-6 w-full max-w-4xl bg-white rounded-lg shadow-lg p-6">
-          <h3 className="text-lg font-bold mb-4 text-gray-800">
-            📰 카드뉴스에 사용할 탑뉴스 선택
+      {/* 뉴스 선택 UI - 항상 표시 */}
+      <div className="mb-6 w-full max-w-4xl bg-white rounded-lg shadow-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-800">
+            📰 카드뉴스에 사용할 뉴스 선택
           </h3>
-          <div
-            className={`grid grid-cols-1 ${
-              topNewsList.length > 1 ? "md:grid-cols-2" : ""
-            } gap-4`}
-          >
-            {topNewsList.map((news, index) => {
-              const isSelected =
-                selectedTopNews?.id === news.id ||
-                (!selectedTopNews && index === 0);
-              return (
-                <button
-                  key={news.id}
-                  onClick={() => setSelectedTopNews(news)}
-                  className={`p-4 rounded-lg border-2 transition-all text-left ${
-                    isSelected
-                      ? "border-blue-500 bg-blue-50 shadow-md"
-                      : "border-gray-200 bg-white hover:border-gray-300"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                        isSelected
-                          ? "border-blue-500 bg-blue-500"
-                          : "border-gray-300"
-                      }`}
-                    >
-                      {isSelected && (
-                        <span className="text-white text-xs">✓</span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-gray-600 mb-1">
-                        탑뉴스 {index + 1}
-                      </div>
+          {isUsingFallback && fallbackReason && (
+            <div className="px-3 py-1 bg-yellow-100 border border-yellow-400 rounded-lg text-yellow-800 text-sm">
+              ⚠️ {fallbackReason}
+            </div>
+          )}
+        </div>
+
+        {newsListToShow.length === 0 ? (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
+            ⚠️ 사용 가능한 뉴스가 없습니다. 관리자 페이지에서 뉴스를 선택해주세요.
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {newsListToShow.map((news, index) => {
+                const isTopNews = topNewsList.some(tn => tn.id === news.id);
+                const isSelected = selectedNews?.id === news.id || (!selectedNews && index === 0);
+                
+                return (
+                  <button
+                    key={news.id}
+                    onClick={() => setSelectedNews(news)}
+                    className={`p-4 rounded-lg border-2 transition-all text-left ${
+                      isSelected
+                        ? "border-blue-500 bg-blue-50 shadow-md"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
                       <div
-                        className={`text-base font-bold line-clamp-2 ${
-                          isSelected ? "text-blue-700" : "text-gray-800"
+                        className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                          isSelected
+                            ? "border-blue-500 bg-blue-500"
+                            : "border-gray-300"
                         }`}
                       >
-                        {news.translatedTitle || news.title}
+                        {isSelected && (
+                          <span className="text-white text-xs">✓</span>
+                        )}
                       </div>
-                      {news.source && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          출처: {news.source}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          {isTopNews && (
+                            <span className="text-xs font-bold bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
+                              탑뉴스
+                            </span>
+                          )}
+                          <span className="text-xs font-semibold text-gray-600">
+                            {isTopNews ? `탑뉴스 ${topNewsList.findIndex(tn => tn.id === news.id) + 1}` : `뉴스 ${index + 1}`}
+                          </span>
                         </div>
-                      )}
+                        {news.imageUrl && (
+                          <img
+                            src={news.imageUrl}
+                            alt=""
+                            className="w-full h-32 object-cover rounded mb-2"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        )}
+                        <div
+                          className={`text-sm font-bold line-clamp-2 ${
+                            isSelected ? "text-blue-700" : "text-gray-800"
+                          }`}
+                        >
+                          {news.translatedTitle || news.title}
+                        </div>
+                        {news.source && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            출처: {news.source}
+                          </div>
+                        )}
+                        {news.publishedAt && (
+                          <div className="text-xs text-gray-400 mt-1">
+                            {new Date(news.publishedAt).toLocaleDateString('ko-KR')}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-          <div className="mt-4 text-sm text-gray-600">
-            💡 선택한 탑뉴스로 카드뉴스가 재생성됩니다.
-          </div>
-        </div>
-      )}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="text-sm text-blue-800">
+                💡 <strong>선택된 뉴스:</strong> {currentTopNews ? (currentTopNews.translatedTitle || currentTopNews.title) : "없음"}
+              </div>
+              <div className="text-xs text-blue-600 mt-1">
+                선택한 뉴스의 이미지와 제목으로 카드뉴스가 생성됩니다. 다른 뉴스를 선택하면 카드뉴스가 재생성됩니다.
+              </div>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* 카드 뉴스 미리보기 */}
       <div
@@ -370,19 +419,27 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
       {/* 버튼 */}
       <div className="mt-6 flex flex-col items-center gap-4">
         {!currentTopNews && (
-          <div className="mb-4 p-4 bg-blue-100 border border-blue-400 rounded-lg text-blue-800">
-            ℹ️ 탑뉴스가 지정되지 않았습니다. 게시 시 최근 뉴스가 자동으로 사용됩니다.
+          <div className="mb-4 p-4 bg-yellow-100 border border-yellow-400 rounded-lg text-yellow-800">
+            ⚠️ 뉴스가 선택되지 않았습니다. 위에서 뉴스를 선택해주세요.
+          </div>
+        )}
+        {currentTopNews && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800">
+            ✅ <strong>선택된 뉴스:</strong> {currentTopNews.translatedTitle || currentTopNews.title}
+            {isUsingFallback && (
+              <span className="block mt-1 text-xs text-yellow-700">
+                (탑뉴스가 없어 최신 뉴스를 사용 중)
+              </span>
+            )}
           </div>
         )}
         <button
           onClick={handlePublishToWordPress}
-          disabled={isGenerating}
+          disabled={isGenerating || !currentTopNews}
           className={`px-8 py-3 text-white rounded-lg text-base font-bold shadow-lg flex items-center gap-2 transition-all ${
-            isGenerating
+            isGenerating || !currentTopNews
               ? "bg-gray-400 cursor-not-allowed opacity-50"
-              : currentTopNews
-              ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
-              : "bg-gray-400 cursor-not-allowed opacity-50"
+              : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
           }`}
           type="button"
         >
