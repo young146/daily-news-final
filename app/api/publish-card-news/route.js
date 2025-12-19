@@ -90,13 +90,13 @@ export async function POST(request) {
         });
         
         if (topNews) {
-          // 선택된 뉴스가 유효한지 확인 (PUBLISHED/ARCHIVED 상태가 아니어야 함)
-          if (topNews.status === 'PUBLISHED' || topNews.status === 'ARCHIVED') {
+          // 선택된 뉴스가 유효한지 확인
+          if (topNews.status !== 'PUBLISHED') {
             console.warn(
-              `[CardNews API] Selected news is ${topNews.status}, ignoring...`
+              `[CardNews API] Selected news status is ${topNews.status}, must be PUBLISHED, ignoring...`
             );
             topNews = null;
-            fallbackReason = "선택된 뉴스가 이미 발행/아카이브되었습니다";
+            fallbackReason = "선택된 뉴스가 아직 발행되지 않았습니다";
           } else {
             console.log(
               `[CardNews API] ✅ Using selected top news: ${topNews.translatedTitle || topNews.title}`
@@ -112,13 +112,13 @@ export async function POST(request) {
       }
     }
 
-    // Step 2: 선택된 뉴스가 없으면 isTopNews=true인 최신 뉴스 사용
+    // Step 2: 선택된 뉴스가 없으면 발행된 뉴스 중에서 isTopNews=true인 최신 뉴스 사용
     if (!topNews) {
       try {
         topNews = await prisma.newsItem.findFirst({
           where: {
             isTopNews: true,
-            status: { notIn: ['PUBLISHED', 'ARCHIVED'] },
+            status: 'PUBLISHED', // 발행된 뉴스만
           },
           orderBy: [
             { updatedAt: "desc" }, // 최근에 지정된 것 우선
@@ -134,23 +134,27 @@ export async function POST(request) {
           if (fallbackReason) {
             console.log(`[CardNews API] Fallback reason: ${fallbackReason}`);
           }
+        } else {
+          fallbackReason = "발행된 탑뉴스가 없습니다";
         }
       } catch (error) {
         console.error(`[CardNews API] Error fetching top news:`, error);
+        fallbackReason = `탑뉴스 조회 실패: ${error.message}`;
         // 계속해서 다음 fallback 시도
       }
     }
 
-    // Step 3: 탑뉴스가 없으면 최신 뉴스 사용 (더 넓은 조건)
+    // Step 3: 탑뉴스가 없으면 발행된 뉴스 중에서 최신 뉴스 사용
     if (!topNews) {
       try {
         topNews = await prisma.newsItem.findFirst({
           where: {
-            status: { notIn: ['PUBLISHED', 'ARCHIVED'] },
+            isTopNews: false, // 탑뉴스가 아닌 것만
+            isPublishedMain: true, // 발행된 뉴스만
+            status: 'PUBLISHED', // 발행된 뉴스만
             OR: [
               { publishedAt: { gte: today } },
               { publishedAt: null },
-              { isPublishedMain: true },
             ],
           },
           orderBy: [
@@ -162,14 +166,17 @@ export async function POST(request) {
         
         if (topNews) {
           console.log(
-            `[CardNews API] ✅ Using fallback news: ${topNews.translatedTitle || topNews.title}`
+            `[CardNews API] ✅ Using fallback published news: ${topNews.translatedTitle || topNews.title}`
           );
           if (fallbackReason) {
             console.log(`[CardNews API] Fallback reason: ${fallbackReason}`);
           }
+        } else {
+          fallbackReason = "발행된 뉴스가 없습니다";
         }
       } catch (error) {
         console.error(`[CardNews API] Error fetching fallback news:`, error);
+        fallbackReason = `fallback 뉴스 조회 실패: ${error.message}`;
       }
     }
 

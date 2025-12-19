@@ -7,6 +7,7 @@ import GenerateButton from "./generate-button";
 import CrawlNewsButton from "./crawl-news-button";
 import CollectedNewsList from "./collected-news-list";
 import SelectedNewsList from "./selected-news-list";
+import ManualNewsButton from "./manual-news-button";
 
 export const dynamic = "force-dynamic";
 
@@ -189,6 +190,7 @@ export default async function AdminPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Admin Dashboard</h1>
         <div className="flex gap-2">
+          <ManualNewsButton />
           <CrawlNewsButton />
           <Link
             href="/admin/card-news"

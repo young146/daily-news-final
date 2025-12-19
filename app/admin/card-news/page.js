@@ -17,11 +17,11 @@ async function getData() {
   );
   today.setHours(0, 0, 0, 0);
 
-  // 1. 탑뉴스 리스트 가져오기 (최대 2개)
+  // 1. 탑뉴스 리스트 가져오기 (최대 2개) - 발행된 뉴스 중에서 isTopNews=true인 것만
   const topNewsList = await prisma.newsItem.findMany({
     where: {
       isTopNews: true,
-      status: { notIn: ['PUBLISHED', 'ARCHIVED'] },
+      status: 'PUBLISHED', // 발행된 뉴스만
     },
     orderBy: [
       { updatedAt: "desc" },
@@ -31,16 +31,17 @@ async function getData() {
     take: 2,
   });
 
-  // 2. 탑뉴스가 아닌 최신 뉴스 가져오기 (최대 5개, 탑뉴스 제외)
+  // 2. 탑뉴스가 아닌 발행된 뉴스 중에서 최신 뉴스 가져오기 (최대 5개, 탑뉴스 제외)
   const topNewsIds = topNewsList.map(n => n.id);
   const recentNewsList = await prisma.newsItem.findMany({
     where: {
       id: { notIn: topNewsIds.length > 0 ? topNewsIds : [] },
-      status: { notIn: ['PUBLISHED', 'ARCHIVED'] },
+      isTopNews: false, // 탑뉴스가 아닌 것만
+      isPublishedMain: true, // 발행된 뉴스만
+      status: 'PUBLISHED', // 발행된 뉴스만
       OR: [
         { publishedAt: { gte: today } },
         { publishedAt: null },
-        { isPublishedMain: true },
       ],
     },
     orderBy: [
