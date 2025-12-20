@@ -226,6 +226,9 @@ function jenny_daily_news_shortcode($atts)
         // Food
         '음식' => 10,
         'Food' => 10,
+        // Pet
+        '펫' => 11,
+        'Pet' => 11,
     );
 
     // 뉴스를 카테고리별로 정렬하고 Top News 분리
@@ -347,6 +350,7 @@ function jenny_daily_news_shortcode($atts)
         'travel' => array('Travel', '여행'),
         'health' => array('Health', '건강'),
         'food' => array('Food', '음식'),
+        'pet' => array('Pet', '펫'),
     );
 
     // 카테고리를 섹션 키로 변환하는 함수
@@ -556,6 +560,7 @@ function jenny_daily_news_shortcode($atts)
         'travel' => array('label' => '여행', 'icon' => '✈️'),
         'health' => array('label' => '건강', 'icon' => '🏥'),
         'food' => array('label' => '음식', 'icon' => '🍽️'),
+        'pet' => array('label' => '펫', 'icon' => '🐾'),
     );
     
     foreach ($section_nav_items as $sec_key => $nav_info) {
@@ -628,6 +633,9 @@ function jenny_daily_news_shortcode($atts)
         // Food
         'Food' => '음식',
         '음식' => '음식',
+        // Pet
+        'Pet' => '펫',
+        '펫' => '펫',
     );
 
     // Helpers for rendering
@@ -749,6 +757,7 @@ function jenny_daily_news_shortcode($atts)
         'travel' => array('title' => '✈️ 여행 (Travel)', 'keys' => array('Travel', '여행')),
         'health' => array('title' => '🏥 건강 (Health)', 'keys' => array('Health', '건강')),
         'food' => array('title' => '🍽️ 음식 (Food)', 'keys' => array('Food', '음식')),
+        'pet' => array('title' => '🐾 펫 (Pet)', 'keys' => array('Pet', '펫')),
         'other' => array('title' => '✨ 기타 뉴스', 'keys' => array()) // Fallback
     );
 

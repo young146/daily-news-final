@@ -101,8 +101,8 @@ export default function SettingsPage() {
     { id: 'thanhnien', name: 'ThanhNien', file: 'thanhnien' },
     { id: 'publicsecurity', name: '공안신문 (PublicSecurity)', file: 'publicsecurity' },
     { id: 'saigoneer', name: 'Saigoneer 한글판 (음식/여행)', file: 'saigoneer' },
-    { id: 'soranews24', name: 'SoraNews24 (펫/여행)', file: 'soranews24' },
-    { id: 'petnews', name: 'PetNews (펫 뉴스 전문)', file: 'petnews' },
+    { id: 'thedodo', name: 'The Dodo (펫 뉴스)', file: 'thedodo' },
+    { id: 'petmd', name: 'PetMD (펫 건강)', file: 'petmd' },
     { id: 'vnexpress-travel', name: 'VnExpress Travel (여행)', file: 'vnexpress-travel' },
     { id: 'vnexpress-health', name: 'VnExpress Health (건강)', file: 'vnexpress-health' },
   ];
@@ -664,7 +664,6 @@ export default function SettingsPage() {
                 <SelectorRow name="ThanhNien" list=".story" content=".detail-content" />
                 <SelectorRow name="PublicSecurity" list='a[href*="-i"]' content=".entry-content" />
                 <SelectorRow name="Saigoneer" list='a[href*="/saigon-"]' content=".item-page" />
-                <SelectorRow name="SoraNews24" list='soranews24.com/20' content=".entry-content" />
               </tbody>
             </table>
           </div>

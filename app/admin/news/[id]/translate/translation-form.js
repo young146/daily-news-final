@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { saveTranslation, completeReview } from './actions';
 
@@ -14,8 +14,15 @@ export default function TranslationForm({ newsItem, nextId }) {
         translatedTitle: newsItem.translatedTitle || '',
         translatedSummary: newsItem.translatedSummary || '',
         translatedContent: newsItem.translatedContent || '',
-        imageUrl: newsItem.imageUrl || ''
+        imageUrl: newsItem.imageUrl || newsItem.wordpressImageUrl || ''
     });
+    
+    // imageUrl이 변경되면 업데이트
+    useEffect(() => {
+        if (newsItem.imageUrl && !formData.imageUrl) {
+            setFormData(prev => ({ ...prev, imageUrl: newsItem.imageUrl }));
+        }
+    }, [newsItem.imageUrl]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;

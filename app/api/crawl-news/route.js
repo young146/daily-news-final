@@ -541,189 +541,6 @@ async function crawlSaigoneer() {
     return items;
 }
 
-async function crawlSoraNews24() {
-    const cheerio = await import('cheerio');
-    const Parser = (await import('rss-parser')).default;
-    const items = [];
-    
-    try {
-        console.log('📡 Crawling SoraNews24 via RSS (펫/여행만)...');
-        
-        const parser = new Parser({
-            customFields: {
-                item: [
-                    ['content:encoded', 'contentEncoded'],
-                    ['media:content', 'mediaContent'],
-                    ['media:thumbnail', 'mediaThumbnail'],
-                ]
-            }
-        });
-
-        // RSS 피드 URL (WordPress 기본 형식)
-        const rssFeeds = [
-            { 
-                url: 'https://soranews24.com/category/animals/feed/', 
-                category: 'Culture', 
-                name: 'Animals/Pets' 
-            },
-            { 
-                url: 'https://soranews24.com/category/travel/feed/', 
-                category: 'Culture', 
-                name: 'Travel' 
-            },
-            // 전체 피드도 시도 (카테고리별이 안 되면)
-            { 
-                url: 'https://soranews24.com/feed/', 
-                category: 'Culture', 
-                name: 'All' 
-            },
-        ];
-
-        const seen = new Set();
-
-        // RSS 피드에서 기사 수집
-        for (const feed of rssFeeds) {
-            try {
-                console.log(`  📡 Fetching RSS feed: ${feed.name} (${feed.url})`);
-                
-                const feedData = await parser.parseURL(feed.url);
-                
-                if (!feedData || !feedData.items || feedData.items.length === 0) {
-                    console.warn(`    ⚠️ No items found in RSS feed: ${feed.url}`);
-                    continue;
-                }
-                
-                console.log(`    ✅ Found ${feedData.items.length} items in RSS feed`);
-                
-                // 카테고리 필터링 (전체 피드인 경우)
-                const filteredItems = feed.url.includes('/feed/') && !feed.url.includes('/category/')
-                    ? feedData.items.filter(item => {
-                        const url = item.link || '';
-                        return url.includes('/category/animals/') || url.includes('/category/travel/');
-                    })
-                    : feedData.items;
-                
-                for (const item of filteredItems) {
-                    if (items.length >= 30) break; // 최대 30개로 제한
-                    
-                    const url = item.link || item.guid || '';
-                    if (!url || seen.has(url)) continue;
-                    
-                    // URL 유효성 확인
-                    if (!url.includes('soranews24.com')) continue;
-                    
-                    // 제목 필터링
-                    const title = (item.title || '').trim();
-                    if (!title || title.length < 10 || title.length > 200) continue;
-                    
-                    seen.add(url);
-                    
-                    // 발행 날짜 파싱
-                    let publishedAt = getVietnamTime();
-                    if (item.pubDate) {
-                        try {
-                            publishedAt = new Date(item.pubDate);
-                            // 베트남 시간대 기준으로 변환
-                            publishedAt = new Date(
-                                publishedAt.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
-                            );
-                        } catch (e) {
-                            console.warn(`    ⚠️ Failed to parse date for ${url}: ${e.message}`);
-                        }
-                    }
-                    
-                    // 이미지 URL 추출
-                    let imageUrl = '';
-                    if (item.contentEncoded) {
-                        const $content = cheerio.load(item.contentEncoded);
-                        const firstImg = $content('img').first().attr('src');
-                        if (firstImg) imageUrl = firstImg;
-                    }
-                    if (!imageUrl && item.content) {
-                        const imgMatch = item.content.match(/<img[^>]+src="([^"]+)"/i);
-                        if (imgMatch) imageUrl = imgMatch[1];
-                    }
-                    if (!imageUrl && item.mediaThumbnail) {
-                        imageUrl = item.mediaThumbnail.$.url || item.mediaThumbnail;
-                    }
-                    if (!imageUrl && item.mediaContent) {
-                        imageUrl = item.mediaContent.$.url || item.mediaContent;
-                    }
-                    
-                    // 요약 추출
-                    let summary = '';
-                    if (item.contentSnippet) {
-                        summary = item.contentSnippet.substring(0, 300);
-                    } else if (item.content) {
-                        const $content = cheerio.load(item.content);
-                        summary = $content.text().substring(0, 300);
-                    } else if (item.description) {
-                        const $desc = cheerio.load(item.description);
-                        summary = $desc.text().substring(0, 300);
-                    }
-                    
-                    // 본문 추출
-                    let content = '';
-                    if (item.contentEncoded) {
-                        content = item.contentEncoded;
-                    } else if (item.content) {
-                        content = item.content;
-                    }
-                    
-                    items.push({
-                        title,
-                        summary: summary.trim(),
-                        content: content.trim(),
-                        originalUrl: url,
-                        imageUrl: imageUrl.trim(),
-                        category: feed.category,
-                        source: 'SoraNews24',
-                        publishedAt: publishedAt,
-                        status: 'DRAFT'
-                    });
-                }
-                
-                console.log(`    ✅ Added ${filteredItems.length} items from ${feed.name} RSS feed`);
-                await new Promise(r => setTimeout(r, 500)); // 피드 간 딜레이
-                
-            } catch (e) {
-                console.error(`    ❌ RSS feed error (${feed.name}):`, e.message);
-                continue;
-            }
-        }
-        
-        // 본문이 없는 경우에만 상세 페이지 크롤링
-        for (const item of items) {
-            if (!item.content || item.content.length < 100) {
-                try {
-                    console.log(`  📄 Fetching full content for: ${item.title.substring(0, 50)}...`);
-                    const detail = await fetchDetailPage(item.originalUrl, ['.entry-content', '.post-content', '.article-body', 'article']);
-                    
-                    if (detail.content) {
-                        item.content = detail.content;
-                        const $content = cheerio.load(detail.content);
-                        if (!item.summary || item.summary.length < 50) {
-                            item.summary = $content.text().substring(0, 300);
-                        }
-                    }
-                    
-                    if (!item.imageUrl && detail.imageUrl) {
-                        item.imageUrl = detail.imageUrl;
-                    }
-                    
-                    await new Promise(r => setTimeout(r, 500));
-                } catch (err) {
-                    console.warn(`  ⚠️ Failed to fetch details for ${item.originalUrl}: ${err.message}`);
-                }
-            }
-        }
-        
-        console.log(`✅ SoraNews24: ${items.length} items processed (RSS)`);
-    } catch (e) {
-        console.error('❌ SoraNews24 RSS crawl error:', e.message);
-    }
-    return items;
-}
 
 async function crawlVnExpressTravel() {
     const cheerio = await import('cheerio');
@@ -847,16 +664,26 @@ async function crawlVnExpressHealth() {
     return items;
 }
 
-async function crawlPetNews() {
-    // PetNews 크롤러는 별도 파일에서 import (CommonJS 모듈)
+async function crawlTheDodo() {
+    // The Dodo 크롤러는 별도 파일에서 import (CommonJS 모듈)
     try {
-        // Next.js에서 CommonJS 모듈을 동적으로 import
-        const petNewsModule = await import('@/scripts/crawlers/petnews');
-        // CommonJS default export 처리
-        const crawlFn = petNewsModule.default || petNewsModule;
+        const theDodoModule = await import('@/scripts/crawlers/thedodo');
+        const crawlFn = theDodoModule.default || theDodoModule;
         return await crawlFn();
     } catch (error) {
-        console.error('PetNews crawl error:', error.message);
+        console.error('The Dodo crawl error:', error.message);
+        return [];
+    }
+}
+
+async function crawlPetMD() {
+    // PetMD 크롤러는 별도 파일에서 import (CommonJS 모듈)
+    try {
+        const petMDModule = await import('@/scripts/crawlers/petmd');
+        const crawlFn = petMDModule.default || petMDModule;
+        return await crawlFn();
+    } catch (error) {
+        console.error('PetMD crawl error:', error.message);
         return [];
     }
 }
@@ -874,14 +701,14 @@ export async function POST(request) {
             crawlThanhNien(),
             crawlPublicSecurity(),
             crawlSaigoneer(),
-            crawlSoraNews24(),
-            crawlPetNews(),
+            crawlTheDodo(),
+            crawlPetMD(),
             crawlVnExpressTravel(),
             crawlVnExpressHealth()
         ]);
         
-        const [vnItems, vnvnItems, yhItems, ivItems, ttItems, tnItems, psItems, sgItems, jtItems, petItems, travelItems, healthItems] = results;
-        const allItems = [...vnItems, ...vnvnItems, ...yhItems, ...ivItems, ...ttItems, ...tnItems, ...psItems, ...sgItems, ...jtItems, ...petItems, ...travelItems, ...healthItems];
+        const [vnItems, vnvnItems, yhItems, ivItems, ttItems, tnItems, psItems, sgItems, dodoItems, petmdItems, travelItems, healthItems] = results;
+        const allItems = [...vnItems, ...vnvnItems, ...yhItems, ...ivItems, ...ttItems, ...tnItems, ...psItems, ...sgItems, ...dodoItems, ...petmdItems, ...travelItems, ...healthItems];
         
         console.log(`Total items found: ${allItems.length}`);
         
@@ -895,26 +722,37 @@ export async function POST(request) {
             'ThanhNien': tnItems.length,
             'PublicSecurity': psItems.length,
             'Saigoneer': sgItems.length,
-            'SoraNews24': jtItems.length,
-            'PetNews': petItems.length,
+            'The Dodo': dodoItems.length,
+            'PetMD': petmdItems.length,
             'VnExpress Travel': travelItems.length,
             'VnExpress Health': healthItems.length
         };
         
         // 1. 중복 필터링
         const newItems = [];
+        let duplicateCount = 0;
         for (const item of allItems) {
+            if (!item.originalUrl) {
+                console.warn(`⚠️ originalUrl이 없는 아이템 건너뜀: ${item.title?.substring(0, 50)}...`);
+                continue;
+            }
+            
             const exists = await prisma.newsItem.findFirst({
                 where: { originalUrl: item.originalUrl }
             });
             if (!exists) {
                 newItems.push(item);
+            } else {
+                duplicateCount++;
+                console.log(`  ⏭️ 중복 건너뜀: ${item.originalUrl.substring(0, 60)}...`);
             }
         }
         
-        // 2. 조회수 기준 정렬 (saigoneer, sora 24, thedodo 제외)
+        console.log(`📊 중복 필터링 결과: 총 ${allItems.length}개 중 ${duplicateCount}개 중복, ${newItems.length}개 신규`);
+        
+        // 2. 조회수 기준 정렬 (saigoneer, thedodo, petmd 제외)
         // viewCount가 낮을수록 높은 우선순위 (메인 페이지 상단에 표시된 순서)
-        const excludedSources = ['Saigoneer', 'SoraNews24', 'PetNews'];
+        const excludedSources = ['Saigoneer', 'The Dodo', 'PetMD'];
         newItems.sort((a, b) => {
             const aExcluded = excludedSources.includes(a.source);
             const bExcluded = excludedSources.includes(b.source);
@@ -934,33 +772,66 @@ export async function POST(request) {
         
         console.log(`New items to translate: ${newItems.length} (sorted by view count)`);
         
+        // 한국어 소스 확인 함수
+        function isKoreanSource(source) {
+            return source === 'Yonhap News' || source === 'InsideVina' || source === 'Saigoneer';
+        }
+        
         // 3. 병렬 번역 (10개씩 배치 - 제목만이라 빠름)
         const batchSize = 10;
         const translatedItems = [];
+        let translationFailedCount = 0;
         
         for (let i = 0; i < newItems.length; i += batchSize) {
             const batch = newItems.slice(i, i + batchSize);
             const results = await Promise.all(
                 batch.map(async (item) => {
-                    const processed = await translateTitle(item);
-                    return { item, processed };
+                    try {
+                        const processed = await translateTitle(item);
+                        if (!processed.translatedTitle && !isKoreanSource(item.source)) {
+                            translationFailedCount++;
+                            console.warn(`⚠️ 번역 실패 [${item.source}]: ${item.title.substring(0, 50)}...`);
+                            console.warn(`   에러: ${processed.error || 'Unknown error'}`);
+                        }
+                        return { item, processed };
+                    } catch (error) {
+                        translationFailedCount++;
+                        console.error(`❌ 번역 에러 [${item.source}]: ${error.message}`);
+                        return { 
+                            item, 
+                            processed: { 
+                                translatedTitle: null, 
+                                category: item.category || 'Society',
+                                error: error.message 
+                            } 
+                        };
+                    }
                 })
             );
             translatedItems.push(...results);
-            console.log(`번역 완료: ${Math.min(i + batchSize, newItems.length)}/${newItems.length}`);
+            console.log(`번역 완료: ${Math.min(i + batchSize, newItems.length)}/${newItems.length} (실패: ${translationFailedCount}개)`);
         }
         
         // 4. 저장
         for (const { item, processed } of translatedItems) {
+            const isKorean = isKoreanSource(item.source);
+            const hasTranslation = processed.translatedTitle && processed.translatedTitle.trim().length > 0;
+            
             await prisma.newsItem.create({ 
               data: {
                 ...item,
-                translatedTitle: processed.translatedTitle || null,
-                category: processed.category
+                translatedTitle: hasTranslation ? processed.translatedTitle : (isKorean ? item.title : null),
+                category: processed.category || item.category || 'Society',
+                translationStatus: hasTranslation || isKorean ? 'DRAFT' : 'PENDING'
               }
             });
             savedCount++;
-            console.log(`✅ [${item.source}]: ${(processed.translatedTitle || item.title).substring(0, 50)}...`);
+            
+            if (hasTranslation || isKorean) {
+                console.log(`✅ [${item.source}]: ${(processed.translatedTitle || item.title).substring(0, 50)}...`);
+            } else {
+                console.warn(`⚠️ [${item.source}]: 번역 없이 저장됨 - ${item.title.substring(0, 50)}...`);
+            }
         }
         
         await prisma.crawlerLog.create({
