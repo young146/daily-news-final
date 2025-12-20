@@ -222,7 +222,7 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                         )}
                         {news.publishedAt && (
                           <div className="text-xs text-gray-400 mt-1">
-                            {new Date(news.publishedAt).toLocaleDateString('ko-KR')}
+                            {new Date(news.publishedAt).toLocaleDateString('ko-KR', { timeZone: 'Asia/Ho_Chi_Minh' })}
                           </div>
                         )}
                       </div>

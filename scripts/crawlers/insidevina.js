@@ -1,5 +1,6 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const { getVietnamTime } = require('../date-utils');
 
 async function crawlInsideVina() {
     console.log('Starting crawl of InsideVina...');
@@ -45,7 +46,7 @@ async function crawlInsideVina() {
                     imageUrl: imageUrl,
                     category: 'Economy',
                     source: 'InsideVina',
-                    publishedAt: new Date(),
+                    publishedAt: getVietnamTime(),
                     status: 'DRAFT'
                 });
             }

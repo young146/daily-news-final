@@ -1,5 +1,6 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const { getVietnamTime } = require('../date-utils');
 
 async function crawlSoraNews24() {
     console.log('Starting crawl of SoraNews24 (펫/여행만)...');
@@ -115,7 +116,7 @@ async function crawlSoraNews24() {
                                     imageUrl: '',
                                     category: cat.category,
                                     source: 'SoraNews24',
-                                    publishedAt: new Date(),
+                                    publishedAt: getVietnamTime(),
                                     status: 'DRAFT'
                                 });
                             });
@@ -178,7 +179,7 @@ async function crawlSoraNews24() {
                                     imageUrl: '',
                                     category: cat.category,
                                     source: 'SoraNews24',
-                                    publishedAt: new Date(),
+                                    publishedAt: getVietnamTime(),
                                     status: 'DRAFT'
                                 });
                             });

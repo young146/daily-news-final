@@ -1,5 +1,6 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const { getVietnamTime } = require('../date-utils');
 
 async function crawlPublicSecurity() {
     console.log('Starting crawl of Public Security News (en.cand.com.vn)...');
@@ -44,7 +45,7 @@ async function crawlPublicSecurity() {
                 imageUrl: '',
                 category,
                 source: 'PublicSecurity',
-                publishedAt: new Date(),
+                publishedAt: getVietnamTime(),
                 status: 'DRAFT'
             });
         });

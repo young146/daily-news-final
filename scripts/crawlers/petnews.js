@@ -1,5 +1,6 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const { getVietnamTime } = require('../date-utils');
 
 /**
  * 펫 뉴스 전문 소스 크롤러
@@ -102,7 +103,7 @@ async function crawlTheDodo() {
                             imageUrl: '',
                             category: 'Culture',
                             source: 'The Dodo',
-                            publishedAt: new Date(),
+                            publishedAt: getVietnamTime(),
                             status: 'DRAFT'
                         });
                         foundWithSelector = true;
@@ -158,7 +159,7 @@ async function crawlTheDodo() {
                             imageUrl: '',
                             category: 'Culture',
                             source: 'The Dodo',
-                            publishedAt: new Date(),
+                            publishedAt: getVietnamTime(),
                             status: 'DRAFT'
                         });
                     });

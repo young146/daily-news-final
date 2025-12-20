@@ -1,5 +1,6 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const { getVietnamTime } = require('../date-utils');
 
 const BASE_URL = 'https://kr.saigoneer.com';
 
@@ -56,7 +57,7 @@ async function crawlSaigoneer() {
                         imageUrl: '',
                         category: cat.category,
                         source: 'Saigoneer',
-                        publishedAt: new Date(),
+                        publishedAt: getVietnamTime(),
                         status: 'DRAFT'
                     });
                 });

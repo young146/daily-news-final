@@ -1,5 +1,6 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const { getVietnamTime } = require('../date-utils');
 
 async function crawlVnExpress() {
     console.log('Starting crawl of VnExpress International...');
@@ -38,7 +39,7 @@ async function crawlVnExpress() {
                     imageUrl: imageUrl,
                     category,
                     source: 'VnExpress',
-                    publishedAt: new Date(),
+                    publishedAt: getVietnamTime(),
                     status: 'DRAFT'
                 });
             }

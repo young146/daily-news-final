@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
 import { translateTitle } from '@/lib/translator';
+import { getVietnamTime } from '@/lib/date-utils';
 
 const prisma = new PrismaClient();
 
@@ -90,7 +91,7 @@ async function crawlVnExpress() {
                 source: 'VnExpress',
                 category: item.category,
                 viewCount: i + 1, // 메인 페이지 순서 (낮을수록 높은 우선순위)
-                publishedAt: new Date(),
+                publishedAt: getVietnamTime(),
                 status: 'DRAFT'
             });
             await new Promise(r => setTimeout(r, 500));
@@ -136,7 +137,7 @@ async function crawlVnExpressVN() {
                 source: 'VnExpress VN',
                 category: 'Economy',
                 viewCount: i + 1, // 메인 페이지 순서
-                publishedAt: new Date(),
+                publishedAt: getVietnamTime(),
                 status: 'DRAFT'
             });
             await new Promise(r => setTimeout(r, 500));
@@ -214,7 +215,7 @@ async function crawlYonhap() {
                     source: 'Yonhap News',
                     category: 'Korea-Vietnam',
                     viewCount: i + 1, // 메인 페이지 순서
-                    publishedAt: new Date(),
+                    publishedAt: getVietnamTime(),
                     status: 'DRAFT'
                 });
                 await new Promise(r => setTimeout(r, 500));
@@ -292,7 +293,7 @@ async function crawlInsideVina() {
                     source: 'InsideVina',
                     category: 'Korea-Vietnam',
                     viewCount: i + 1, // 메인 페이지 순서
-                    publishedAt: new Date(),
+                    publishedAt: getVietnamTime(),
                     status: 'DRAFT'
                 });
                 await new Promise(r => setTimeout(r, 500));
@@ -347,7 +348,7 @@ async function crawlTuoitre() {
                 source: 'TuoiTre',
                 category: 'Society',
                 viewCount: i + 1, // 메인 페이지 순서
-                publishedAt: new Date(),
+                publishedAt: getVietnamTime(),
                 status: 'DRAFT'
             });
             await new Promise(r => setTimeout(r, 500));
@@ -399,7 +400,7 @@ async function crawlThanhNien() {
                 source: 'ThanhNien',
                 category: 'Society',
                 viewCount: i + 1, // 메인 페이지 순서
-                publishedAt: new Date(),
+                publishedAt: getVietnamTime(),
                 status: 'DRAFT'
             });
             await new Promise(r => setTimeout(r, 500));
@@ -468,7 +469,7 @@ async function crawlPublicSecurity() {
                 source: 'PublicSecurity',
                 category: item.category,
                 viewCount: i + 1, // 메인 페이지 순서
-                publishedAt: new Date(),
+                publishedAt: getVietnamTime(),
                 status: 'DRAFT'
             });
             await new Promise(r => setTimeout(r, 500));
@@ -528,7 +529,7 @@ async function crawlSaigoneer() {
                 imageUrl: detail.imageUrl,
                 source: 'Saigoneer',
                 category: item.category,
-                publishedAt: new Date(),
+                publishedAt: getVietnamTime(),
                 status: 'DRAFT'
             });
             await new Promise(r => setTimeout(r, 500));
@@ -602,7 +603,7 @@ async function crawlSoraNews24() {
                 imageUrl: detail.imageUrl,
                 source: 'SoraNews24',
                 category: item.category,
-                publishedAt: new Date(),
+                publishedAt: getVietnamTime(),
                 status: 'DRAFT'
             });
             await new Promise(r => setTimeout(r, 500));
@@ -663,7 +664,7 @@ async function crawlVnExpressTravel() {
                 source: 'VnExpress Travel',
                 category: 'Travel',
                 viewCount: i + 1, // 메인 페이지 순서
-                publishedAt: new Date(),
+                publishedAt: getVietnamTime(),
                 status: 'DRAFT'
             });
             await new Promise(r => setTimeout(r, 500));
@@ -724,7 +725,7 @@ async function crawlVnExpressHealth() {
                 source: 'VnExpress Health',
                 category: 'Health',
                 viewCount: i + 1, // 메인 페이지 순서
-                publishedAt: new Date(),
+                publishedAt: getVietnamTime(),
                 status: 'DRAFT'
             });
             await new Promise(r => setTimeout(r, 500));

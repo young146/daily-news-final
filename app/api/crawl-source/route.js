@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { translateTitle } from '@/lib/translator';
+import { getVietnamTime } from '@/lib/date-utils';
 
 const koreanSources = ['Yonhap', 'Saigoneer'];
 
@@ -129,7 +130,7 @@ async function crawlVnExpressTravel() {
                 source: 'VnExpress Travel',
                 category: 'Travel',
                 viewCount: i + 1,
-                publishedAt: new Date(),
+                publishedAt: getVietnamTime(),
                 status: 'DRAFT'
             });
             await new Promise(r => setTimeout(r, 500));
@@ -203,7 +204,7 @@ async function crawlVnExpressHealth() {
                 source: 'VnExpress Health',
                 category: 'Health',
                 viewCount: i + 1,
-                publishedAt: new Date(),
+                publishedAt: getVietnamTime(),
                 status: 'DRAFT'
             });
             await new Promise(r => setTimeout(r, 500));
