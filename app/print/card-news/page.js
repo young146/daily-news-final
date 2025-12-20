@@ -4,13 +4,33 @@ import { getSeoulWeather, getExchangeRates } from "@/lib/external-data";
 
 // This page renders ONLY the card, with no admin layout.
 // It is located at /print/card-news
-export default async function CardNewsPrintPage() {
-  // 1. Fetch Data - 베트남 시간대 기준으로 오늘 날짜 계산
+export default async function CardNewsPrintPage({ searchParams }) {
+  // 1. 날짜 파라미터 파싱 (?v=MMDD 형식)
+  // Next.js 15에서는 searchParams가 Promise일 수 있으므로 await 처리
+  const params = searchParams instanceof Promise ? await searchParams : searchParams;
+  let targetDate = null;
+  if (params?.v) {
+    const vParam = params.v;
+    if (vParam && vParam.length === 4) {
+      const month = parseInt(vParam.substring(0, 2), 10);
+      const day = parseInt(vParam.substring(2, 4), 10);
+      const now = new Date();
+      const vietnamTime = new Date(
+        now.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
+      );
+      const year = vietnamTime.getFullYear();
+      targetDate = new Date(year, month - 1, day);
+      targetDate.setHours(0, 0, 0, 0);
+      console.log(`[CardNews Print] Using date from param v=${vParam}: ${targetDate.toISOString()}`);
+    }
+  }
+
+  // 2. Fetch Data - 날짜 파라미터가 있으면 해당 날짜, 없으면 오늘 날짜 사용
   const now = new Date();
   const vietnamTime = new Date(
     now.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
   );
-  const today = new Date(
+  const today = targetDate || new Date(
     vietnamTime.getFullYear(),
     vietnamTime.getMonth(),
     vietnamTime.getDate()

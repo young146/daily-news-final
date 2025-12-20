@@ -197,6 +197,42 @@ export async function POST(request) {
 
     const title = topNews.translatedTitle || topNews.title || "Daily News Card";
 
+    // 1.5. 카드 뉴스용 5개 뉴스 선택 (탑뉴스 1개 + 일반 뉴스 4개)
+    // 먼저 이전 카드 뉴스 플래그 초기화 (선택사항, 필요시 주석 해제)
+    // await prisma.newsItem.updateMany({
+    //   where: { isCardNews: true },
+    //   data: { isCardNews: false },
+    // });
+
+    // 일반 뉴스 4개 선택 (탑뉴스 제외)
+    const topNewsIds = [topNews.id];
+    const cardNewsItems = await prisma.newsItem.findMany({
+      where: {
+        id: { notIn: topNewsIds },
+        isTopNews: false,
+        isPublishedMain: true,
+        status: 'PUBLISHED',
+        OR: [
+          { publishedAt: { gte: today } },
+          { publishedAt: null },
+        ],
+      },
+      orderBy: [
+        { publishedAt: "desc" },
+        { updatedAt: "desc" },
+        { createdAt: "desc" },
+      ],
+      take: 4,
+    });
+
+    // 선택된 5개 뉴스에 isCardNews 플래그 설정
+    const selectedNewsIds = [topNews.id, ...cardNewsItems.map(n => n.id)];
+    await prisma.newsItem.updateMany({
+      where: { id: { in: selectedNewsIds } },
+      data: { isCardNews: true },
+    });
+    console.log(`[CardNews API] ✅ Selected ${selectedNewsIds.length} news items for card news (Top: 1, Others: ${cardNewsItems.length})`);
+
     // 2. 이미지가 업로드되지 않았으면 서버에서 생성
     // (이미 위에서 FormData 처리 완료, imageBuffer가 null이면 서버에서 생성)
     if (!imageBuffer) {
@@ -359,9 +395,14 @@ export async function POST(request) {
     console.log(
       `[CardNews API] Publishing to WordPress with date: ${dateStr}, title: ${title}`
     );
+    
+    // 날짜 파라미터 생성 (MMDD 형식)
+    const dateParam = `${month}${day}`;
+    const terminalUrlWithDate = `https://chaovietnam.co.kr/daily-news-terminal/?v=${dateParam}`;
+    
     const result = await publishCardNewsToWordPress(imageBuffer, dateStr, {
       topNewsTitle: title,
-      terminalUrl: "https://chaovietnam.co.kr/daily-news-terminal/",
+      terminalUrl: terminalUrlWithDate,
     });
 
     console.log("[CardNews API] Success:", result);

@@ -13,8 +13,8 @@ const sourceNames = {
   'thanhnien': 'ThanhNien',
   'publicsecurity': 'PublicSecurity',
   'saigoneer': 'Saigoneer',
-  'soranews24': 'SoraNews24',
-  'petnews': 'PetNews',
+  'thedodo': 'The Dodo',
+  'petmd': 'PetMD',
   'vnexpress-travel': 'VnExpress Travel',
   'vnexpress-health': 'VnExpress Health',
 };
@@ -225,8 +225,8 @@ const crawlers = {
   'thanhnien': () => require('@/scripts/crawlers/thanhnien')(),
   'publicsecurity': () => require('@/scripts/crawlers/publicsecurity')(),
   'saigoneer': () => require('@/scripts/crawlers/saigoneer')(),
-  'soranews24': () => require('@/scripts/crawlers/soranews24')(),
-  'petnews': () => require('@/scripts/crawlers/petnews')(),
+  'thedodo': () => require('@/scripts/crawlers/thedodo')(),
+  'petmd': () => require('@/scripts/crawlers/petmd')(),
   'vnexpress-travel': () => crawlVnExpressTravel(),
   'vnexpress-health': () => crawlVnExpressHealth(),
 };
