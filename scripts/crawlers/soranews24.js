@@ -1,262 +1,206 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const Parser = require('rss-parser');
 const { getVietnamTime } = require('../date-utils');
 
 async function crawlSoraNews24() {
-    console.log('Starting crawl of SoraNews24 (펫/여행만)...');
+    console.log('Starting crawl of SoraNews24 via RSS (펫/여행만)...');
+    const parser = new Parser({
+        customFields: {
+            item: [
+                ['content:encoded', 'contentEncoded'],
+                ['media:content', 'mediaContent'],
+                ['media:thumbnail', 'mediaThumbnail'],
+            ]
+        }
+    });
+
     try {
-        const categories = [
-            { url: 'https://soranews24.com/category/animals/', category: 'Culture', name: 'Animals/Pets' },
-            { url: 'https://soranews24.com/category/travel/', category: 'Culture', name: 'Travel' },
+        // RSS 피드 URL (WordPress 기본 형식)
+        const rssFeeds = [
+            { 
+                url: 'https://soranews24.com/category/animals/feed/', 
+                category: 'Culture', 
+                name: 'Animals/Pets' 
+            },
+            { 
+                url: 'https://soranews24.com/category/travel/feed/', 
+                category: 'Culture', 
+                name: 'Travel' 
+            },
+            // 전체 피드도 시도 (카테고리별이 안 되면)
+            { 
+                url: 'https://soranews24.com/feed/', 
+                category: 'Culture', 
+                name: 'All' 
+            },
         ];
 
         const listItems = [];
         const seen = new Set();
 
-        for (const cat of categories) {
+        // RSS 피드에서 기사 수집
+        for (const feed of rssFeeds) {
             try {
-                console.log(`Fetching ${cat.name}: ${cat.url}`);
+                console.log(`📡 Fetching RSS feed: ${feed.name} (${feed.url})`);
                 
-                // 첫 페이지와 두 번째 페이지까지 크롤링 (더 많은 기사 수집)
-                for (let page = 1; page <= 2; page++) {
-                    const pageUrl = page === 1 ? cat.url : `${cat.url}page/${page}/`;
-                    
-                    try {
-                        console.log(`  Fetching page ${page}: ${pageUrl}`);
-                        const { data } = await axios.get(pageUrl, {
-                            timeout: 20000,
-                            headers: {
-                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                                'Accept-Language': 'en-US,en;q=0.9',
-                                'Referer': 'https://soranews24.com/'
-                            },
-                            validateStatus: function (status) {
-                                return status < 500; // 5xx 에러만 throw
-                            }
-                        });
-                        
-                        if (!data) {
-                            console.warn(`  Page ${page}: No data received`);
-                            break;
-                        }
-                        
-                        const $ = cheerio.load(data);
-                        console.log(`  Page ${page}: HTML loaded, length: ${data.length} chars`);
-
-                        // 더 포괄적인 셀렉터 사용: 기사 링크를 찾기
-                        const currentYear = new Date().getFullYear();
-                        const lastYear = currentYear - 1;
-                        const itemsBeforePage = listItems.length;
-                        
-                        // 먼저 기사 목록을 찾기 위한 다양한 셀렉터 시도
-                        const articleSelectors = [
-                            'article a',
-                            '.entry-title a',
-                            '.post-title a',
-                            'h2.entry-title a',
-                            'h3.entry-title a',
-                            '.post a',
-                            '.entry a',
-                            'main a',
-                            '.content a'
-                        ];
-                        
-                        let foundLinks = new Set();
-                        
-                        // 각 셀렉터로 기사 링크 찾기
-                        for (const selector of articleSelectors) {
-                            $(selector).each((index, element) => {
-                                if (listItems.length >= 30) return;
-                                
-                                let href = $(element).attr('href') || '';
-                                let title = $(element).text().trim() || $(element).find('span').text().trim();
-                                
-                                if (!href || !title) return;
-                                
-                                // 상대 경로를 절대 경로로 변환
-                                if (href.startsWith('/')) {
-                                    href = `https://soranews24.com${href}`;
-                                } else if (!href.startsWith('http')) {
-                                    return;
-                                }
-                                
-                                // soranews24.com 도메인 확인
-                                if (!href.includes('soranews24.com')) return;
-                                
-                                // 제목 필터링 (너무 짧거나 길면 제외)
-                                title = title.replace(/\s+/g, ' ').trim();
-                                if (title.length < 10 || title.length > 200) return;
-                                
-                                // 제외할 URL 패턴
-                                if (href.includes('/category/') && !href.match(/\/\d{4}\//)) return; // 카테고리 페이지 (년도 없는 경우)
-                                if (href.includes('/tag/')) return;
-                                if (href.includes('/author/')) return;
-                                if (href.includes('/page/')) return;
-                                if (href.includes('/search')) return;
-                                if (href.endsWith('/category/animals/') || href.endsWith('/category/travel/')) return;
-                                
-                                // 기사 URL 패턴 확인 (년도 포함 또는 숫자로 끝나는 URL)
-                                const isArticleUrl = href.match(/\/\d{4}\//) || // 년도 포함
-                                                    href.match(/\/\d{4}\/\d{2}\//) || // 년도/월 포함
-                                                    href.match(/\/\d+\/?$/) || // 숫자로 끝남
-                                                    href.match(/\/[a-z0-9-]+\/?$/); // 슬래시로 끝나는 기사 URL
-                                
-                                if (!isArticleUrl) return;
-                                
-                                // 중복 체크
-                                if (seen.has(href) || foundLinks.has(href)) return;
-                                foundLinks.add(href);
-                                seen.add(href);
-                                
-                                listItems.push({
-                                    title,
-                                    summary: '',
-                                    originalUrl: href,
-                                    imageUrl: '',
-                                    category: cat.category,
-                                    source: 'SoraNews24',
-                                    publishedAt: getVietnamTime(),
-                                    status: 'DRAFT'
-                                });
-                            });
-                            
-                            if (listItems.length > itemsBeforePage) {
-                                console.log(`  Page ${page}: Found items using selector: ${selector}`);
-                                break; // 셀렉터가 작동하면 중단
-                            }
-                        }
-                        
-                        // 셀렉터로 찾지 못한 경우, 모든 링크를 확인 (더 느슨한 필터링)
-                        if (listItems.length === itemsBeforePage) {
-                            console.log(`  Page ${page}: Trying fallback method - checking all links`);
-                            $('a[href]').each((index, element) => {
-                                if (listItems.length >= 30) return;
-                                
-                                let href = $(element).attr('href') || '';
-                                let title = $(element).text().trim();
-                                
-                                // 상대 경로를 절대 경로로 변환
-                                if (href.startsWith('/')) {
-                                    href = `https://soranews24.com${href}`;
-                                } else if (!href.startsWith('http')) {
-                                    return;
-                                }
-                                
-                                // soranews24.com 도메인 확인
-                                if (!href.includes('soranews24.com')) return;
-                                
-                                // 제목 필터링
-                                title = title.replace(/\s+/g, ' ').trim();
-                                if (!title || title.length < 10 || title.length > 200) return;
-                                
-                                // 제외할 URL 패턴
-                                if (href.includes('/tag/') || 
-                                    href.includes('/author/') || 
-                                    href.includes('/page/') ||
-                                    href.includes('/search') ||
-                                    href.endsWith('/category/animals/') ||
-                                    href.endsWith('/category/travel/') ||
-                                    href === 'https://soranews24.com/' ||
-                                    href === 'https://soranews24.com') return;
-                                
-                                // 기사 URL인지 확인 (년도 포함 또는 적절한 패턴)
-                                const hasYear = href.match(/\/\d{4}\//);
-                                const hasArticlePattern = href.match(/\/\d{4}\/\d{2}\//) || 
-                                                         href.match(/\/[a-z0-9-]{10,}\/?$/);
-                                
-                                // 카테고리 페이지는 제외하되, 년도가 포함된 경우는 허용
-                                if (href.includes('/category/') && !hasYear) return;
-                                
-                                // 중복 체크
-                                if (seen.has(href)) return;
-                                seen.add(href);
-                                
-                                listItems.push({
-                                    title,
-                                    summary: '',
-                                    originalUrl: href,
-                                    imageUrl: '',
-                                    category: cat.category,
-                                    source: 'SoraNews24',
-                                    publishedAt: getVietnamTime(),
-                                    status: 'DRAFT'
-                                });
-                            });
-                        }
-                        
-                        const foundInPage = listItems.length - itemsBeforePage;
-                        
-                        if (foundInPage > 0) {
-                            console.log(`  Page ${page}: Found ${foundInPage} items`);
-                            // 처음 3개 아이템의 URL 로그
-                            listItems.slice(itemsBeforePage, itemsBeforePage + Math.min(3, foundInPage)).forEach((item, idx) => {
-                                console.log(`    [${idx + 1}] ${item.title.substring(0, 50)}... -> ${item.originalUrl}`);
-                            });
-                        } else {
-                            console.warn(`  Page ${page}: No items found. Total links checked: ${$('a[href]').length}`);
-                        }
-                        await new Promise(r => setTimeout(r, 500));
-                    } catch (pageError) {
-                        console.error(`  Page ${page} error:`, pageError.message);
-                        if (page === 1) {
-                            // 첫 페이지 에러는 로그만 남기고 계속 진행
-                            console.warn(`  First page failed, but continuing...`);
-                            break;
-                        }
-                        console.log(`  Page ${page} not available, skipping...`);
-                        break; // 다음 페이지가 없으면 중단
-                    }
+                const feedData = await parser.parseURL(feed.url);
+                
+                if (!feedData || !feedData.items || feedData.items.length === 0) {
+                    console.warn(`  ⚠️ No items found in RSS feed: ${feed.url}`);
+                    continue;
                 }
-
-                await new Promise(r => setTimeout(r, 300));
+                
+                console.log(`  ✅ Found ${feedData.items.length} items in RSS feed`);
+                
+                // 카테고리 필터링 (전체 피드인 경우)
+                const filteredItems = feed.url.includes('/feed/') && !feed.url.includes('/category/')
+                    ? feedData.items.filter(item => {
+                        // URL에서 카테고리 확인
+                        const url = item.link || '';
+                        return url.includes('/category/animals/') || url.includes('/category/travel/');
+                    })
+                    : feedData.items;
+                
+                for (const item of filteredItems) {
+                    if (listItems.length >= 30) break; // 최대 30개로 제한
+                    
+                    const url = item.link || item.guid || '';
+                    if (!url || seen.has(url)) continue;
+                    
+                    // URL 유효성 확인
+                    if (!url.includes('soranews24.com')) continue;
+                    
+                    // 제목 필터링
+                    const title = (item.title || '').trim();
+                    if (!title || title.length < 10 || title.length > 200) continue;
+                    
+                    seen.add(url);
+                    
+                    // 발행 날짜 파싱
+                    let publishedAt = getVietnamTime();
+                    if (item.pubDate) {
+                        try {
+                            publishedAt = new Date(item.pubDate);
+                            // 베트남 시간대 기준으로 변환
+                            publishedAt = new Date(
+                                publishedAt.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
+                            );
+                        } catch (e) {
+                            console.warn(`  ⚠️ Failed to parse date for ${url}: ${e.message}`);
+                        }
+                    }
+                    
+                    // 이미지 URL 추출
+                    let imageUrl = '';
+                    if (item.contentEncoded) {
+                        // content:encoded에서 이미지 추출
+                        const $content = cheerio.load(item.contentEncoded);
+                        const firstImg = $content('img').first().attr('src');
+                        if (firstImg) imageUrl = firstImg;
+                    }
+                    if (!imageUrl && item.content) {
+                        // content에서 이미지 추출
+                        const imgMatch = item.content.match(/<img[^>]+src="([^"]+)"/i);
+                        if (imgMatch) imageUrl = imgMatch[1];
+                    }
+                    if (!imageUrl && item.mediaThumbnail) {
+                        imageUrl = item.mediaThumbnail.$.url || item.mediaThumbnail;
+                    }
+                    if (!imageUrl && item.mediaContent) {
+                        imageUrl = item.mediaContent.$.url || item.mediaContent;
+                    }
+                    
+                    // 요약 추출
+                    let summary = '';
+                    if (item.contentSnippet) {
+                        summary = item.contentSnippet.substring(0, 300);
+                    } else if (item.content) {
+                        const $content = cheerio.load(item.content);
+                        summary = $content.text().substring(0, 300);
+                    } else if (item.description) {
+                        const $desc = cheerio.load(item.description);
+                        summary = $desc.text().substring(0, 300);
+                    }
+                    
+                    listItems.push({
+                        title,
+                        summary: summary.trim(),
+                        originalUrl: url,
+                        imageUrl: imageUrl.trim(),
+                        category: feed.category,
+                        source: 'SoraNews24',
+                        publishedAt: publishedAt,
+                        status: 'DRAFT'
+                    });
+                }
+                
+                console.log(`  ✅ Added ${filteredItems.length} items from ${feed.name} RSS feed`);
+                await new Promise(r => setTimeout(r, 500)); // 피드 간 딜레이
+                
             } catch (e) {
-                console.error(`SoraNews24 category error (${cat.name}):`, e.message);
-                console.error(`  Stack:`, e.stack?.split('\n').slice(0, 3).join('\n'));
-                // 카테고리 에러는 로그만 남기고 계속 진행
+                console.error(`  ❌ RSS feed error (${feed.name}):`, e.message);
+                // RSS 피드 에러는 로그만 남기고 계속 진행
+                continue;
             }
         }
 
-        console.log(`SoraNews24 list items found: ${listItems.length}`);
+        console.log(`SoraNews24: Total ${listItems.length} items found via RSS`);
         
         if (listItems.length === 0) {
-            console.warn('⚠️ SoraNews24: No items found. Check selectors and URL structure.');
+            console.warn('⚠️ SoraNews24: No items found from RSS feeds. Check RSS feed URLs.');
+            return [];
         }
 
+        // RSS에서 이미 충분한 정보를 얻었지만, 본문 내용이 없는 경우에만 상세 페이지 크롤링
         const detailedItems = [];
         for (const item of listItems) {
-            try {
-                console.log(`Fetching details for: ${item.title.substring(0, 50)}...`);
-                const { data: detailData } = await axios.get(item.originalUrl, {
-                    timeout: 15000,
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            // RSS에서 본문이 없거나 불완전한 경우에만 상세 페이지 크롤링
+            if (!item.summary || item.summary.length < 50) {
+                try {
+                    console.log(`  📄 Fetching full content for: ${item.title.substring(0, 50)}...`);
+                    const { data: detailData } = await axios.get(item.originalUrl, {
+                        timeout: 15000,
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                        }
+                    });
+                    const $detail = cheerio.load(detailData);
+
+                    // 본문 추출
+                    let content = $detail('.entry-content, .post-content, .article-body, .post').html();
+                    if (!content) {
+                        // 대체 셀렉터 시도
+                        content = $detail('article').html() || $detail('.content').html();
                     }
-                });
-                const $detail = cheerio.load(detailData);
 
-                let content = $detail('.entry-content, .post-content, .article-body').html();
+                    // 이미지가 없으면 OG 이미지 시도
+                    if (!item.imageUrl) {
+                        const metaImage = $detail('meta[property="og:image"]').attr('content');
+                        if (metaImage) {
+                            item.imageUrl = metaImage;
+                        }
+                    }
 
-                const metaImage = $detail('meta[property="og:image"]').attr('content');
-                if (metaImage) {
-                    item.imageUrl = metaImage;
+                    if (content) {
+                        item.content = content.trim();
+                        const textContent = $detail('.entry-content, .post-content, article').text().trim();
+                        if (textContent && (!item.summary || item.summary.length < 50)) {
+                            item.summary = textContent.substring(0, 300);
+                        }
+                    }
+
+                    await new Promise(r => setTimeout(r, 500));
+                } catch (err) {
+                    console.warn(`  ⚠️ Failed to fetch details for ${item.originalUrl}: ${err.message}`);
+                    // 에러가 나도 RSS에서 얻은 정보는 유지
                 }
-
-                if (content) {
-                    item.content = content.trim();
-                    const textContent = $detail('.entry-content').text().trim();
-                    item.summary = textContent.substring(0, 300);
-                }
-
-                detailedItems.push(item);
-                await new Promise(r => setTimeout(r, 500));
-            } catch (err) {
-                console.error(`Error fetching details for ${item.originalUrl}:`, err.message);
-                detailedItems.push(item);
             }
+            
+            detailedItems.push(item);
         }
 
-        console.log(`SoraNews24: ${detailedItems.length} items with details`);
+        console.log(`✅ SoraNews24: ${detailedItems.length} items processed (RSS + details)`);
         return detailedItems;
     } catch (error) {
         console.error('Error crawling SoraNews24:', error.message);

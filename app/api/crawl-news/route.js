@@ -543,74 +543,184 @@ async function crawlSaigoneer() {
 
 async function crawlSoraNews24() {
     const cheerio = await import('cheerio');
+    const Parser = (await import('rss-parser')).default;
     const items = [];
+    
     try {
-        console.log('Crawling SoraNews24 (펫/여행만)...');
+        console.log('📡 Crawling SoraNews24 via RSS (펫/여행만)...');
         
-        // 펫과 여행 카테고리만 크롤링
-        const categories = [
-            { url: 'https://soranews24.com/category/animals/', name: 'Animals/Pets' },
-            { url: 'https://soranews24.com/category/travel/', name: 'Travel' },
+        const parser = new Parser({
+            customFields: {
+                item: [
+                    ['content:encoded', 'contentEncoded'],
+                    ['media:content', 'mediaContent'],
+                    ['media:thumbnail', 'mediaThumbnail'],
+                ]
+            }
+        });
+
+        // RSS 피드 URL (WordPress 기본 형식)
+        const rssFeeds = [
+            { 
+                url: 'https://soranews24.com/category/animals/feed/', 
+                category: 'Culture', 
+                name: 'Animals/Pets' 
+            },
+            { 
+                url: 'https://soranews24.com/category/travel/feed/', 
+                category: 'Culture', 
+                name: 'Travel' 
+            },
+            // 전체 피드도 시도 (카테고리별이 안 되면)
+            { 
+                url: 'https://soranews24.com/feed/', 
+                category: 'Culture', 
+                name: 'All' 
+            },
         ];
-        
-        const listItems = [];
+
         const seen = new Set();
-        
-        for (const cat of categories) {
+
+        // RSS 피드에서 기사 수집
+        for (const feed of rssFeeds) {
             try {
-                const { data } = await fetchWithRetry(cat.url);
-                const $ = cheerio.load(data);
+                console.log(`  📡 Fetching RSS feed: ${feed.name} (${feed.url})`);
                 
-                $('a').each((i, el) => {
-                    if (listItems.length >= 15) return;
-                    
-                    const href = $(el).attr('href') || '';
-                    let title = $(el).text().trim();
-                    
-                    if (!title || title.length < 30 || title.length > 200) return;
-                    
-                    const currentYear = new Date().getFullYear();
-                    const lastYear = currentYear - 1;
-                    if (!href.includes(`soranews24.com/${currentYear}/`) &&
-                        !href.includes(`soranews24.com/${lastYear}/`)) return;
-                    
-                    if (seen.has(href)) return;
-                    seen.add(href);
-                    
-                    listItems.push({ title, url: href, category: 'Culture' });
-                });
+                const feedData = await parser.parseURL(feed.url);
                 
-                await new Promise(r => setTimeout(r, 500));
+                if (!feedData || !feedData.items || feedData.items.length === 0) {
+                    console.warn(`    ⚠️ No items found in RSS feed: ${feed.url}`);
+                    continue;
+                }
+                
+                console.log(`    ✅ Found ${feedData.items.length} items in RSS feed`);
+                
+                // 카테고리 필터링 (전체 피드인 경우)
+                const filteredItems = feed.url.includes('/feed/') && !feed.url.includes('/category/')
+                    ? feedData.items.filter(item => {
+                        const url = item.link || '';
+                        return url.includes('/category/animals/') || url.includes('/category/travel/');
+                    })
+                    : feedData.items;
+                
+                for (const item of filteredItems) {
+                    if (items.length >= 30) break; // 최대 30개로 제한
+                    
+                    const url = item.link || item.guid || '';
+                    if (!url || seen.has(url)) continue;
+                    
+                    // URL 유효성 확인
+                    if (!url.includes('soranews24.com')) continue;
+                    
+                    // 제목 필터링
+                    const title = (item.title || '').trim();
+                    if (!title || title.length < 10 || title.length > 200) continue;
+                    
+                    seen.add(url);
+                    
+                    // 발행 날짜 파싱
+                    let publishedAt = getVietnamTime();
+                    if (item.pubDate) {
+                        try {
+                            publishedAt = new Date(item.pubDate);
+                            // 베트남 시간대 기준으로 변환
+                            publishedAt = new Date(
+                                publishedAt.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
+                            );
+                        } catch (e) {
+                            console.warn(`    ⚠️ Failed to parse date for ${url}: ${e.message}`);
+                        }
+                    }
+                    
+                    // 이미지 URL 추출
+                    let imageUrl = '';
+                    if (item.contentEncoded) {
+                        const $content = cheerio.load(item.contentEncoded);
+                        const firstImg = $content('img').first().attr('src');
+                        if (firstImg) imageUrl = firstImg;
+                    }
+                    if (!imageUrl && item.content) {
+                        const imgMatch = item.content.match(/<img[^>]+src="([^"]+)"/i);
+                        if (imgMatch) imageUrl = imgMatch[1];
+                    }
+                    if (!imageUrl && item.mediaThumbnail) {
+                        imageUrl = item.mediaThumbnail.$.url || item.mediaThumbnail;
+                    }
+                    if (!imageUrl && item.mediaContent) {
+                        imageUrl = item.mediaContent.$.url || item.mediaContent;
+                    }
+                    
+                    // 요약 추출
+                    let summary = '';
+                    if (item.contentSnippet) {
+                        summary = item.contentSnippet.substring(0, 300);
+                    } else if (item.content) {
+                        const $content = cheerio.load(item.content);
+                        summary = $content.text().substring(0, 300);
+                    } else if (item.description) {
+                        const $desc = cheerio.load(item.description);
+                        summary = $desc.text().substring(0, 300);
+                    }
+                    
+                    // 본문 추출
+                    let content = '';
+                    if (item.contentEncoded) {
+                        content = item.contentEncoded;
+                    } else if (item.content) {
+                        content = item.content;
+                    }
+                    
+                    items.push({
+                        title,
+                        summary: summary.trim(),
+                        content: content.trim(),
+                        originalUrl: url,
+                        imageUrl: imageUrl.trim(),
+                        category: feed.category,
+                        source: 'SoraNews24',
+                        publishedAt: publishedAt,
+                        status: 'DRAFT'
+                    });
+                }
+                
+                console.log(`    ✅ Added ${filteredItems.length} items from ${feed.name} RSS feed`);
+                await new Promise(r => setTimeout(r, 500)); // 피드 간 딜레이
+                
             } catch (e) {
-                console.error(`SoraNews24 category error (${cat.name}):`, e.message);
+                console.error(`    ❌ RSS feed error (${feed.name}):`, e.message);
+                continue;
             }
         }
         
-        console.log(`SoraNews24 list items found: ${listItems.length}`);
-        
-        for (const item of listItems) {
-            const detail = await fetchDetailPage(item.url, ['.entry-content', '.post-content', '.article-body']);
-            
-            const summary = detail.content ? 
-                cheerio.load(detail.content).text().trim().substring(0, 300) : 
-                item.title;
-            
-            items.push({
-                title: item.title,
-                summary: summary,
-                content: detail.content,
-                originalUrl: item.url,
-                imageUrl: detail.imageUrl,
-                source: 'SoraNews24',
-                category: item.category,
-                publishedAt: getVietnamTime(),
-                status: 'DRAFT'
-            });
-            await new Promise(r => setTimeout(r, 500));
+        // 본문이 없는 경우에만 상세 페이지 크롤링
+        for (const item of items) {
+            if (!item.content || item.content.length < 100) {
+                try {
+                    console.log(`  📄 Fetching full content for: ${item.title.substring(0, 50)}...`);
+                    const detail = await fetchDetailPage(item.originalUrl, ['.entry-content', '.post-content', '.article-body', 'article']);
+                    
+                    if (detail.content) {
+                        item.content = detail.content;
+                        const $content = cheerio.load(detail.content);
+                        if (!item.summary || item.summary.length < 50) {
+                            item.summary = $content.text().substring(0, 300);
+                        }
+                    }
+                    
+                    if (!item.imageUrl && detail.imageUrl) {
+                        item.imageUrl = detail.imageUrl;
+                    }
+                    
+                    await new Promise(r => setTimeout(r, 500));
+                } catch (err) {
+                    console.warn(`  ⚠️ Failed to fetch details for ${item.originalUrl}: ${err.message}`);
+                }
+            }
         }
-        console.log(`SoraNews24: ${items.length} items`);
+        
+        console.log(`✅ SoraNews24: ${items.length} items processed (RSS)`);
     } catch (e) {
-        console.error('SoraNews24 crawl error:', e.message);
+        console.error('❌ SoraNews24 RSS crawl error:', e.message);
     }
     return items;
 }
