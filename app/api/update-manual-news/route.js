@@ -178,7 +178,7 @@ export async function PUT(request) {
     const sourceAttribution = `
     <div class="news-source-header">
         <div class="news-source-info"><strong>📰 출처:</strong> ${source}</div>
-        <div class="news-source-info"><strong>📅 날짜:</strong> ${new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Ho_Chi_Minh' })}</div>
+        <div class="news-source-info"><strong>📅 날짜:</strong> ${new Date().toLocaleDateString('ko-KR')}</div>
     </div>`;
 
     let wpContent = sourceAttribution + bodyStyle;

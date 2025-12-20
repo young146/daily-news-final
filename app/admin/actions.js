@@ -44,13 +44,6 @@ export async function publishItemAction(id, target) {
     const item = await prisma.newsItem.findUnique({ where: { id } });
     if (!item) throw new Error("Item not found");
 
-    // 베트남 시간대 기준으로 현재 시간 계산 (쿼리와 동일한 로직)
-    const now = new Date();
-    const vietnamTime = new Date(
-      now.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
-    );
-    const publishedAt = vietnamTime; // 베트남 시간대 기준 시간 저장
-
     const data = {};
 
     if (target === "main") {
@@ -63,7 +56,7 @@ export async function publishItemAction(id, target) {
         data.wordpressMediaId = result.mediaId;
       }
       data.isPublishedMain = true;
-      data.publishedAt = publishedAt; // 베트남 시간대 기준으로 저장 (쿼리와 일치)
+      data.publishedAt = new Date(); // WordPress 발행 시점 기록 (근본 해결)
       data.status = "PUBLISHED";
     } else if (target === "daily") {
       // Publish to Main Site only (no separate summary post needed)
@@ -77,7 +70,7 @@ export async function publishItemAction(id, target) {
       }
       data.isPublishedMain = true;
       data.isPublishedDaily = true;
-      data.publishedAt = publishedAt; // 베트남 시간대 기준으로 저장 (쿼리와 일치)
+      data.publishedAt = new Date();
       data.status = "PUBLISHED";
     } else if (target === "sns") {
       await postToSNS(item, "facebook");

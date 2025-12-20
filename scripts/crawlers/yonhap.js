@@ -1,6 +1,5 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
-const { getVietnamTime } = require('../date-utils');
 
 async function crawlYonhap() {
     console.log('Starting crawl of Yonhap News (Asia/Australia)...');
@@ -37,7 +36,7 @@ async function crawlYonhap() {
                     imageUrl: imageUrl,
                     category: 'Society', // Default
                     source: 'Yonhap News',
-                    publishedAt: getVietnamTime(), // Approximate
+                    publishedAt: new Date(), // Approximate
                     status: 'DRAFT'
                 });
             }

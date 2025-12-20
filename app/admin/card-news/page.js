@@ -17,19 +17,15 @@ async function getData() {
   );
   today.setHours(0, 0, 0, 0);
 
-  // 1. 탑뉴스 리스트 가져오기 (최대 2개) - 발행된 뉴스 중에서 isTopNews=true인 것만, 오늘 날짜 기준
+  // 1. 탑뉴스 리스트 가져오기 (최대 2개) - 발행된 뉴스 중에서 isTopNews=true인 것만
   const topNewsList = await prisma.newsItem.findMany({
     where: {
       isTopNews: true,
       status: 'PUBLISHED', // 발행된 뉴스만
-      OR: [
-        { publishedAt: { gte: today } }, // 오늘 발행된 뉴스
-        { publishedAt: null }, // publishedAt이 없는 경우도 포함 (하위 호환성)
-      ],
     },
     orderBy: [
-      { publishedAt: "desc" }, // publishedAt 우선 정렬
       { updatedAt: "desc" },
+      { publishedAt: "desc" },
       { createdAt: "desc" },
     ],
     take: 2,

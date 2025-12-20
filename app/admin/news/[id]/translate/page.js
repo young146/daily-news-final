@@ -6,21 +6,6 @@ const prisma = new PrismaClient();
 async function getNewsItem(id) {
     return await prisma.newsItem.findUnique({
         where: { id },
-        select: {
-            id: true,
-            title: true,
-            summary: true,
-            content: true,
-            originalUrl: true,
-            imageUrl: true,
-            wordpressImageUrl: true,
-            category: true,
-            source: true,
-            translatedTitle: true,
-            translatedSummary: true,
-            translatedContent: true,
-            translationStatus: true,
-        },
     });
 }
 

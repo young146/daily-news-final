@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { translateTitle } from '@/lib/translator';
-import { getVietnamTime } from '@/lib/date-utils';
 
 const koreanSources = ['Yonhap', 'Saigoneer'];
 
@@ -14,8 +13,8 @@ const sourceNames = {
   'thanhnien': 'ThanhNien',
   'publicsecurity': 'PublicSecurity',
   'saigoneer': 'Saigoneer',
-  'thedodo': 'The Dodo',
-  'petmd': 'PetMD',
+  'soranews24': 'SoraNews24',
+  'petnews': 'PetNews',
   'vnexpress-travel': 'VnExpress Travel',
   'vnexpress-health': 'VnExpress Health',
 };
@@ -69,6 +68,153 @@ async function fetchDetailPage(url, contentSelectors, options = {}) {
     }
 }
 
+async function crawlVnExpressTravel() {
+    const cheerio = await import('cheerio');
+    const items = [];
+    try {
+        console.log('[Crawl] Crawling VnExpress Travel...');
+        const { data } = await fetchWithRetry('https://vnexpress.net/du-lich');
+        const $ = cheerio.load(data);
+        
+        console.log('[Crawl] Page loaded, checking selectors...');
+        
+        const listItems = [];
+        const seen = new Set();
+        
+        // 디버깅: 각 선택자로 찾은 요소 수 확인
+        const selectors = ['.item-news', '.item-topstory', 'article.item-news', 'h3 a', 'h2 a', '.title-news a', '.title_news a'];
+        selectors.forEach(selector => {
+            const count = $(selector).length;
+            if (count > 0) {
+                console.log(`[Crawl] Selector "${selector}": found ${count} elements`);
+            }
+        });
+        
+        $('.item-news, .item-topstory, article.item-news, h3 a, h2 a, .title-news a, .title_news a').each((index, el) => {
+            if (listItems.length >= 10) return false;
+            
+            let titleEl, url;
+            if ($(el).is('a')) {
+                titleEl = $(el);
+                url = $(el).attr('href');
+            } else {
+                titleEl = $(el).find('.title-news a, .title_news a, h3 a, h2 a, a').first();
+                url = titleEl.attr('href');
+            }
+            
+            const title = titleEl.text().trim();
+            const summary = $(el).find('.description a, .lead_news_site a').text().trim() || '';
+            
+            if (title && url && title.length > 20 && !seen.has(url)) {
+                seen.add(url);
+                if (!url.startsWith('http')) {
+                    url = `https://vnexpress.net${url}`;
+                }
+                listItems.push({ title, summary, url });
+                console.log(`[Crawl] Found item ${listItems.length}: ${title.substring(0, 50)}...`);
+            }
+        });
+        
+        console.log(`[Crawl] Total list items found: ${listItems.length}`);
+        
+        for (let i = 0; i < listItems.length; i++) {
+            const item = listItems[i];
+            const detail = await fetchDetailPage(item.url, ['.fck_detail', 'article.fck_detail', '.content_detail']);
+            items.push({
+                title: item.title,
+                summary: item.summary || item.title,
+                content: detail.content,
+                originalUrl: item.url,
+                imageUrl: detail.imageUrl,
+                source: 'VnExpress Travel',
+                category: 'Travel',
+                viewCount: i + 1,
+                publishedAt: new Date(),
+                status: 'DRAFT'
+            });
+            await new Promise(r => setTimeout(r, 500));
+        }
+        console.log(`[Crawl] VnExpress Travel: ${items.length} items`);
+    } catch (e) {
+        console.error('[Crawl] VnExpress Travel crawl error:', e.message);
+        console.error('[Crawl] Error stack:', e.stack);
+    }
+    return items;
+}
+
+async function crawlVnExpressHealth() {
+    const cheerio = await import('cheerio');
+    const items = [];
+    try {
+        console.log('[Crawl] Crawling VnExpress Health...');
+        const { data } = await fetchWithRetry('https://vnexpress.net/suc-khoe');
+        const $ = cheerio.load(data);
+        
+        console.log('[Crawl] Page loaded, checking selectors...');
+        
+        const listItems = [];
+        const seen = new Set();
+        
+        // 디버깅: 각 선택자로 찾은 요소 수 확인
+        const selectors = ['.item-news', '.item-topstory', 'article.item-news', 'h3 a', 'h2 a', '.title-news a', '.title_news a'];
+        selectors.forEach(selector => {
+            const count = $(selector).length;
+            if (count > 0) {
+                console.log(`[Crawl] Selector "${selector}": found ${count} elements`);
+            }
+        });
+        
+        $('.item-news, .item-topstory, article.item-news, h3 a, h2 a, .title-news a, .title_news a').each((index, el) => {
+            if (listItems.length >= 10) return false;
+            
+            let titleEl, url;
+            if ($(el).is('a')) {
+                titleEl = $(el);
+                url = $(el).attr('href');
+            } else {
+                titleEl = $(el).find('.title-news a, .title_news a, h3 a, h2 a, a').first();
+                url = titleEl.attr('href');
+            }
+            
+            const title = titleEl.text().trim();
+            const summary = $(el).find('.description a, .lead_news_site a').text().trim() || '';
+            
+            if (title && url && title.length > 20 && !seen.has(url)) {
+                seen.add(url);
+                if (!url.startsWith('http')) {
+                    url = `https://vnexpress.net${url}`;
+                }
+                listItems.push({ title, summary, url });
+                console.log(`[Crawl] Found item ${listItems.length}: ${title.substring(0, 50)}...`);
+            }
+        });
+        
+        console.log(`[Crawl] Total list items found: ${listItems.length}`);
+        
+        for (let i = 0; i < listItems.length; i++) {
+            const item = listItems[i];
+            const detail = await fetchDetailPage(item.url, ['.fck_detail', 'article.fck_detail', '.content_detail']);
+            items.push({
+                title: item.title,
+                summary: item.summary || item.title,
+                content: detail.content,
+                originalUrl: item.url,
+                imageUrl: detail.imageUrl,
+                source: 'VnExpress Health',
+                category: 'Health',
+                viewCount: i + 1,
+                publishedAt: new Date(),
+                status: 'DRAFT'
+            });
+            await new Promise(r => setTimeout(r, 500));
+        }
+        console.log(`[Crawl] VnExpress Health: ${items.length} items`);
+    } catch (e) {
+        console.error('[Crawl] VnExpress Health crawl error:', e.message);
+        console.error('[Crawl] Error stack:', e.stack);
+    }
+    return items;
+}
 
 const crawlers = {
   'vnexpress': () => require('@/scripts/crawlers/vnexpress')(),
@@ -79,10 +225,10 @@ const crawlers = {
   'thanhnien': () => require('@/scripts/crawlers/thanhnien')(),
   'publicsecurity': () => require('@/scripts/crawlers/publicsecurity')(),
   'saigoneer': () => require('@/scripts/crawlers/saigoneer')(),
-  'thedodo': () => require('@/scripts/crawlers/thedodo')(),
-  'petmd': () => require('@/scripts/crawlers/petmd')(),
-  'vnexpress-travel': () => require('@/scripts/crawlers/vnexpress-travel')(),
-  'vnexpress-health': () => require('@/scripts/crawlers/vnexpress-health')(),
+  'soranews24': () => require('@/scripts/crawlers/soranews24')(),
+  'petnews': () => require('@/scripts/crawlers/petnews')(),
+  'vnexpress-travel': () => crawlVnExpressTravel(),
+  'vnexpress-health': () => crawlVnExpressHealth(),
 };
 
 export async function POST(request) {
@@ -134,112 +280,50 @@ export async function POST(request) {
     }
     
     let savedCount = 0;
-    let duplicateCount = 0;
-    let errorCount = 0;
-    
     for (const item of items) {
       try {
-        // 필수 필드 확인
-        if (!item.originalUrl) {
-          console.warn(`[Crawl] ${source}: Skipping item without originalUrl:`, item.title?.substring(0, 50));
-          errorCount++;
-          continue;
-        }
-        
         const existing = await prisma.newsItem.findFirst({
           where: { originalUrl: item.originalUrl }
         });
         
         if (existing) {
-          console.log(`⏭️ [Crawl] ${source}: 중복 건너뜀: ${item.originalUrl?.substring(0, 80)}...`);
-          duplicateCount++;
-          // 중복이어도 내용 업데이트
-          try {
-            await prisma.newsItem.update({
-              where: { id: existing.id },
-              data: {
-                content: item.content || existing.content,
-                imageUrl: item.imageUrl || existing.imageUrl,
-                summary: item.summary || existing.summary,
-              }
-            });
-          } catch (updateErr) {
-            console.error(`[Crawl] Error updating duplicate item:`, updateErr.message);
-          }
+          await prisma.newsItem.update({
+            where: { id: existing.id },
+            data: {
+              content: item.content,
+              imageUrl: item.imageUrl,
+              summary: item.summary,
+            }
+          });
+          savedCount++;
         } else {
           let translatedTitle = null;
           let category = item.category || 'Society';
-          let translationStatus = 'PENDING';
           
           if (koreanSources.includes(item.source)) {
             translatedTitle = item.title;
-            translationStatus = 'COMPLETED';
           } else {
-            try {
-              const translated = await translateTitle(item);
-              if (translated && translated.translatedTitle) {
-                translatedTitle = translated.translatedTitle;
-                category = translated.category || category;
-                translationStatus = 'COMPLETED';
-              } else {
-                console.warn(`[Crawl] ${source}: 번역 실패 (빈 결과): ${item.title?.substring(0, 50)}`);
-                translationStatus = 'PENDING';
-              }
-            } catch (translateErr) {
-              console.error(`[Crawl] ${source}: 번역 에러:`, translateErr.message);
-              console.error(`[Crawl] ${source}: 원본 제목: ${item.title?.substring(0, 50)}`);
-              translationStatus = 'FAILED';
-            }
+            const translated = await translateTitle(item);
+            translatedTitle = translated.translatedTitle;
+            category = translated.category || category;
           }
           
-          // 번역 실패해도 저장 (나중에 수동 번역 가능)
-          // Prisma에 저장할 데이터 정리 (필수 필드만 포함)
-          // 주의: viewCount는 Prisma 스키마에 없으므로 제외
-          const dataToSave = {
-            title: item.title,
-            summary: item.summary || null,
-            content: item.content || null,
-            originalUrl: item.originalUrl,
-            imageUrl: item.imageUrl || null,
-            source: item.source || null,
-            category: category,
-            translatedTitle: translatedTitle || item.title, // 번역 실패 시 원본 제목 사용
-            translationStatus: translationStatus,
-            publishedAt: item.publishedAt ? new Date(item.publishedAt) : getVietnamTime(),
-            status: item.status || 'DRAFT'
-          };
-          
           await prisma.newsItem.create({ 
-            data: dataToSave
+            data: {
+              ...item,
+              translatedTitle,
+              category
+            }
           });
-          console.log(`✅ [Crawl] ${source}: 저장 완료 [${item.source}]: ${(translatedTitle || item.title).substring(0, 50)}...`);
+          console.log(`✅ [${item.source}]: ${(translatedTitle || item.title).substring(0, 50)}...`);
           savedCount++;
         }
       } catch (err) {
-        console.error(`[Crawl] ${source}: 저장 에러:`, err.message);
-        console.error(`[Crawl] ${source}: 에러 스택:`, err.stack);
-        console.error(`[Crawl] ${source}: 에러 아이템:`, {
-          title: item.title?.substring(0, 50),
-          url: item.originalUrl?.substring(0, 80),
-          source: item.source,
-          category: item.category,
-          hasContent: !!item.content,
-          hasImageUrl: !!item.imageUrl,
-          publishedAt: item.publishedAt,
-          status: item.status
-        });
-        // Prisma 에러인 경우 더 자세한 정보 출력
-        if (err.code) {
-          console.error(`[Crawl] ${source}: Prisma 에러 코드:`, err.code);
-        }
-        if (err.meta) {
-          console.error(`[Crawl] ${source}: Prisma 에러 메타:`, err.meta);
-        }
-        errorCount++;
+        console.error(`[Crawl] Error saving item:`, err.message);
       }
     }
     
-    console.log(`[Crawl] ${source}: 저장 결과 - 신규: ${savedCount}개, 중복: ${duplicateCount}개, 에러: ${errorCount}개`);
+    console.log(`[Crawl] ${source}: Saved ${savedCount} items (${items.length - savedCount} duplicates)`);
     
     // Save to CrawlerLog
     const sourceName = sourceNames[source] || source;
@@ -248,17 +332,14 @@ export async function POST(request) {
       data: {
         status: logStatus,
         itemsFound: savedCount,
-        message: `${sourceName} crawl completed. Found: ${items.length}, New: ${savedCount}, Duplicates: ${duplicateCount}, Errors: ${errorCount}${items.length === 0 ? ' (No items found - check selectors)' : ''}`,
+        message: `${sourceName} crawl completed. Found: ${items.length}, New: ${savedCount}${items.length === 0 ? ' (No items found - check selectors)' : ''}`,
       }
     });
     
     return NextResponse.json({ 
       success: true, 
       count: savedCount,
-      duplicates: duplicateCount,
-      errors: errorCount,
-      total: items.length,
-      message: `${source} crawl completed: ${savedCount} new, ${duplicateCount} duplicates, ${errorCount} errors` 
+      message: `${source} crawl completed` 
     });
     
   } catch (error) {

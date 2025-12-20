@@ -8,10 +8,8 @@ const crawlThanhNien = require('./crawlers/thanhnien');
 const crawlVnExpressVN = require('./crawlers/vnexpress-vn');
 const crawlPublicSecurity = require('./crawlers/publicsecurity');
 const crawlSaigoneer = require('./crawlers/saigoneer');
-const crawlTheDodo = require('./crawlers/thedodo');
-const crawlPetMD = require('./crawlers/petmd');
-const crawlVnExpressTravel = require('./crawlers/vnexpress-travel');
-const crawlVnExpressHealth = require('./crawlers/vnexpress-health');
+const crawlSoraNews24 = require('./crawlers/soranews24');
+const crawlPetNews = require('./crawlers/petnews');
 const { sendCrawlerAlert } = require('../lib/telegram');
 
 const prisma = new PrismaClient();
@@ -26,7 +24,7 @@ async function loadTranslator() {
 async function main() {
   await loadTranslator();
   
-  console.log('🚀 크롤러 시작 (12개 소스 + AI 번역/요약/분류)...');
+  console.log('🚀 크롤러 시작 (10개 소스 + AI 번역/요약/분류)...');
   console.log('================================================');
 
   const crawlers = [
@@ -38,10 +36,8 @@ async function main() {
     { name: 'VnExpressVN', fn: crawlVnExpressVN },
     { name: 'PublicSecurity', fn: crawlPublicSecurity },
     { name: 'Saigoneer', fn: crawlSaigoneer },
-    { name: 'The Dodo', fn: crawlTheDodo },
-    { name: 'PetMD', fn: crawlPetMD },
-    { name: 'VnExpress Travel', fn: crawlVnExpressTravel },
-    { name: 'VnExpress Health', fn: crawlVnExpressHealth }
+    { name: 'SoraNews24', fn: crawlSoraNews24 },
+    { name: 'PetNews', fn: crawlPetNews }
   ];
 
   const results = await Promise.allSettled(crawlers.map(c => c.fn()));
@@ -72,28 +68,17 @@ async function main() {
 
   console.log('================================================');
   console.log(`📰 총 수집: ${allItems.length}개 (${failedSources.length}개 소스 실패)`);
-  if (duplicateCount > 0) {
-    console.log(`  중복 제외: ${duplicateCount}개`);
-  }
   console.log('================================================');
 
   let savedCount = 0;
   let translatedCount = 0;
 
-  let duplicateCount = 0;
   for (const item of allItems) {
-    if (!item.originalUrl) {
-      console.warn(`⚠️ originalUrl이 없는 아이템 건너뜀: ${item.title?.substring(0, 50)}...`);
-      continue;
-    }
-    
     const exists = await prisma.newsItem.findFirst({
       where: { originalUrl: item.originalUrl }
     });
 
     if (exists) {
-      duplicateCount++;
-      console.log(`  ⏭️ 중복 건너뜀 [${item.source}]: ${item.originalUrl.substring(0, 60)}...`);
       continue;
     }
 

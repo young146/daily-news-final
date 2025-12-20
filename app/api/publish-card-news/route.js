@@ -112,21 +112,17 @@ export async function POST(request) {
       }
     }
 
-    // Step 2: 선택된 뉴스가 없으면 발행된 뉴스 중에서 isTopNews=true인 최신 뉴스 사용 (오늘 날짜 기준)
+    // Step 2: 선택된 뉴스가 없으면 발행된 뉴스 중에서 isTopNews=true인 최신 뉴스 사용
     if (!topNews) {
       try {
         topNews = await prisma.newsItem.findFirst({
           where: {
             isTopNews: true,
             status: 'PUBLISHED', // 발행된 뉴스만
-            OR: [
-              { publishedAt: { gte: today } }, // 오늘 발행된 뉴스
-              { publishedAt: null }, // publishedAt이 없는 경우도 포함 (하위 호환성)
-            ],
           },
           orderBy: [
-            { publishedAt: "desc" }, // publishedAt 우선 정렬
-            { updatedAt: "desc" },
+            { updatedAt: "desc" }, // 최근에 지정된 것 우선
+            { publishedAt: "desc" },
             { createdAt: "desc" },
           ],
         });

@@ -1,6 +1,5 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
-const { getVietnamTime } = require('../date-utils');
 
 async function crawlThanhNien() {
     console.log('Starting crawl of Thanh Nien...');
@@ -34,7 +33,7 @@ async function crawlThanhNien() {
                     imageUrl: imageUrl,
                     category: 'Society',
                     source: 'Thanh Nien',
-                    publishedAt: getVietnamTime(),
+                    publishedAt: new Date(),
                     status: 'DRAFT'
                 });
             }
@@ -55,7 +54,7 @@ async function crawlThanhNien() {
                         imageUrl: '',
                         category: 'Society',
                         source: 'Thanh Nien',
-                        publishedAt: getVietnamTime(),
+                        publishedAt: new Date(),
                         status: 'DRAFT'
                     });
                 }

@@ -231,13 +231,6 @@ export async function POST(request) {
 
     const wpPost = await wpResponse.json();
     
-    // 베트남 시간대 기준으로 현재 시간 계산 (쿼리와 동일한 로직)
-    const now = new Date();
-    const vietnamTime = new Date(
-      now.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
-    );
-    const publishedAt = vietnamTime; // 베트남 시간대 기준 시간 저장
-    
     // 데이터베이스에 저장 (선택사항)
     await prisma.newsItem.create({
       data: {
@@ -252,7 +245,7 @@ export async function POST(request) {
         wordpressImageUrl: featuredImage?.url || null,
         wordpressMediaId: featuredImage?.mediaId || null,
         status: "PUBLISHED",
-        publishedAt: publishedAt, // 베트남 시간대 기준으로 저장 (쿼리와 일치)
+        publishedAt: new Date(),
       },
     });
 

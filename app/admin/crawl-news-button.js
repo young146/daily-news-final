@@ -8,7 +8,7 @@ export default function CrawlNewsButton() {
     const [showResult, setShowResult] = useState(false);
 
     const handleCrawl = async () => {
-        if (!confirm('12개 소스에서 뉴스를 수집합니다. 1-2분 정도 소요됩니다. 진행하시겠습니까?')) return;
+        if (!confirm('7개 소스에서 뉴스를 수집합니다. 1-2분 정도 소요됩니다. 진행하시겠습니까?')) return;
         
         setIsCrawling(true);
         setResult(null);
@@ -41,13 +41,7 @@ export default function CrawlNewsButton() {
         'Yonhap News': '연합뉴스',
         'InsideVina': '인사이드비나',
         'TuoiTre': 'Tuổi Trẻ',
-        'ThanhNien': 'Thanh Niên',
-        'PublicSecurity': '공안신문',
-        'Saigoneer': 'Saigoneer',
-        'The Dodo': 'The Dodo (펫 뉴스)',
-        'PetMD': 'PetMD (펫 건강)',
-        'VnExpress Travel': 'VnExpress Travel',
-        'VnExpress Health': 'VnExpress Health'
+        'ThanhNien': 'Thanh Niên'
     };
 
     return (
@@ -56,7 +50,7 @@ export default function CrawlNewsButton() {
                 onClick={handleCrawl}
                 disabled={isCrawling}
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-50"
-                title="12개 소스에서 뉴스 수집"
+                title="7개 소스에서 뉴스 수집"
             >
                 {isCrawling ? (
                     <>

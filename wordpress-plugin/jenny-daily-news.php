@@ -226,9 +226,6 @@ function jenny_daily_news_shortcode($atts)
         // Food
         '음식' => 10,
         'Food' => 10,
-        // Pet
-        '펫' => 11,
-        'Pet' => 11,
     );
 
     // 뉴스를 카테고리별로 정렬하고 Top News 분리
@@ -350,7 +347,6 @@ function jenny_daily_news_shortcode($atts)
         'travel' => array('Travel', '여행'),
         'health' => array('Health', '건강'),
         'food' => array('Food', '음식'),
-        'pet' => array('Pet', '펫'),
     );
 
     // 카테고리를 섹션 키로 변환하는 함수
@@ -560,7 +556,6 @@ function jenny_daily_news_shortcode($atts)
         'travel' => array('label' => '여행', 'icon' => '✈️'),
         'health' => array('label' => '건강', 'icon' => '🏥'),
         'food' => array('label' => '음식', 'icon' => '🍽️'),
-        'pet' => array('label' => '펫', 'icon' => '🐾'),
     );
     
     foreach ($section_nav_items as $sec_key => $nav_info) {
@@ -633,9 +628,6 @@ function jenny_daily_news_shortcode($atts)
         // Food
         'Food' => '음식',
         '음식' => '음식',
-        // Pet
-        'Pet' => '펫',
-        '펫' => '펫',
     );
 
     // Helpers for rendering
@@ -668,29 +660,51 @@ function jenny_daily_news_shortcode($atts)
             $cat_name = '뉴스';
         }
 
-        $excerpt = get_the_excerpt($post_data['post_id']);
-        if (empty($excerpt)) {
-            // 본문에서 HTML 태그 제거 후 요약 생성
-            $content = strip_tags($post_obj->post_content);
+        // 본문에서 출처/날짜/원문 정보를 먼저 제거한 후 excerpt 생성
+        // 1. <style> 태그와 그 내용을 먼저 제거 (CSS 코드가 excerpt에 노출되지 않도록)
+        $content = preg_replace('/<style[^>]*>.*?<\/style>/is', '', $post_obj->post_content);
+        // 2. 나머지 HTML 태그 제거
+        $content = strip_tags($content);
+        
+        // 본문에서 출처/날짜/원문 정보 제거 (Jenny 페이지용 - 메타 라인과 중복 방지)
+        // 패턴 1: "출처: [소스명] 날짜: [날짜]" 형식 (공백 포함 소스명 지원)
+        // "출처: " 다음에 여러 단어(공백 포함), 그 다음 "날짜: " 다음에 날짜 패턴(점 포함)까지 제거
+        $content = preg_replace('/출처\s*:\s*[^날]+날짜\s*:\s*[0-9.\s]+\.{0,2}\s*/i', '', $content);
+        // 패턴 2: "출처: [소스명] | 날짜: [날짜] |" 형식
+        $content = preg_replace('/출처\s*:\s*[^|]*\s*\|/i', '', $content);
+        $content = preg_replace('/날짜\s*:\s*[^|]*\s*\|/i', '', $content);
+        // 패턴 3: "원문 기사 전체 보기" 또는 "원문 보기" 링크 제거 (URL 포함)
+        // "원문보기: URL" 형식 전체를 제거
+        $content = preg_replace('/원문\s*(기사\s*)?(전체\s*)?보기\s*:\s*[^\s]+/i', '', $content);
+        // 기타 "원문 보기" 형식 제거
+        $content = preg_replace('/원문\s*(기사\s*)?(전체\s*)?보기[^가-힣a-zA-Z0-9]*/i', '', $content);
+        // 패턴 4: 남은 구분선 제거
+        $content = preg_replace('/\s*[|]\s*/', ' ', $content);
+        // 패턴 5: 연속된 공백 정리
+        $content = preg_replace('/\s{2,}/', ' ', $content);
+        $content = trim($content);
+        
+        // 정제된 본문에서 excerpt 생성 (첫 문장부터 시작)
+        if (!empty($content)) {
             $excerpt = wp_trim_words($content, 50, '...');
+        } else {
+            // 본문이 비어있으면 WordPress excerpt 사용
+            $excerpt = get_the_excerpt($post_data['post_id']);
+            if (empty($excerpt)) {
+                $excerpt = '';
+            }
         }
         
-        // excerpt가 비어있지 않은 경우에만 정제 작업 수행
+        // excerpt에서도 한 번 더 정제 (안전장치)
         if (!empty($excerpt)) {
-            // excerpt에서 중복된 출처/날짜/원문 정보 제거 (더 안전한 패턴 사용)
-            // 메타 라인 형식: "출처: InsideVina | 날짜: 2025.12.15 | 원문 보기" 같은 패턴만 제거
-            $excerpt = preg_replace('/출처\s*:\s*[^|]*\s*\|/i', '', $excerpt); // "출처: ... |" 패턴만 제거
-            $excerpt = preg_replace('/날짜\s*:\s*[^|]*\s*\|/i', '', $excerpt); // "날짜: ... |" 패턴만 제거
-            $excerpt = preg_replace('/원문\s*(기사\s*)?(전체\s*)?보기[^.]*/i', '', $excerpt); // "원문 보기" 제거
-            $excerpt = preg_replace('/\s*[|]\s*/', ' ', $excerpt); // 남은 구분선을 공백으로 변경
-            $excerpt = preg_replace('/\s{2,}/', ' ', $excerpt); // 연속된 공백 제거
+            $excerpt = preg_replace('/출처\s*:\s*[^날]+날짜\s*:\s*[0-9.\s]+\.{0,2}\s*/i', '', $excerpt);
+            $excerpt = preg_replace('/출처\s*:\s*[^|]*\s*\|/i', '', $excerpt);
+            $excerpt = preg_replace('/날짜\s*:\s*[^|]*\s*\|/i', '', $excerpt);
+            $excerpt = preg_replace('/원문\s*(기사\s*)?(전체\s*)?보기\s*:\s*[^\s]+/i', '', $excerpt);
+            $excerpt = preg_replace('/원문\s*(기사\s*)?(전체\s*)?보기[^가-힣a-zA-Z0-9]*/i', '', $excerpt);
+            $excerpt = preg_replace('/\s*[|]\s*/', ' ', $excerpt);
+            $excerpt = preg_replace('/\s{2,}/', ' ', $excerpt);
             $excerpt = trim($excerpt);
-        }
-        
-        // 여전히 비어있으면 본문에서 직접 가져오기
-        if (empty($excerpt) && !empty($post_obj->post_content)) {
-            $content = strip_tags($post_obj->post_content);
-            $excerpt = wp_trim_words($content, 50, '...');
         }
 
         // WordPress 본문 링크 (모든 카드 요소는 이 링크 사용)
@@ -757,7 +771,6 @@ function jenny_daily_news_shortcode($atts)
         'travel' => array('title' => '✈️ 여행 (Travel)', 'keys' => array('Travel', '여행')),
         'health' => array('title' => '🏥 건강 (Health)', 'keys' => array('Health', '건강')),
         'food' => array('title' => '🍽️ 음식 (Food)', 'keys' => array('Food', '음식')),
-        'pet' => array('title' => '🐾 펫 (Pet)', 'keys' => array('Pet', '펫')),
         'other' => array('title' => '✨ 기타 뉴스', 'keys' => array()) // Fallback
     );
 

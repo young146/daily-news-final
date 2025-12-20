@@ -1,6 +1,5 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
-const { getVietnamTime } = require('../date-utils');
 
 async function crawlTuoitre() {
     console.log('Starting crawl of Tuoi Tre News...');
@@ -37,7 +36,7 @@ async function crawlTuoitre() {
                     imageUrl: imageUrl,
                     category: 'Society',
                     source: 'Tuoi Tre News',
-                    publishedAt: getVietnamTime(),
+                    publishedAt: new Date(),
                     status: 'DRAFT'
                 });
             }
