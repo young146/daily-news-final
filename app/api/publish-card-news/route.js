@@ -85,34 +85,70 @@ export async function POST(request) {
     });
     console.log(`[CardNews API] ✅ Cleared all isCardNews flags before selecting new ones`);
 
-    // 발행된 뉴스 중에서 탑뉴스 2개 선택 (날짜 필터 없이, 최신 순)
+    // 발행 행위(batch) 기반: 가장 최근 발행된 뉴스들의 배치를 선택
+    // 1. 가장 최근에 발행된 뉴스의 시간 찾기
+    const latestPublished = await prisma.newsItem.findFirst({
+      where: {
+        status: 'PUBLISHED',
+        publishedAt: { not: null }
+      },
+      orderBy: {
+        publishedAt: 'desc'
+      },
+      select: {
+        publishedAt: true
+      }
+    });
+
+    if (!latestPublished) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "발행된 뉴스가 없습니다.",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // 2. 가장 최근 발행 시간 기준으로 ±30분 이내를 같은 배치로 간주
+    const batchTime = new Date(latestPublished.publishedAt);
+    const batchStartTime = new Date(batchTime.getTime() - 30 * 60 * 1000); // 30분 전
+    const batchEndTime = new Date(batchTime.getTime() + 30 * 60 * 1000);   // 30분 후
+
+    console.log(`[CardNews API] Latest batch time: ${batchTime.toISOString()}`);
+    console.log(`[CardNews API] Batch window: ${batchStartTime.toISOString()} ~ ${batchEndTime.toISOString()}`);
+
+    // 3. 이 배치 시간대에 발행된 탑뉴스 2개 선택
     const topNewsList = await prisma.newsItem.findMany({
       where: {
         isTopNews: true,
-        status: 'PUBLISHED', // 발행된 뉴스만
+        status: 'PUBLISHED',
+        publishedAt: {
+          gte: batchStartTime,
+          lte: batchEndTime
+        }
       },
-      orderBy: [
-        { updatedAt: "desc" }, // 최근에 업데이트된 것 우선
-        { publishedAt: "desc" },
-        { createdAt: "desc" },
-      ],
+      orderBy: {
+        publishedAt: 'desc'
+      },
       take: 2, // 탑뉴스 최대 2개
     });
 
-    // 발행된 뉴스 중에서 일반 뉴스 3개 선택 (탑뉴스 제외, 최신 순)
+    // 4. 이 배치 시간대에 발행된 일반 뉴스 3개 선택 (탑뉴스 제외)
     const topNewsIds = topNewsList.map(n => n.id);
     const cardNewsItems = await prisma.newsItem.findMany({
       where: {
         id: { notIn: topNewsIds },
         isTopNews: false,
-        isPublishedMain: true,
-        status: 'PUBLISHED', // 발행된 뉴스만
+        status: 'PUBLISHED',
+        publishedAt: {
+          gte: batchStartTime,
+          lte: batchEndTime
+        }
       },
-      orderBy: [
-        { updatedAt: "desc" }, // 최근에 업데이트된 것 우선
-        { publishedAt: "desc" },
-        { createdAt: "desc" },
-      ],
+      orderBy: {
+        publishedAt: 'desc'
+      },
       take: 3, // 일반 뉴스 3개
     });
 
@@ -177,33 +213,58 @@ export async function POST(request) {
       const rates = await getExchangeRates();
 
       const summary = topNews.translatedSummary || topNews.summary || "";
-      let imageUrl = topNews.imageUrl || "";
+      
+      // ✅ WordPress에 업로드된 이미지를 우선 사용 (이미 우리 서버에 있어 안전함)
+      let imageUrl = topNews.wordpressImageUrl || topNews.imageUrl || "";
 
-      // 원본 이미지 접근이 막혀 있을 경우 대비: 사전 확인 후 실패 시 그라디언트 배경 사용
-      if (imageUrl) {
+      console.log(`[CardNews API] Image source: ${
+        topNews.wordpressImageUrl ? 'WordPress (uploaded)' : 
+        topNews.imageUrl ? 'Original source' : 
+        'None'
+      }`);
+
+      // WordPress 이미지가 있으면 검증 생략 (이미 우리 서버의 이미지)
+      if (imageUrl && !topNews.wordpressImageUrl) {
+        // 원본 이미지인 경우만 검증
         try {
-          const imgResp = await fetch(imageUrl, { method: "GET" });
-          const imgType = imgResp.headers.get("content-type") || "";
-          if (!imgResp.ok || !imgType.startsWith("image/")) {
+          console.log(`[CardNews API] Testing original image access: ${imageUrl.substring(0, 60)}...`);
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5초 타임아웃
+          
+          const imgResp = await fetch(imageUrl, { 
+            method: "HEAD",  // GET 대신 HEAD로 더 빠르게 체크
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+              'Referer': topNews.originalUrl || 'https://chaovietnam.co.kr'
+            },
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (!imgResp.ok) {
             console.warn(
-              `[CardNews API] Image fetch failed (${imgResp.status}) or non-image type (${imgType}). Fallback to gradient.`
+              `[CardNews API] Original image fetch failed (${imgResp.status}). Using gradient.`
             );
             imageUrl = "";
           } else {
-            console.log("[CardNews API] Image fetch ok:", imgType);
+            console.log("[CardNews API] Original image accessible");
           }
         } catch (e) {
           console.warn(
-            "[CardNews API] Image fetch error, fallback to gradient:",
+            "[CardNews API] Original image access error, using gradient:",
             e.message
           );
           imageUrl = "";
         }
+      } else if (imageUrl) {
+        console.log("[CardNews API] Using WordPress uploaded image (no validation needed)");
       }
 
       console.log(
-        `[CardNews API] Using top news image: ${
-          imageUrl ? imageUrl.substring(0, 60) + "..." : "none"
+        `[CardNews API] Final image URL: ${
+          imageUrl ? imageUrl.substring(0, 60) + "..." : "gradient background"
         }`
       );
 
