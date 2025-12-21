@@ -106,6 +106,8 @@ export default function SettingsPage() {
     { id: 'petmd', name: 'PetMD (펫)', file: 'petmd' },
     { id: 'vnexpress-travel', name: 'VnExpress Travel (여행)', file: 'vnexpress-travel' },
     { id: 'vnexpress-health', name: 'VnExpress Health (건강)', file: 'vnexpress-health' },
+    { id: 'bonappetit', name: 'Bon Appétit (음식/레시피)', file: 'bonappetit' },
+    { id: 'health', name: 'Health (건강/웰니스)', file: 'health' },
   ];
 
   const commands = [

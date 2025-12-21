@@ -78,7 +78,12 @@ export async function POST(request) {
     const dateStr = `${year}-${month}-${day}`;
     console.log(`[CardNews API] Using date: ${dateStr} (Vietnam timezone)`);
 
-    // 카드 뉴스 선택 (이전 isCardNews는 이미 뉴스 발행 시점에 초기화됨)
+    // 카드 뉴스 선택 전에 기존 카드 뉴스 초기화 (새로운 뉴스 발행 시 자동 초기화되지만, 여기서도 명시적으로 초기화)
+    await prisma.newsItem.updateMany({
+      where: { isCardNews: true },
+      data: { isCardNews: false },
+    });
+    console.log(`[CardNews API] ✅ Cleared all isCardNews flags before selecting new ones`);
 
     // 발행된 뉴스 중에서 탑뉴스 2개 선택 (날짜 필터 없이, 최신 순)
     const topNewsList = await prisma.newsItem.findMany({

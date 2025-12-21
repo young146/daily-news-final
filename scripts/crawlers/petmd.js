@@ -51,28 +51,33 @@ async function crawlPetMD() {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         
-        $('a').each((i, el) => {
-            if (listItems.length >= 10) return false;
+        // 더 많은 링크 찾기: article, h2, h3 내 링크도 확인
+        $('a, article a, h2 a, h3 a, .article-list a, .post-list a').each((i, el) => {
+            if (listItems.length >= 30) return false; // 더 많은 링크 수집
             
             const href = $(el).attr('href') || '';
             const title = $(el).text().trim();
             
             if (!title || title.length < 15 || title.length > 200) return;
-            if (!href || !href.includes('petmd.com/')) return;
-            if (href.includes('/tag/') || href.includes('/author/') || href.includes('/category/') || href.includes('/search')) return;
+            if (!href) return;
+            
+            // 상대 URL 처리
+            let fullUrl = href.startsWith('http') ? href : `https://www.petmd.com${href.startsWith('/') ? href : '/' + href}`;
+            
+            if (!fullUrl.includes('petmd.com/')) return;
+            if (fullUrl.includes('/tag/') || fullUrl.includes('/author/') || fullUrl.includes('/category/') || fullUrl.includes('/search') || fullUrl.includes('/about')) return;
+            if (fullUrl.endsWith('/') && fullUrl.split('/').length <= 4) return; // 루트나 카테고리 페이지 제외
             
             // URL에서 날짜 추출 (YYYY/MM/DD 형식)
-            const dateMatch = href.match(/\/(\d{4})\/(\d{2})\/(\d{2})\//);
+            const dateMatch = fullUrl.match(/\/(\d{4})\/(\d{2})\/(\d{2})\//);
             if (dateMatch) {
                 const articleDate = new Date(parseInt(dateMatch[1]), parseInt(dateMatch[2]) - 1, parseInt(dateMatch[3]));
                 if (articleDate < thirtyDaysAgo) return; // 30일 이전 기사 제외
             }
             
-            // 기사 URL 패턴 확인
-            const isArticle = (href.match(/\/\d{4}\/\d{2}\//) || href.match(/\/[a-z-]+\/[a-z-]+/)) && !href.endsWith('/');
+            // 기사 URL 패턴 확인: 날짜 포함 또는 카테고리/제목 형식
+            const isArticle = (fullUrl.match(/\/\d{4}\/\d{2}\//) || fullUrl.match(/\/[a-z-]+\/[a-z-]+/)) && !fullUrl.endsWith('/');
             if (!isArticle) return;
-            
-            const fullUrl = href.startsWith('http') ? href : `https://www.petmd.com${href}`;
             
             if (seen.has(fullUrl)) return;
             seen.add(fullUrl);
@@ -113,13 +118,76 @@ async function crawlPetMD() {
                 }
                 const $detail = cheerio.load(detailData);
                 
-                const content = $detail('article .content').html();
-                const metaImage = $detail('meta[property="og:image"]').attr('content');
-                const imageUrl = metaImage || '';
+                // 본문 추출: 여러 선택자 시도
+                let content = null;
+                const contentSelectors = [
+                    'article .article-body',
+                    'article .content',
+                    'article .post-content',
+                    'article .entry-content',
+                    '.article-body',
+                    '.post-content',
+                    '.entry-content',
+                    '.article-content',
+                    'article p',
+                    '.content p'
+                ];
                 
-                const summary = content ? 
-                    $detail('article .content').text().trim().substring(0, 300) : 
-                    item.title;
+                for (const selector of contentSelectors) {
+                    const found = $detail(selector).html();
+                    if (found) {
+                        const textContent = $detail(selector).text().trim();
+                        // 본문이 최소 100자 이상인지 확인
+                        if (textContent.length >= 100) {
+                            content = found;
+                            break;
+                        }
+                    }
+                }
+                
+                // 본문이 없거나 너무 짧으면 스킵
+                if (!content) {
+                    const textContent = $detail('article').text().trim();
+                    if (textContent.length < 100) {
+                        console.log(`[PetMD] Skipping ${item.url}: content too short (${textContent.length} chars)`);
+                        continue;
+                    }
+                    // 마지막 시도: article 전체
+                    content = $detail('article').html();
+                }
+                
+                // 이미지 추출: 여러 소스 시도
+                let imageUrl = '';
+                // 1. og:image 메타 태그
+                const metaImage = $detail('meta[property="og:image"]').attr('content');
+                if (metaImage && !metaImage.includes('logo') && !metaImage.includes('default')) {
+                    imageUrl = metaImage;
+                }
+                
+                // 2. 본문 내 첫 번째 이미지 (og:image가 없거나 로고인 경우)
+                if (!imageUrl || imageUrl.includes('logo')) {
+                    const articleImage = $detail('article img').first().attr('src');
+                    if (articleImage && !articleImage.includes('logo') && !articleImage.includes('avatar')) {
+                        imageUrl = articleImage.startsWith('http') ? articleImage : `https://www.petmd.com${articleImage}`;
+                    }
+                }
+                
+                // 3. article 내 figure 이미지
+                if (!imageUrl || imageUrl.includes('logo')) {
+                    const figureImage = $detail('article figure img').first().attr('src');
+                    if (figureImage && !figureImage.includes('logo')) {
+                        imageUrl = figureImage.startsWith('http') ? figureImage : `https://www.petmd.com${figureImage}`;
+                    }
+                }
+                
+                // 본문 텍스트 추출 (HTML에서 텍스트만)
+                let textContent = '';
+                if (content) {
+                    // content는 HTML 문자열이므로 다시 cheerio로 로드
+                    const $content = cheerio.load(content);
+                    textContent = $content('body').text().trim() || $content.text().trim();
+                }
+                const summary = textContent ? textContent.substring(0, 300) : item.title;
                 
                 detailedItems.push({
                     title: item.title,
@@ -128,7 +196,7 @@ async function crawlPetMD() {
                     originalUrl: item.url,
                     imageUrl: imageUrl,
                     source: 'PetMD',
-                    category: 'Culture',
+                    category: 'Health',
                     publishedAt: new Date(),
                     status: 'DRAFT'
                 });

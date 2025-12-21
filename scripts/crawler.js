@@ -11,6 +11,8 @@ const crawlSaigoneer = require('./crawlers/saigoneer');
 const crawlSoraNews24 = require('./crawlers/soranews24');
 const crawlTheDodo = require('./crawlers/thedodo');
 const crawlPetMD = require('./crawlers/petmd');
+const crawlBonAppetit = require('./crawlers/bonappetit');
+const crawlHealth = require('./crawlers/health');
 const { sendCrawlerAlert } = require('../lib/telegram');
 
 const prisma = new PrismaClient();
@@ -25,7 +27,7 @@ async function loadTranslator() {
 async function main() {
   await loadTranslator();
   
-  console.log('🚀 크롤러 시작 (10개 소스 + AI 번역/요약/분류)...');
+  console.log('🚀 크롤러 시작 (13개 소스 + AI 번역/요약/분류)...');
   console.log('================================================');
 
   const crawlers = [
@@ -39,7 +41,9 @@ async function main() {
     { name: 'Saigoneer', fn: crawlSaigoneer },
     { name: 'SoraNews24', fn: crawlSoraNews24 },
     { name: 'The Dodo', fn: crawlTheDodo },
-    { name: 'PetMD', fn: crawlPetMD }
+    { name: 'PetMD', fn: crawlPetMD },
+    { name: 'Bon Appétit', fn: crawlBonAppetit },
+    { name: 'Health', fn: crawlHealth }
   ];
 
   const results = await Promise.allSettled(crawlers.map(c => c.fn()));

@@ -661,7 +661,10 @@ function jenny_daily_news_shortcode($atts)
         }
 
         // 본문에서 출처/날짜/원문 정보를 먼저 제거한 후 excerpt 생성
-        $content = strip_tags($post_obj->post_content);
+        // 1. <style> 태그와 내용을 먼저 제거 (CSS 코드가 excerpt에 노출되는 것을 방지)
+        $content = preg_replace('/<style[^>]*>.*?<\/style>/is', '', $post_obj->post_content);
+        // 2. 나머지 HTML 태그 제거
+        $content = strip_tags($content);
         
         // 본문에서 출처/날짜/원문 정보 제거 (Jenny 페이지용 - 메타 라인과 중복 방지)
         // 패턴 1: "출처: [소스명] 날짜: [날짜]" 형식 (공백 포함 소스명 지원)
@@ -672,9 +675,11 @@ function jenny_daily_news_shortcode($atts)
         $content = preg_replace('/날짜\s*:\s*[^|]*\s*\|/i', '', $content);
         // 패턴 3: "원문 기사 전체 보기" 또는 "원문 보기" 링크 제거 (점 전까지)
         $content = preg_replace('/원문\s*(기사\s*)?(전체\s*)?보기[^가-힣a-zA-Z0-9]*/i', '', $content);
-        // 패턴 4: 남은 구분선 제거
+        // 패턴 4: URL 제거 (http:// 또는 https://로 시작하는 전체 URL)
+        $content = preg_replace('/https?:\/\/[^\s]+/i', '', $content);
+        // 패턴 5: 남은 구분선 제거
         $content = preg_replace('/\s*[|]\s*/', ' ', $content);
-        // 패턴 5: 연속된 공백 정리
+        // 패턴 6: 연속된 공백 정리
         $content = preg_replace('/\s{2,}/', ' ', $content);
         $content = trim($content);
         
@@ -695,6 +700,8 @@ function jenny_daily_news_shortcode($atts)
             $excerpt = preg_replace('/출처\s*:\s*[^|]*\s*\|/i', '', $excerpt);
             $excerpt = preg_replace('/날짜\s*:\s*[^|]*\s*\|/i', '', $excerpt);
             $excerpt = preg_replace('/원문\s*(기사\s*)?(전체\s*)?보기[^가-힣a-zA-Z0-9]*/i', '', $excerpt);
+            // URL 제거 (http:// 또는 https://로 시작하는 전체 URL)
+            $excerpt = preg_replace('/https?:\/\/[^\s]+/i', '', $excerpt);
             $excerpt = preg_replace('/\s*[|]\s*/', ' ', $excerpt);
             $excerpt = preg_replace('/\s{2,}/', ' ', $excerpt);
             $excerpt = trim($excerpt);
@@ -909,6 +916,122 @@ function jenny_register_meta_fields()
     }
 }
 add_action('init', 'jenny_register_meta_fields');
+
+/**
+ * WordPress 본문 페이지에 모바일 스타일 추가 (전역 적용)
+ * shortcode 밖의 WordPress 본문 페이지에도 적용되도록 wp_head에 추가
+ */
+function jenny_add_global_mobile_styles() {
+    // 단일 포스트 페이지에서만 적용
+    if (is_single() || is_page()) {
+        echo '<style>
+        /* WordPress 본문 페이지 모바일 표시 보장 - 전역 적용 */
+        @media (max-width: 768px) {
+            /* 본문 콘텐츠가 모바일에서 보이도록 보장 - 모든 가능한 WordPress 본문 클래스 포함 */
+            .entry-content,
+            .post-content,
+            .content-area .entry-content,
+            article .entry-content,
+            .single-post .entry-content,
+            .post .entry-content,
+            .single .entry-content,
+            .page .entry-content,
+            .type-post .entry-content,
+            .news-body-content,
+            .post-content-area,
+            .article-content,
+            main .entry-content,
+            .site-main .entry-content,
+            #content .entry-content,
+            .content .entry-content {
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                overflow: visible !important;
+                position: relative !important;
+                z-index: 1 !important;
+                background-color: transparent !important;
+                font-size: 16px !important;
+                line-height: 1.6 !important;
+            }
+            /* 본문 내부 텍스트 요소가 모바일에서 보이도록 (이미지 제외) */
+            .entry-content p,
+            .entry-content div:not(.wp-block-image):not(.wp-block-gallery),
+            .post-content p,
+            .post-content div:not(.wp-block-image):not(.wp-block-gallery),
+            .news-body-content p,
+            .news-body-content div:not(.wp-block-image):not(.wp-block-gallery) {
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+            }
+            /* 본문 텍스트가 모바일에서 보이도록 - 모든 텍스트 요소 포함 */
+            .entry-content p,
+            .post-content p,
+            .entry-content div,
+            .post-content div,
+            .entry-content span,
+            .post-content span,
+            .entry-content li,
+            .post-content li,
+            .entry-content td,
+            .post-content td,
+            .news-body-content p,
+            .news-body-content div,
+            .news-body-content span {
+                display: block !important;
+                visibility: visible !important;
+                color: #111827 !important;
+                opacity: 1 !important;
+            }
+            /* 인라인 요소도 보이도록 */
+            .entry-content strong,
+            .entry-content em,
+            .entry-content a,
+            .post-content strong,
+            .post-content em,
+            .post-content a,
+            .news-body-content strong,
+            .news-body-content em,
+            .news-body-content a {
+                display: inline !important;
+                visibility: visible !important;
+                color: #111827 !important;
+                opacity: 1 !important;
+            }
+            /* 링크는 파란색으로 */
+            .entry-content a,
+            .post-content a,
+            .news-body-content a {
+                color: #2563eb !important;
+                text-decoration: underline !important;
+            }
+            /* 리스트도 보이도록 */
+            .entry-content ul,
+            .entry-content ol,
+            .post-content ul,
+            .post-content ol,
+            .news-body-content ul,
+            .news-body-content ol {
+                display: block !important;
+                visibility: visible !important;
+                margin: 16px 0 !important;
+                padding-left: 24px !important;
+            }
+            .entry-content li,
+            .post-content li,
+            .news-body-content li {
+                display: list-item !important;
+                visibility: visible !important;
+                color: #111827 !important;
+            }
+        }
+        </style>';
+    }
+}
+add_action('wp_head', 'jenny_add_global_mobile_styles');
 
 function jenny_get_scripts()
 {

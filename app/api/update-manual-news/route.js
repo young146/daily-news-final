@@ -150,44 +150,19 @@ export async function PUT(request) {
       }
     });
 
-    // WP 31 형식으로 본문 구성
-    const bodyStyle = `
-<style>
-.news-body-content {
-    font-size: 17px !important;
-    line-height: 1.8 !important;
-    color: #1f2937 !important;
-}
-@media (prefers-color-scheme: dark) {
-    .news-body-content {
-        color: #e5e7eb !important;
-        font-size: 17px !important;
-    }
-}
-.news-body-content p {
-    font-size: 17px !important;
-    line-height: 1.8 !important;
-    margin-bottom: 16px !important;
-}
-.news-body-content h1, .news-body-content h2, .news-body-content h3 {
-    color: inherit !important;
-}
-</style>
-<div class="news-body-content">`;
-
     const sourceAttribution = `
     <div class="news-source-header">
         <div class="news-source-info"><strong>📰 출처:</strong> ${source}</div>
         <div class="news-source-info"><strong>📅 날짜:</strong> ${new Date().toLocaleDateString('ko-KR')}</div>
     </div>`;
 
-    let wpContent = sourceAttribution + bodyStyle;
+    let wpContent = sourceAttribution;
     if (featuredImage) {
       const featuredImageHtml = `<img src="${featuredImage.url}" alt="${title}" style="width:100%; height:auto; margin-bottom: 20px; display:block;" /><br/>`;
       wpContent += featuredImageHtml;
     }
     
-    wpContent += finalContent + "</div>";
+    wpContent += finalContent;
 
     // WordPress 기사 업데이트
     const categoryIds = [6, 31];

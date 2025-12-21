@@ -18,6 +18,8 @@ const sourceNames = {
   'petmd': 'PetMD',
   'vnexpress-travel': 'VnExpress Travel',
   'vnexpress-health': 'VnExpress Health',
+  'bonappetit': 'Bon Appétit',
+  'health': 'Health',
 };
 
 // VnExpress Travel과 Health 크롤러 - crawl-news와 동일한 로직 사용
@@ -231,6 +233,8 @@ const crawlers = {
   'petmd': () => require('@/scripts/crawlers/petmd')(),
   'vnexpress-travel': () => crawlVnExpressTravel(),
   'vnexpress-health': () => crawlVnExpressHealth(),
+  'bonappetit': () => require('@/scripts/crawlers/bonappetit')(),
+  'health': () => require('@/scripts/crawlers/health')(),
 };
 
 export async function POST(request) {

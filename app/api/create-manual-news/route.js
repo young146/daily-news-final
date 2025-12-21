@@ -148,31 +148,6 @@ export async function POST(request) {
       }
     });
 
-    // WP 31 형식으로 본문 구성
-    const bodyStyle = `
-<style>
-.news-body-content {
-    font-size: 17px !important;
-    line-height: 1.8 !important;
-    color: #1f2937 !important;
-}
-@media (prefers-color-scheme: dark) {
-    .news-body-content {
-        color: #e5e7eb !important;
-        font-size: 17px !important;
-    }
-}
-.news-body-content p {
-    font-size: 17px !important;
-    line-height: 1.8 !important;
-    margin-bottom: 16px !important;
-}
-.news-body-content h1, .news-body-content h2, .news-body-content h3 {
-    color: inherit !important;
-}
-</style>
-<div class="news-body-content">`;
-
     // 출처 정보 추가
     const sourceAttribution = `
     <div class="news-source-header">
@@ -181,14 +156,14 @@ export async function POST(request) {
     </div>`;
 
     // 대표 사진을 맨 앞에 추가
-    let wpContent = sourceAttribution + bodyStyle;
+    let wpContent = sourceAttribution;
     if (featuredImage) {
       const featuredImageHtml = `<img src="${featuredImage.url}" alt="${title}" style="width:100%; height:auto; margin-bottom: 20px; display:block;" /><br/>`;
       wpContent += featuredImageHtml;
     }
     
     // 본문 추가 (이미지 플레이스홀더는 이미 교체됨)
-    wpContent += finalContent + "</div>";
+    wpContent += finalContent;
 
     // WordPress에 발행
     const auth = getWPAuth();

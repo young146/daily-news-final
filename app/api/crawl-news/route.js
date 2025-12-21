@@ -680,9 +680,21 @@ async function crawlPetMD() {
     return await crawlFn();
 }
 
+async function crawlBonAppetit() {
+    const crawlBonAppetitModule = await import('@/scripts/crawlers/bonappetit');
+    const crawlFn = crawlBonAppetitModule.default || crawlBonAppetitModule;
+    return await crawlFn();
+}
+
+async function crawlHealth() {
+    const crawlHealthModule = await import('@/scripts/crawlers/health');
+    const crawlFn = crawlHealthModule.default || crawlHealthModule;
+    return await crawlFn();
+}
+
 export async function POST(request) {
     try {
-        console.log('🚀 Starting News Crawl (13 Sources with Detail Pages)...');
+        console.log('🚀 Starting News Crawl (15 Sources with Detail Pages)...');
         
         const results = await Promise.all([
             crawlVnExpress(),
@@ -697,11 +709,13 @@ export async function POST(request) {
             crawlTheDodo(),
             crawlPetMD(),
             crawlVnExpressTravel(),
-            crawlVnExpressHealth()
+            crawlVnExpressHealth(),
+            crawlBonAppetit(),
+            crawlHealth()
         ]);
         
-        const [vnItems, vnvnItems, yhItems, ivItems, ttItems, tnItems, psItems, sgItems, soraItems, thedodoItems, petmdItems, travelItems, healthItems] = results;
-        const allItems = [...vnItems, ...vnvnItems, ...yhItems, ...ivItems, ...ttItems, ...tnItems, ...psItems, ...sgItems, ...soraItems, ...thedodoItems, ...petmdItems, ...travelItems, ...healthItems];
+        const [vnItems, vnvnItems, yhItems, ivItems, ttItems, tnItems, psItems, sgItems, soraItems, thedodoItems, petmdItems, travelItems, healthItems, bonappetitItems, healthMagItems] = results;
+        const allItems = [...vnItems, ...vnvnItems, ...yhItems, ...ivItems, ...ttItems, ...tnItems, ...psItems, ...sgItems, ...soraItems, ...thedodoItems, ...petmdItems, ...travelItems, ...healthItems, ...bonappetitItems, ...healthMagItems];
         
         console.log(`Total items found: ${allItems.length}`);
         
@@ -719,7 +733,9 @@ export async function POST(request) {
             'The Dodo': thedodoItems.length,
             'PetMD': petmdItems.length,
             'VnExpress Travel': travelItems.length,
-            'VnExpress Health': healthItems.length
+            'VnExpress Health': healthItems.length,
+            'Bon Appétit': bonappetitItems.length,
+            'Health': healthMagItems.length
         };
         
         // 1. 중복 필터링
