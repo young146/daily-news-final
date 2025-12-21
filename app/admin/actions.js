@@ -58,6 +58,13 @@ export async function publishItemAction(id, target) {
       data.isPublishedMain = true;
       data.publishedAt = new Date(); // WordPress 발행 시점 기록 (근본 해결)
       data.status = "PUBLISHED";
+      
+      // 새로운 뉴스가 발행되면 이전 카드 뉴스 초기화
+      await prisma.newsItem.updateMany({
+        where: { isCardNews: true },
+        data: { isCardNews: false },
+      });
+      console.log(`[Publish] ✅ Cleared isCardNews flags - new news published`);
     } else if (target === "daily") {
       // Publish to Main Site only (no separate summary post needed)
       const result = await publishToMainSite(item);
@@ -72,6 +79,13 @@ export async function publishItemAction(id, target) {
       data.isPublishedDaily = true;
       data.publishedAt = new Date();
       data.status = "PUBLISHED";
+      
+      // 새로운 뉴스가 발행되면 이전 카드 뉴스 초기화
+      await prisma.newsItem.updateMany({
+        where: { isCardNews: true },
+        data: { isCardNews: false },
+      });
+      console.log(`[Publish] ✅ Cleared isCardNews flags - new news published`);
     } else if (target === "sns") {
       await postToSNS(item, "facebook");
       await postToSNS(item, "kakao");

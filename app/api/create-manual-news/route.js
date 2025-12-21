@@ -231,6 +231,13 @@ export async function POST(request) {
 
     const wpPost = await wpResponse.json();
     
+    // 새로운 뉴스가 발행되면 이전 카드 뉴스 초기화
+    await prisma.newsItem.updateMany({
+      where: { isCardNews: true },
+      data: { isCardNews: false },
+    });
+    console.log(`[Manual News] ✅ Cleared isCardNews flags - new news published`);
+    
     // 데이터베이스에 저장 (선택사항)
     await prisma.newsItem.create({
       data: {

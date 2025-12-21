@@ -27,6 +27,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'cdn.insidevina.com' },
       { protocol: 'https', hostname: 'images2.thanhnien.vn' },
       { protocol: 'https', hostname: 'media.urbanistnetwork.com' },
+      { protocol: 'https', hostname: 'soranews24.com' },
       { protocol: 'https', hostname: 'en.cand.com.vn' },
     ],
   },

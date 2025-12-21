@@ -78,160 +78,78 @@ export async function POST(request) {
     const dateStr = `${year}-${month}-${day}`;
     console.log(`[CardNews API] Using date: ${dateStr} (Vietnam timezone)`);
 
-    // 1. Get Top News Info - 단순화된 fallback 로직
+    // 카드 뉴스 선택 (이전 isCardNews는 이미 뉴스 발행 시점에 초기화됨)
+
+    // 발행된 뉴스 중에서 탑뉴스 2개 선택 (날짜 필터 없이, 최신 순)
+    const topNewsList = await prisma.newsItem.findMany({
+      where: {
+        isTopNews: true,
+        status: 'PUBLISHED', // 발행된 뉴스만
+      },
+      orderBy: [
+        { updatedAt: "desc" }, // 최근에 업데이트된 것 우선
+        { publishedAt: "desc" },
+        { createdAt: "desc" },
+      ],
+      take: 2, // 탑뉴스 최대 2개
+    });
+
+    // 발행된 뉴스 중에서 일반 뉴스 3개 선택 (탑뉴스 제외, 최신 순)
+    const topNewsIds = topNewsList.map(n => n.id);
+    const cardNewsItems = await prisma.newsItem.findMany({
+      where: {
+        id: { notIn: topNewsIds },
+        isTopNews: false,
+        isPublishedMain: true,
+        status: 'PUBLISHED', // 발행된 뉴스만
+      },
+      orderBy: [
+        { updatedAt: "desc" }, // 최근에 업데이트된 것 우선
+        { publishedAt: "desc" },
+        { createdAt: "desc" },
+      ],
+      take: 3, // 일반 뉴스 3개
+    });
+
+    // 선택된 5개 뉴스에 isCardNews 플래그 설정
+    const selectedNewsIds = [...topNewsList.map(n => n.id), ...cardNewsItems.map(n => n.id)];
+    await prisma.newsItem.updateMany({
+      where: { id: { in: selectedNewsIds } },
+      data: { isCardNews: true },
+    });
+    console.log(`[CardNews API] ✅ Selected ${selectedNewsIds.length} news items for card news (Top: ${topNewsList.length}, Others: ${cardNewsItems.length})`);
+
+    // 탑뉴스는 첫 번째 것 사용 (선택된 뉴스가 있으면 그것 사용)
     let topNews = null;
-    let fallbackReason = "";
-
-    // Step 1: 선택된 탑뉴스 ID가 있으면 해당 뉴스 사용
     if (body.topNewsId) {
-      try {
-        topNews = await prisma.newsItem.findUnique({
-          where: { id: body.topNewsId },
-        });
-        
-        if (topNews) {
-          // 선택된 뉴스가 유효한지 확인
-          if (topNews.status !== 'PUBLISHED') {
-            console.warn(
-              `[CardNews API] Selected news status is ${topNews.status}, must be PUBLISHED, ignoring...`
-            );
-            topNews = null;
-            fallbackReason = "선택된 뉴스가 아직 발행되지 않았습니다";
-          } else {
-            console.log(
-              `[CardNews API] ✅ Using selected top news: ${topNews.translatedTitle || topNews.title}`
-            );
-          }
-        } else {
-          fallbackReason = "선택된 뉴스를 찾을 수 없습니다";
-        }
-      } catch (error) {
-        console.error(`[CardNews API] Error fetching selected news:`, error);
-        fallbackReason = `선택된 뉴스 조회 실패: ${error.message}`;
-        topNews = null;
+      // 선택된 뉴스가 선택된 리스트에 있는지 확인
+      const selectedNews = [...topNewsList, ...cardNewsItems].find(n => n.id === body.topNewsId);
+      if (selectedNews && selectedNews.status === 'PUBLISHED') {
+        topNews = selectedNews;
+        console.log(`[CardNews API] ✅ Using selected top news: ${topNews.translatedTitle || topNews.title}`);
       }
     }
-
-    // Step 2: 선택된 뉴스가 없으면 발행된 뉴스 중에서 isTopNews=true인 최신 뉴스 사용
+    
+    // 선택된 뉴스가 없으면 첫 번째 탑뉴스 사용
     if (!topNews) {
-      try {
-        topNews = await prisma.newsItem.findFirst({
-          where: {
-            isTopNews: true,
-            status: 'PUBLISHED', // 발행된 뉴스만
-          },
-          orderBy: [
-            { updatedAt: "desc" }, // 최근에 지정된 것 우선
-            { publishedAt: "desc" },
-            { createdAt: "desc" },
-          ],
-        });
-        
-        if (topNews) {
-          console.log(
-            `[CardNews API] ✅ Using default top news: ${topNews.translatedTitle || topNews.title}`
-          );
-          if (fallbackReason) {
-            console.log(`[CardNews API] Fallback reason: ${fallbackReason}`);
-          }
-        } else {
-          fallbackReason = "발행된 탑뉴스가 없습니다";
-        }
-      } catch (error) {
-        console.error(`[CardNews API] Error fetching top news:`, error);
-        fallbackReason = `탑뉴스 조회 실패: ${error.message}`;
-        // 계속해서 다음 fallback 시도
-      }
-    }
-
-    // Step 3: 탑뉴스가 없으면 발행된 뉴스 중에서 최신 뉴스 사용
-    if (!topNews) {
-      try {
-        topNews = await prisma.newsItem.findFirst({
-          where: {
-            isTopNews: false, // 탑뉴스가 아닌 것만
-            isPublishedMain: true, // 발행된 뉴스만
-            status: 'PUBLISHED', // 발행된 뉴스만
-            OR: [
-              { publishedAt: { gte: today } },
-              { publishedAt: null },
-            ],
-          },
-          orderBy: [
-            { publishedAt: "desc" },
-            { updatedAt: "desc" },
-            { createdAt: "desc" },
-          ],
-        });
-        
-        if (topNews) {
-          console.log(
-            `[CardNews API] ✅ Using fallback published news: ${topNews.translatedTitle || topNews.title}`
-          );
-          if (fallbackReason) {
-            console.log(`[CardNews API] Fallback reason: ${fallbackReason}`);
-          }
-        } else {
-          fallbackReason = "발행된 뉴스가 없습니다";
-        }
-      } catch (error) {
-        console.error(`[CardNews API] Error fetching fallback news:`, error);
-        fallbackReason = `fallback 뉴스 조회 실패: ${error.message}`;
+      topNews = topNewsList.length > 0 ? topNewsList[0] : null;
+      if (topNews) {
+        console.log(`[CardNews API] ✅ Using default top news: ${topNews.translatedTitle || topNews.title}`);
       }
     }
 
     // 최종 검증
     if (!topNews) {
-      const errorMsg = fallbackReason 
-        ? `뉴스를 찾을 수 없습니다. (${fallbackReason})`
-        : "오늘 날짜의 뉴스를 찾을 수 없습니다. 관리자 페이지에서 뉴스를 선택해주세요.";
-      
       return new Response(
         JSON.stringify({
           success: false,
-          error: errorMsg,
+          error: "발행된 탑뉴스가 없습니다. 먼저 뉴스를 발행하고 탑뉴스를 지정해주세요.",
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
     const title = topNews.translatedTitle || topNews.title || "Daily News Card";
-
-    // 1.5. 카드 뉴스용 5개 뉴스 선택 (탑뉴스 1개 + 일반 뉴스 4개)
-    // 먼저 이전 카드 뉴스 플래그 초기화 (선택사항, 필요시 주석 해제)
-    // await prisma.newsItem.updateMany({
-    //   where: { isCardNews: true },
-    //   data: { isCardNews: false },
-    // });
-
-    // 일반 뉴스 4개 선택 (탑뉴스 제외)
-    const topNewsIds = [topNews.id];
-    const cardNewsItems = await prisma.newsItem.findMany({
-      where: {
-        id: { notIn: topNewsIds },
-        isTopNews: false,
-        isPublishedMain: true,
-        status: 'PUBLISHED',
-        OR: [
-          { publishedAt: { gte: today } },
-          { publishedAt: null },
-        ],
-      },
-      orderBy: [
-        { publishedAt: "desc" },
-        { updatedAt: "desc" },
-        { createdAt: "desc" },
-      ],
-      take: 4,
-    });
-
-    // 선택된 5개 뉴스에 isCardNews 플래그 설정
-    const selectedNewsIds = [topNews.id, ...cardNewsItems.map(n => n.id)];
-    await prisma.newsItem.updateMany({
-      where: { id: { in: selectedNewsIds } },
-      data: { isCardNews: true },
-    });
-    console.log(`[CardNews API] ✅ Selected ${selectedNewsIds.length} news items for card news (Top: 1, Others: ${cardNewsItems.length})`);
 
     // 2. 이미지가 업로드되지 않았으면 서버에서 생성
     // (이미 위에서 FormData 처리 완료, imageBuffer가 null이면 서버에서 생성)
@@ -395,14 +313,9 @@ export async function POST(request) {
     console.log(
       `[CardNews API] Publishing to WordPress with date: ${dateStr}, title: ${title}`
     );
-    
-    // 날짜 파라미터 생성 (MMDD 형식)
-    const dateParam = `${month}${day}`;
-    const terminalUrlWithDate = `https://chaovietnam.co.kr/daily-news-terminal/?v=${dateParam}`;
-    
     const result = await publishCardNewsToWordPress(imageBuffer, dateStr, {
       topNewsTitle: title,
-      terminalUrl: terminalUrlWithDate,
+      terminalUrl: "https://chaovietnam.co.kr/daily-news-terminal/",
     });
 
     console.log("[CardNews API] Success:", result);

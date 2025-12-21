@@ -661,10 +661,7 @@ function jenny_daily_news_shortcode($atts)
         }
 
         // 본문에서 출처/날짜/원문 정보를 먼저 제거한 후 excerpt 생성
-        // 1. <style> 태그와 그 내용을 먼저 제거 (CSS 코드가 excerpt에 노출되지 않도록)
-        $content = preg_replace('/<style[^>]*>.*?<\/style>/is', '', $post_obj->post_content);
-        // 2. 나머지 HTML 태그 제거
-        $content = strip_tags($content);
+        $content = strip_tags($post_obj->post_content);
         
         // 본문에서 출처/날짜/원문 정보 제거 (Jenny 페이지용 - 메타 라인과 중복 방지)
         // 패턴 1: "출처: [소스명] 날짜: [날짜]" 형식 (공백 포함 소스명 지원)
@@ -673,10 +670,7 @@ function jenny_daily_news_shortcode($atts)
         // 패턴 2: "출처: [소스명] | 날짜: [날짜] |" 형식
         $content = preg_replace('/출처\s*:\s*[^|]*\s*\|/i', '', $content);
         $content = preg_replace('/날짜\s*:\s*[^|]*\s*\|/i', '', $content);
-        // 패턴 3: "원문 기사 전체 보기" 또는 "원문 보기" 링크 제거 (URL 포함)
-        // "원문보기: URL" 형식 전체를 제거
-        $content = preg_replace('/원문\s*(기사\s*)?(전체\s*)?보기\s*:\s*[^\s]+/i', '', $content);
-        // 기타 "원문 보기" 형식 제거
+        // 패턴 3: "원문 기사 전체 보기" 또는 "원문 보기" 링크 제거 (점 전까지)
         $content = preg_replace('/원문\s*(기사\s*)?(전체\s*)?보기[^가-힣a-zA-Z0-9]*/i', '', $content);
         // 패턴 4: 남은 구분선 제거
         $content = preg_replace('/\s*[|]\s*/', ' ', $content);
@@ -700,7 +694,6 @@ function jenny_daily_news_shortcode($atts)
             $excerpt = preg_replace('/출처\s*:\s*[^날]+날짜\s*:\s*[0-9.\s]+\.{0,2}\s*/i', '', $excerpt);
             $excerpt = preg_replace('/출처\s*:\s*[^|]*\s*\|/i', '', $excerpt);
             $excerpt = preg_replace('/날짜\s*:\s*[^|]*\s*\|/i', '', $excerpt);
-            $excerpt = preg_replace('/원문\s*(기사\s*)?(전체\s*)?보기\s*:\s*[^\s]+/i', '', $excerpt);
             $excerpt = preg_replace('/원문\s*(기사\s*)?(전체\s*)?보기[^가-힣a-zA-Z0-9]*/i', '', $excerpt);
             $excerpt = preg_replace('/\s*[|]\s*/', ' ', $excerpt);
             $excerpt = preg_replace('/\s{2,}/', ' ', $excerpt);

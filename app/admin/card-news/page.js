@@ -5,33 +5,23 @@ import CardNewsSimple from "./CardNewsSimple";
 const prisma = new PrismaClient();
 
 async function getData() {
-  // 베트남 시간대 기준으로 오늘 날짜 계산
-  const now = new Date();
-  const vietnamTime = new Date(
-    now.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
-  );
-  const today = new Date(
-    vietnamTime.getFullYear(),
-    vietnamTime.getMonth(),
-    vietnamTime.getDate()
-  );
-  today.setHours(0, 0, 0, 0);
+  // 날짜 필터 없이 발행 상태와 최신성만 사용
 
-  // 1. 탑뉴스 리스트 가져오기 (최대 2개) - 발행된 뉴스 중에서 isTopNews=true인 것만
+  // 1. 탑뉴스 리스트 가져오기 (최대 2개) - 발행된 뉴스 중에서 최신 순
   const topNewsList = await prisma.newsItem.findMany({
     where: {
       isTopNews: true,
       status: 'PUBLISHED', // 발행된 뉴스만
     },
     orderBy: [
-      { updatedAt: "desc" },
+      { updatedAt: "desc" }, // 최근에 업데이트된 것 우선
       { publishedAt: "desc" },
       { createdAt: "desc" },
     ],
     take: 2,
   });
 
-  // 2. 탑뉴스가 아닌 발행된 뉴스 중에서 최신 뉴스 가져오기 (최대 5개, 탑뉴스 제외)
+  // 2. 탑뉴스가 아닌 발행된 뉴스 중에서 최신 뉴스 가져오기 (최대 3개, 탑뉴스 제외)
   const topNewsIds = topNewsList.map(n => n.id);
   const recentNewsList = await prisma.newsItem.findMany({
     where: {
@@ -39,20 +29,16 @@ async function getData() {
       isTopNews: false, // 탑뉴스가 아닌 것만
       isPublishedMain: true, // 발행된 뉴스만
       status: 'PUBLISHED', // 발행된 뉴스만
-      OR: [
-        { publishedAt: { gte: today } },
-        { publishedAt: null },
-      ],
     },
     orderBy: [
+      { updatedAt: "desc" }, // 최근에 업데이트된 것 우선
       { publishedAt: "desc" },
-      { updatedAt: "desc" },
       { createdAt: "desc" },
     ],
-    take: 5,
+    take: 3, // 일반 뉴스 3개
   });
 
-  // 3. 전체 뉴스 리스트 (탑뉴스 + 최신 뉴스, 최대 5개)
+  // 3. 전체 뉴스 리스트 (탑뉴스 2개 + 최신 뉴스 3개 = 총 5개)
   const allNewsList = [
     ...topNewsList,
     ...recentNewsList.filter(n => !topNewsIds.includes(n.id))

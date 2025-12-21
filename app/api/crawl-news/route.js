@@ -540,30 +540,6 @@ async function crawlSaigoneer() {
     return items;
 }
 
-async function crawlTheDodo() {
-    // The Dodo 크롤러는 별도 파일에서 import (CommonJS 모듈)
-    try {
-        const theDodoModule = await import('@/scripts/crawlers/thedodo');
-        const crawlFn = theDodoModule.default || theDodoModule;
-        return await crawlFn();
-    } catch (error) {
-        console.error('The Dodo crawl error:', error.message);
-        return [];
-    }
-}
-
-async function crawlPetMD() {
-    // PetMD 크롤러는 별도 파일에서 import (CommonJS 모듈)
-    try {
-        const petMDModule = await import('@/scripts/crawlers/petmd');
-        const crawlFn = petMDModule.default || petMDModule;
-        return await crawlFn();
-    } catch (error) {
-        console.error('PetMD crawl error:', error.message);
-        return [];
-    }
-}
-
 async function crawlVnExpressTravel() {
     const cheerio = await import('cheerio');
     const items = [];
@@ -686,10 +662,27 @@ async function crawlVnExpressHealth() {
     return items;
 }
 
+async function crawlSoraNews24() {
+    const crawlSoraNews24Module = await import('@/scripts/crawlers/soranews24');
+    const crawlFn = crawlSoraNews24Module.default || crawlSoraNews24Module;
+    return await crawlFn();
+}
+
+async function crawlTheDodo() {
+    const crawlTheDodoModule = await import('@/scripts/crawlers/thedodo');
+    const crawlFn = crawlTheDodoModule.default || crawlTheDodoModule;
+    return await crawlFn();
+}
+
+async function crawlPetMD() {
+    const crawlPetMDModule = await import('@/scripts/crawlers/petmd');
+    const crawlFn = crawlPetMDModule.default || crawlPetMDModule;
+    return await crawlFn();
+}
 
 export async function POST(request) {
     try {
-        console.log('🚀 Starting News Crawl (12 Sources with Detail Pages)...');
+        console.log('🚀 Starting News Crawl (13 Sources with Detail Pages)...');
         
         const results = await Promise.all([
             crawlVnExpress(),
@@ -700,14 +693,15 @@ export async function POST(request) {
             crawlThanhNien(),
             crawlPublicSecurity(),
             crawlSaigoneer(),
+            crawlSoraNews24(),
             crawlTheDodo(),
             crawlPetMD(),
             crawlVnExpressTravel(),
             crawlVnExpressHealth()
         ]);
         
-        const [vnItems, vnvnItems, yhItems, ivItems, ttItems, tnItems, psItems, sgItems, theDodoItems, petMDItems, travelItems, healthItems] = results;
-        const allItems = [...vnItems, ...vnvnItems, ...yhItems, ...ivItems, ...ttItems, ...tnItems, ...psItems, ...sgItems, ...theDodoItems, ...petMDItems, ...travelItems, ...healthItems];
+        const [vnItems, vnvnItems, yhItems, ivItems, ttItems, tnItems, psItems, sgItems, soraItems, thedodoItems, petmdItems, travelItems, healthItems] = results;
+        const allItems = [...vnItems, ...vnvnItems, ...yhItems, ...ivItems, ...ttItems, ...tnItems, ...psItems, ...sgItems, ...soraItems, ...thedodoItems, ...petmdItems, ...travelItems, ...healthItems];
         
         console.log(`Total items found: ${allItems.length}`);
         
@@ -721,8 +715,9 @@ export async function POST(request) {
             'ThanhNien': tnItems.length,
             'PublicSecurity': psItems.length,
             'Saigoneer': sgItems.length,
-            'The Dodo': theDodoItems.length,
-            'PetMD': petMDItems.length,
+            'SoraNews24': soraItems.length,
+            'The Dodo': thedodoItems.length,
+            'PetMD': petmdItems.length,
             'VnExpress Travel': travelItems.length,
             'VnExpress Health': healthItems.length
         };
@@ -738,9 +733,8 @@ export async function POST(request) {
             }
         }
         
-        // 2. 원본 사이트 표시 순서 기준 정렬 (saigoneer, thedodo, petmd 제외)
-        // viewCount는 원본 사이트에서의 표시 순서 (낮을수록 원본 사이트 상단에 있었던 뉴스)
-        // 따라서 viewCount가 낮을수록 높은 우선순위로 정렬하여 원본 사이트의 중요도 반영
+        // 2. 조회수 기준 정렬 (saigoneer, thedodo, petmd 제외)
+        // viewCount가 낮을수록 높은 우선순위 (메인 페이지 상단에 표시된 순서)
         const excludedSources = ['Saigoneer', 'The Dodo', 'PetMD'];
         newItems.sort((a, b) => {
             const aExcluded = excludedSources.includes(a.source);
@@ -753,14 +747,13 @@ export async function POST(request) {
             // 둘 다 제외된 경우: 기존 순서 유지
             if (aExcluded && bExcluded) return 0;
             
-            // 둘 다 포함된 경우: 원본 사이트 표시 순서(viewCount) 기준 정렬
-            // viewCount가 낮을수록 원본 사이트에서 더 위에 있었던 뉴스이므로 우선순위가 높음
+            // 둘 다 포함된 경우: viewCount 기준 정렬
             const aViewCount = a.viewCount || 999999;
             const bViewCount = b.viewCount || 999999;
             return aViewCount - bViewCount;
         });
         
-        console.log(`New items to translate: ${newItems.length} (sorted by original site display order)`);
+        console.log(`New items to translate: ${newItems.length} (sorted by view count)`);
         
         // 3. 병렬 번역 (10개씩 배치 - 제목만이라 빠름)
         const batchSize = 10;
