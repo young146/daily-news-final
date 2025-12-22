@@ -60,110 +60,52 @@ export async function POST(request) {
       }
     }
 
-    // 베트남 시간대 기준으로 오늘 날짜 가져오기 (먼저 계산)
+    // 베트남 시간대 기준으로 오늘 날짜 가져오기
     const now = new Date();
     const vietnamTime = new Date(
       now.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
     );
-    const today = new Date(
-      vietnamTime.getFullYear(),
-      vietnamTime.getMonth(),
-      vietnamTime.getDate()
-    );
-    today.setHours(0, 0, 0, 0);
-
     const year = vietnamTime.getFullYear();
     const month = String(vietnamTime.getMonth() + 1).padStart(2, "0");
     const day = String(vietnamTime.getDate()).padStart(2, "0");
     const dateStr = `${year}-${month}-${day}`;
     console.log(`[CardNews API] Using date: ${dateStr} (Vietnam timezone)`);
 
-    // 카드 뉴스 선택 전에 기존 카드 뉴스 초기화 (새로운 뉴스 발행 시 자동 초기화되지만, 여기서도 명시적으로 초기화)
-    await prisma.newsItem.updateMany({
-      where: { isCardNews: true },
-      data: { isCardNews: false },
-    });
-    console.log(`[CardNews API] ✅ Cleared all isCardNews flags before selecting new ones`);
-
-    // 발행 행위(batch) 기반: 가장 최근 발행된 뉴스들의 배치를 선택
-    // 1. 가장 최근에 발행된 뉴스의 시간 찾기
-    const latestPublished = await prisma.newsItem.findFirst({
-      where: {
-        status: 'PUBLISHED',
-        publishedAt: { not: null }
-      },
-      orderBy: {
-        publishedAt: 'desc'
-      },
-      select: {
-        publishedAt: true
-      }
-    });
-
-    if (!latestPublished) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "발행된 뉴스가 없습니다.",
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // 2. 가장 최근 발행 시간 기준으로 ±30분 이내를 같은 배치로 간주
-    const batchTime = new Date(latestPublished.publishedAt);
-    const batchStartTime = new Date(batchTime.getTime() - 30 * 60 * 1000); // 30분 전
-    const batchEndTime = new Date(batchTime.getTime() + 30 * 60 * 1000);   // 30분 후
-
-    console.log(`[CardNews API] Latest batch time: ${batchTime.toISOString()}`);
-    console.log(`[CardNews API] Batch window: ${batchStartTime.toISOString()} ~ ${batchEndTime.toISOString()}`);
-
-    // 3. 이 배치 시간대에 발행된 탑뉴스 2개 선택
+    // isCardNews = true인 뉴스들 가져오기
     const topNewsList = await prisma.newsItem.findMany({
       where: {
         isTopNews: true,
         status: 'PUBLISHED',
-        publishedAt: {
-          gte: batchStartTime,
-          lte: batchEndTime
-        }
+        isCardNews: true, // ✅ 카드 뉴스로 표시된 것만
       },
       orderBy: {
         publishedAt: 'desc'
       },
-      take: 2, // 탑뉴스 최대 2개
+      take: 2,
     });
 
-    // 4. 이 배치 시간대에 발행된 일반 뉴스 3개 선택 (탑뉴스 제외)
     const topNewsIds = topNewsList.map(n => n.id);
     const cardNewsItems = await prisma.newsItem.findMany({
       where: {
         id: { notIn: topNewsIds },
         isTopNews: false,
         status: 'PUBLISHED',
-        publishedAt: {
-          gte: batchStartTime,
-          lte: batchEndTime
-        }
+        isCardNews: true, // ✅ 카드 뉴스로 표시된 것만
       },
       orderBy: {
         publishedAt: 'desc'
       },
-      take: 3, // 일반 뉴스 3개
+      take: 3,
     });
 
-    // 선택된 5개 뉴스에 isCardNews 플래그 설정
-    const selectedNewsIds = [...topNewsList.map(n => n.id), ...cardNewsItems.map(n => n.id)];
-    await prisma.newsItem.updateMany({
-      where: { id: { in: selectedNewsIds } },
-      data: { isCardNews: true },
-    });
-    console.log(`[CardNews API] ✅ Selected ${selectedNewsIds.length} news items for card news (Top: ${topNewsList.length}, Others: ${cardNewsItems.length})`);
+    console.log(`[CardNews API] Found isCardNews=true: Top=${topNewsList.length}, Others=${cardNewsItems.length}`);
+
+    console.log(`[CardNews API] Found isCardNews=true: Top=${topNewsList.length}, Others=${cardNewsItems.length}`);
 
     // 탑뉴스는 첫 번째 것 사용 (선택된 뉴스가 있으면 그것 사용)
     let topNews = null;
     if (body.topNewsId) {
-      // 선택된 뉴스가 선택된 리스트에 있는지 확인
+      // 선택된 뉴스가 isCardNews = true 리스트에 있는지 확인
       const selectedNews = [...topNewsList, ...cardNewsItems].find(n => n.id === body.topNewsId);
       if (selectedNews && selectedNews.status === 'PUBLISHED') {
         topNews = selectedNews;
@@ -184,7 +126,7 @@ export async function POST(request) {
       return new Response(
         JSON.stringify({
           success: false,
-          error: "발행된 탑뉴스가 없습니다. 먼저 뉴스를 발행하고 탑뉴스를 지정해주세요.",
+          error: "발행된 카드 뉴스 대상이 없습니다. 먼저 뉴스를 발행해주세요.",
         }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );

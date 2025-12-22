@@ -11,12 +11,37 @@ export default function SettingsPage() {
   const [deletingId, setDeletingId] = useState(null);
   const [crawlerLogs, setCrawlerLogs] = useState([]);
   const [expandedLog, setExpandedLog] = useState(null);
+  const [resettingCardNews, setResettingCardNews] = useState(false);
 
   useEffect(() => {
     fetchSystemInfo();
     fetchPublishedNews();
     fetchCrawlerLogs();
   }, []);
+
+  const resetCardNews = async () => {
+    if (!confirm('카드 엽서 대상 뉴스를 초기화하시겠습니까?\n\n모든 isCardNews 플래그가 false로 설정됩니다.')) {
+      return;
+    }
+    
+    setResettingCardNews(true);
+    try {
+      const res = await fetch('/api/reset-card-news', {
+        method: 'POST'
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`✅ ${data.count}개의 카드 뉴스 플래그가 초기화되었습니다.`);
+      } else {
+        alert('초기화 실패: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Failed to reset:', error);
+      alert('초기화 실패: ' + error.message);
+    } finally {
+      setResettingCardNews(false);
+    }
+  };
 
   const fetchCrawlerLogs = async () => {
     try {
@@ -720,9 +745,27 @@ export default function SettingsPage() {
         marginBottom: '24px',
         border: '1px solid #f59e0b'
       }}>
-        <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', color: '#92400e' }}>
-          📋 일일 워크플로우
-        </h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#92400e' }}>
+            📋 일일 워크플로우
+          </h2>
+          <button
+            onClick={resetCardNews}
+            disabled={resettingCardNews}
+            style={{
+              padding: '8px 16px',
+              background: resettingCardNews ? '#d1d5db' : '#dc2626',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: resettingCardNews ? 'not-allowed' : 'pointer',
+              fontSize: '13px',
+              fontWeight: '600'
+            }}
+          >
+            {resettingCardNews ? '초기화 중...' : '🔄 카드 엽서 초기화'}
+          </button>
+        </div>
         
         <ol style={{ paddingLeft: '24px', color: '#78350f', lineHeight: '2' }}>
           <li><strong>크롤링</strong>: 대시보드에서 "Crawl News" 버튼 클릭 (매일 아침)</li>
@@ -732,6 +775,18 @@ export default function SettingsPage() {
           <li><strong>카드 엽서</strong>: /admin/card-news 에서 카드 엽서 생성 및 게시</li>
           <li><strong>SNS 공유</strong>: 뉴스 터미널 URL 공유</li>
         </ol>
+        
+        <div style={{ 
+          marginTop: '16px', 
+          padding: '12px', 
+          background: 'rgba(255,255,255,0.6)', 
+          borderRadius: '8px',
+          fontSize: '13px',
+          color: '#78350f'
+        }}>
+          💡 <strong>카드 엽서 초기화:</strong> 발행된 뉴스가 카드 엽서 대상에서 제외됩니다. 
+          다음 뉴스 발행 시 새로운 뉴스들이 자동으로 카드 엽서 대상이 됩니다.
+        </div>
       </section>
     </div>
   );

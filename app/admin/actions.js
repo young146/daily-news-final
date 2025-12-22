@@ -56,15 +56,11 @@ export async function publishItemAction(id, target) {
         data.wordpressMediaId = result.mediaId;
       }
       data.isPublishedMain = true;
-      data.publishedAt = new Date(); // WordPress 발행 시점 기록 (근본 해결)
+      data.publishedAt = new Date();
       data.status = "PUBLISHED";
+      data.isCardNews = true; // ✅ 발행된 뉴스를 카드 엽서 후보로 표시
       
-      // 새로운 뉴스가 발행되면 이전 카드 뉴스 초기화
-      await prisma.newsItem.updateMany({
-        where: { isCardNews: true },
-        data: { isCardNews: false },
-      });
-      console.log(`[Publish] ✅ Cleared isCardNews flags - new news published`);
+      console.log(`[Publish] ✅ Set isCardNews=true for published news`);
     } else if (target === "daily") {
       // Publish to Main Site only (no separate summary post needed)
       const result = await publishToMainSite(item);
@@ -79,13 +75,9 @@ export async function publishItemAction(id, target) {
       data.isPublishedDaily = true;
       data.publishedAt = new Date();
       data.status = "PUBLISHED";
+      data.isCardNews = true; // ✅ 발행된 뉴스를 카드 엽서 후보로 표시
       
-      // 새로운 뉴스가 발행되면 이전 카드 뉴스 초기화
-      await prisma.newsItem.updateMany({
-        where: { isCardNews: true },
-        data: { isCardNews: false },
-      });
-      console.log(`[Publish] ✅ Cleared isCardNews flags - new news published`);
+      console.log(`[Publish] ✅ Set isCardNews=true for published news`);
     } else if (target === "sns") {
       await postToSNS(item, "facebook");
       await postToSNS(item, "kakao");

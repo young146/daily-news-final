@@ -524,7 +524,18 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                     🔗 미리보기
                   </a>
                   <button
-                    onClick={() => setPublishResult(null)}
+                    onClick={() => {
+                      // 확인 버튼 클릭 시 모든 isCardNews 초기화
+                      fetch('/api/reset-card-news', { method: 'POST' })
+                        .then(() => {
+                          setPublishResult(null);
+                          window.location.reload(); // 페이지 새로고침하여 업데이트된 데이터 표시
+                        })
+                        .catch(err => {
+                          console.error('Reset failed:', err);
+                          setPublishResult(null);
+                        });
+                    }}
                     className="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-colors"
                   >
                     ✓ 확인
