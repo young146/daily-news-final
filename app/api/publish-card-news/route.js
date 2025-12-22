@@ -156,59 +156,12 @@ export async function POST(request) {
 
       const summary = topNews.translatedSummary || topNews.summary || "";
       
-      // ✅ WordPress에 업로드된 이미지를 우선 사용 (이미 우리 서버에 있어 안전함)
-      let imageUrl = topNews.wordpressImageUrl || topNews.imageUrl || "";
-
-      console.log(`[CardNews API] Image source: ${
-        topNews.wordpressImageUrl ? 'WordPress (uploaded)' : 
-        topNews.imageUrl ? 'Original source' : 
-        'None'
-      }`);
-
-      // WordPress 이미지가 있으면 검증 생략 (이미 우리 서버의 이미지)
-      if (imageUrl && !topNews.wordpressImageUrl) {
-        // 원본 이미지인 경우만 검증
-        try {
-          console.log(`[CardNews API] Testing original image access: ${imageUrl.substring(0, 60)}...`);
-          
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5초 타임아웃
-          
-          const imgResp = await fetch(imageUrl, { 
-            method: "HEAD",  // GET 대신 HEAD로 더 빠르게 체크
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-              'Referer': topNews.originalUrl || 'https://chaovietnam.co.kr'
-            },
-            signal: controller.signal
-          });
-          
-          clearTimeout(timeoutId);
-          
-          if (!imgResp.ok) {
-            console.warn(
-              `[CardNews API] Original image fetch failed (${imgResp.status}). Using gradient.`
-            );
-            imageUrl = "";
-          } else {
-            console.log("[CardNews API] Original image accessible");
-          }
-        } catch (e) {
-          console.warn(
-            "[CardNews API] Original image access error, using gradient:",
-            e.message
-          );
-          imageUrl = "";
-        }
-      } else if (imageUrl) {
-        console.log("[CardNews API] Using WordPress uploaded image (no validation needed)");
-      }
-
-      console.log(
-        `[CardNews API] Final image URL: ${
-          imageUrl ? imageUrl.substring(0, 60) + "..." : "gradient background"
-        }`
-      );
+      // ✅ 이미지를 아예 사용하지 않고 그라디언트 배경만 사용 (가장 안전)
+      // WordPress 이미지도 외부 URL이라 접근 문제가 발생할 수 있음
+      let imageUrl = "";
+      
+      console.log(`[CardNews API] Using gradient background only (most stable)`);
+      console.log(`[CardNews API] Available images: WordPress=${!!topNews.wordpressImageUrl}, Original=${!!topNews.imageUrl}`);
 
       // ... (keep existing image upload logic if needed, or simplify) ...
       // For brevity, skipping the re-upload of background image since we are generating
