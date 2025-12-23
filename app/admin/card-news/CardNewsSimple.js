@@ -20,6 +20,9 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
   // 초기 선택: 선택된 뉴스가 없으면 기본 뉴스 사용
   const currentTopNews = selectedNews || topNews;
 
+  // 이미지 URL 결정
+  const newsImage = currentTopNews?.wordpressImageUrl || "";
+
   // 디버깅: 현재 상태 확인
   console.log("[CardNews] Component render:", {
     hasTopNews: !!topNews,
@@ -50,7 +53,6 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
 
   const newsTitle =
     currentTopNews?.translatedTitle || currentTopNews?.title || "오늘의 뉴스";
-  const newsImage = currentTopNews?.imageUrl || "";
   const weatherTemp = weather?.temp ?? "--";
   const usdRate =
     typeof rates?.usdVnd === "number"
@@ -77,7 +79,6 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
     // 탑뉴스가 없어도 서버로 요청을 보내서 fallback 로직이 작동하도록 함
     if (!currentTopNews) {
       console.warn("[CardNews] No top news selected, but proceeding to let server use fallback");
-      // alert는 제거하고 서버의 fallback 로직에 맡김
     }
 
     if (isGenerating) {
@@ -85,24 +86,18 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
       return;
     }
 
-    // 바로 게시 진행 (confirm 없이)
-    console.log("[CardNews] Confirm skipped, proceeding to publish");
-
     console.log("[CardNews] Publishing with selectedNewsId:", currentTopNews?.id || null);
     setIsGenerating(true);
     setPublishResult(null);
 
     try {
-      // 선택된 뉴스 정보를 서버에 전달
       const response = await fetch("/api/publish-card-news", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topNewsId: currentTopNews?.id || null, // 선택된 뉴스 ID 전달
+          topNewsId: currentTopNews?.id || null, 
         }),
       });
-
-      console.log("[CardNews] Response status:", response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -136,12 +131,10 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
     }
   };
 
-  // 뉴스 리스트가 없으면 빈 배열 사용
   const newsListToShow = allNewsList.length > 0 ? allNewsList : (topNewsList.length > 0 ? topNewsList : []);
 
   return (
     <div className="flex flex-col items-center py-8 px-4 min-h-screen">
-      {/* 뉴스 선택 UI - 항상 표시 */}
       <div className="mb-6 w-full max-w-4xl bg-white rounded-lg shadow-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-gray-800">
@@ -243,18 +236,16 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
         )}
       </div>
 
-      {/* 카드 뉴스 미리보기 */}
       <div
         style={{
-          width: "1200px",
-          height: "630px",
+          width: "800px",
+          height: "420px",
           position: "relative",
           overflow: "hidden",
           boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
           borderRadius: "12px",
         }}
       >
-        {/* 배경 이미지 */}
         {newsImage ? (
           <div
             style={{
@@ -282,7 +273,6 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
           />
         )}
 
-        {/* 콘텐츠 오버레이 */}
         <div
           style={{
             position: "relative",
@@ -293,7 +283,6 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
             padding: "40px 60px",
           }}
         >
-          {/* 상단: 로고 + 날짜 */}
           <div
             style={{
               display: "flex",
@@ -326,7 +315,6 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
             </div>
           </div>
 
-          {/* 중앙: 오늘의 뉴스 + 제목 */}
           <div
             style={{
               flex: 1,
@@ -363,7 +351,6 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
             </h1>
           </div>
 
-          {/* 하단: 날씨 + 환율 */}
           <div
             style={{
               display: "flex",
@@ -416,7 +403,6 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
         </div>
       </div>
 
-      {/* 버튼 */}
       <div className="mt-6 flex flex-col items-center gap-4">
         {!currentTopNews && (
           <div className="mb-4 p-4 bg-yellow-100 border border-yellow-400 rounded-lg text-yellow-800">
@@ -426,11 +412,6 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
         {currentTopNews && (
           <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800">
             ✅ <strong>선택된 뉴스:</strong> {currentTopNews.translatedTitle || currentTopNews.title}
-            {isUsingFallback && (
-              <span className="block mt-1 text-xs text-yellow-700">
-                (탑뉴스가 없어 최신 뉴스를 사용 중)
-              </span>
-            )}
           </div>
         )}
         <button
@@ -516,20 +497,29 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
 
                 <div className="flex gap-3">
                   <a
-                    href={publishResult.terminalUrl}
+                    href={`/admin/card-news/preview?imageUrl=${encodeURIComponent(publishResult.imageUrl)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-1 text-center bg-gray-100 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-200 transition-colors"
                   >
-                    🔗 미리보기
+                    🖼️ 카드 보기
                   </a>
+                  
                   <button
                     onClick={() => {
-                      // 확인 버튼 클릭 시 모든 isCardNews 초기화
+                      setPublishResult(null);
+                    }}
+                    className="flex-1 bg-orange-600 text-white py-3 rounded-lg font-bold hover:bg-orange-700 transition-colors"
+                  >
+                    🔄 다시 생성
+                  </button>
+                  
+                  <button
+                    onClick={() => {
                       fetch('/api/reset-card-news', { method: 'POST' })
                         .then(() => {
                           setPublishResult(null);
-                          window.location.reload(); // 페이지 새로고침하여 업데이트된 데이터 표시
+                          window.location.reload();
                         })
                         .catch(err => {
                           console.error('Reset failed:', err);

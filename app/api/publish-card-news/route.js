@@ -156,12 +156,18 @@ export async function POST(request) {
 
       const summary = topNews.translatedSummary || topNews.summary || "";
       
-      // ✅ 이미지를 아예 사용하지 않고 그라디언트 배경만 사용 (가장 안전)
-      // WordPress 이미지도 외부 URL이라 접근 문제가 발생할 수 있음
-      let imageUrl = "";
+      // ✅ WordPress에 이미 업로드된 이미지만 사용 (외부 URL 사용 금지)
+      // 외부 URL은 CORS 문제로 @vercel/og에서 로드 실패 가능성 높음
+      let imageUrl = topNews.wordpressImageUrl || "";
       
-      console.log(`[CardNews API] Using gradient background only (most stable)`);
-      console.log(`[CardNews API] Available images: WordPress=${!!topNews.wordpressImageUrl}, Original=${!!topNews.imageUrl}`);
+      console.log(`[CardNews API] 📸 이미지 선택 결과:`);
+      console.log(`  - WordPress 업로드 이미지: ${topNews.wordpressImageUrl || '없음'}`);
+      console.log(`  - 최종 사용: ${imageUrl || '그라디언트 배경 사용'}`);
+      
+      if (!imageUrl) {
+        console.warn(`[CardNews API] ⚠️ WordPress 이미지가 없습니다. 그라디언트 배경을 사용합니다.`);
+        console.warn(`[CardNews API] 💡 뉴스를 먼저 발행(Publish)하여 이미지를 WordPress에 업로드해주세요.`);
+      }
 
       // ... (keep existing image upload logic if needed, or simplify) ...
       // For brevity, skipping the re-upload of background image since we are generating

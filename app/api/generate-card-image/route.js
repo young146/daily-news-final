@@ -70,7 +70,7 @@ export async function GET(request) {
                 width: "1200px",
                 height: "630px",
                 objectFit: "cover",
-                filter: "brightness(0.4)",
+                filter: "brightness(0.65)",
               }}
             />
           ) : (
