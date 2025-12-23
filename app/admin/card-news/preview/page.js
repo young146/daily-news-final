@@ -1,8 +1,9 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense } from "react";
 
-export default function CardPreviewPage() {
+function PreviewContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const imageUrl = searchParams.get("imageUrl");
@@ -53,3 +54,10 @@ export default function CardPreviewPage() {
   );
 }
 
+export default function CardPreviewPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <PreviewContent />
+    </Suspense>
+  );
+}
