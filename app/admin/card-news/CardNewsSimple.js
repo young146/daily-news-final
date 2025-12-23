@@ -191,15 +191,34 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                             {isTopNews ? `탑뉴스 ${topNewsList.findIndex(tn => tn.id === news.id) + 1}` : `뉴스 ${index + 1}`}
                           </span>
                         </div>
-                        {news.imageUrl && (
-                          <img
-                            src={news.imageUrl}
-                            alt=""
-                            className="w-full h-32 object-cover rounded mb-2"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
+                        {news.wordpressImageUrl ? (
+                          <div className="relative">
+                            <img
+                              src={news.wordpressImageUrl}
+                              alt=""
+                              className="w-full h-32 object-cover rounded mb-2 border-2 border-green-200"
+                            />
+                            <span className="absolute top-1 right-1 bg-green-500 text-white text-[10px] px-1 rounded font-bold">
+                              DB 이미지 OK
+                            </span>
+                          </div>
+                        ) : news.imageUrl ? (
+                          <div className="relative">
+                            <img
+                              src={news.imageUrl}
+                              alt=""
+                              className="w-full h-32 object-cover rounded mb-2 opacity-50 grayscale"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="bg-red-500 text-white text-[10px] px-2 py-1 rounded font-bold shadow-lg">
+                                ⚠️ 미발행 (사용불가)
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-full h-32 bg-gray-100 rounded mb-2 flex items-center justify-center text-gray-400 text-xs">
+                            이미지 없음
+                          </div>
                         )}
                         <div
                           className={`text-sm font-bold line-clamp-2 ${
@@ -412,6 +431,12 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
         {currentTopNews && (
           <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800">
             ✅ <strong>선택된 뉴스:</strong> {currentTopNews.translatedTitle || currentTopNews.title}
+          </div>
+        )}
+        {currentTopNews && !currentTopNews.wordpressImageUrl && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 rounded-lg text-red-800 animate-pulse">
+            ⚠️ <strong>주의:</strong> 선택한 뉴스는 아직 WordPress에 발행되지 않아 이미지가 DB에 없습니다. 
+            <strong> 그라디언트 배경으로 생성됩니다.</strong> 이미지가 있는 뉴스를 선택하거나 먼저 뉴스를 발행해주세요.
           </div>
         )}
         <button

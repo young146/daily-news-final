@@ -100,8 +100,6 @@ export async function POST(request) {
 
     console.log(`[CardNews API] Found isCardNews=true: Top=${topNewsList.length}, Others=${cardNewsItems.length}`);
 
-    console.log(`[CardNews API] Found isCardNews=true: Top=${topNewsList.length}, Others=${cardNewsItems.length}`);
-
     // 탑뉴스는 첫 번째 것 사용 (선택된 뉴스가 있으면 그것 사용)
     let topNews = null;
     if (body.topNewsId) {
@@ -135,42 +133,28 @@ export async function POST(request) {
     const title = topNews.translatedTitle || topNews.title || "Daily News Card";
 
     // 2. 이미지가 업로드되지 않았으면 서버에서 생성
-    // (이미 위에서 FormData 처리 완료, imageBuffer가 null이면 서버에서 생성)
     if (!imageBuffer) {
       console.log(
         "[CardNews API] No image uploaded, generating server-side..."
       );
-
-      if (!topNews) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: "No top news selected for auto-generation",
-          }),
-          { status: 400 }
-        );
-      }
 
       const weather = await getSeoulWeather();
       const rates = await getExchangeRates();
 
       const summary = topNews.translatedSummary || topNews.summary || "";
       
-      // ✅ WordPress에 이미 업로드된 이미지만 사용 (외부 URL 사용 금지)
-      // 외부 URL은 CORS 문제로 @vercel/og에서 로드 실패 가능성 높음
-      let imageUrl = topNews.wordpressImageUrl || "";
+      // ✅ WordPress에 이미 업로드된 이미지만 사용 (외부 원본 URL 사용 금지)
+      // 외부 URL은 CORS 문제 및 보안 문제로 @vercel/og에서 로드 실패 가능성이 매우 높음
+      const imageUrl = topNews.wordpressImageUrl || "";
       
-      console.log(`[CardNews API] 📸 이미지 선택 결과:`);
-      console.log(`  - WordPress 업로드 이미지: ${topNews.wordpressImageUrl || '없음'}`);
-      console.log(`  - 최종 사용: ${imageUrl || '그라디언트 배경 사용'}`);
+      console.log(`[CardNews API] 📸 이미지 선택 (DB 우선):`);
+      console.log(`  - DB 내 WordPress 이미지 URL: ${topNews.wordpressImageUrl || '없음'}`);
+      console.log(`  - 최종 사용 URL: ${imageUrl || '없음 (그라디언트 배경 예정)'}`);
       
       if (!imageUrl) {
-        console.warn(`[CardNews API] ⚠️ WordPress 이미지가 없습니다. 그라디언트 배경을 사용합니다.`);
-        console.warn(`[CardNews API] 💡 뉴스를 먼저 발행(Publish)하여 이미지를 WordPress에 업로드해주세요.`);
+        console.warn(`[CardNews API] ⚠️ WordPress 이미지가 DB에 없습니다. 그라디언트 배경을 사용합니다.`);
+        console.warn(`[CardNews API] 💡 원본 이미지가 아닌, 이미 발행되어 WordPress에 올라간 이미지만 사용하도록 강제되었습니다.`);
       }
-
-      // ... (keep existing image upload logic if needed, or simplify) ...
-      // For brevity, skipping the re-upload of background image since we are generating
 
       const weatherTemp = weather?.temp ?? "25";
       const usdRate = rates?.usdVnd?.toLocaleString() ?? "25,400";
@@ -186,13 +170,30 @@ export async function POST(request) {
       });
 
       // 내부 API 호출: 로컬에서는 localhost, 프로덕션에서는 절대 URL 사용
-      // Vercel에서는 내부 요청이므로 절대 URL이 필요할 수 있음
-      const baseUrl =
-        process.env.NEXT_PUBLIC_BASE_URL || 
-        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+      // Vercel Deployment Protection(401)을 피하기 위해 가능한 경우 localhost를 우선 시도
+      let baseUrl = "http://localhost:3000";
+      
+      if (process.env.NODE_ENV === "production") {
+        if (process.env.NEXT_PUBLIC_BASE_URL) {
+          baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+        } else if (process.env.VERCEL_URL) {
+          baseUrl = `https://${process.env.VERCEL_URL}`;
+        }
+      }
       
       const imageApiUrl = `${baseUrl}/api/generate-card-image?${params.toString()}`;
       console.log("[CardNews API] Fetching from:", imageApiUrl);
+
+      // Vercel Deployment Protection bypass header가 있으면 추가
+      const fetchOptions = {
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      };
+
+      if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) {
+        fetchOptions.headers['x-vercel-protection-bypass'] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+      }
 
       // 타임아웃과 재시도 로직이 포함된 fetch
       let imageResponse;
@@ -211,10 +212,8 @@ export async function POST(request) {
           const timeoutId = setTimeout(() => controller.abort(), 30000);
           
           imageResponse = await fetch(imageApiUrl, {
+            ...fetchOptions,
             signal: controller.signal,
-            headers: {
-              'Cache-Control': 'no-cache',
-            },
           });
           
           clearTimeout(timeoutId);
@@ -230,8 +229,7 @@ export async function POST(request) {
           if (attempt === maxRetries) {
             throw new Error(
               `이미지 생성 API 호출 실패 (${maxRetries + 1}회 시도): ${error.message}. ` +
-              `API URL: ${imageApiUrl}. ` +
-              `환경 변수 확인: NEXT_PUBLIC_BASE_URL=${process.env.NEXT_PUBLIC_BASE_URL || 'not set'}`
+              `API URL: ${imageApiUrl}. `
             );
           }
         }
@@ -252,12 +250,12 @@ export async function POST(request) {
         );
       }
 
-      const contentType = imageResponse.headers.get("content-type") || "";
-      if (!contentType.includes("image/") && !contentType.includes("application/octet-stream")) {
+      const resContentType = imageResponse.headers.get("content-type") || "";
+      if (!resContentType.includes("image/") && !resContentType.includes("application/octet-stream")) {
         const errorText = await imageResponse.text().catch(() => "");
-        console.error(`[CardNews API] Unexpected content type: ${contentType}`, errorText);
+        console.error(`[CardNews API] Unexpected content type: ${resContentType}`, errorText);
         throw new Error(
-          `이미지 생성 API가 이미지가 아닌 응답을 반환했습니다 (${contentType}): ${errorText.substring(0, 200)}`
+          `이미지 생성 API가 이미지가 아닌 응답을 반환했습니다 (${resContentType}): ${errorText.substring(0, 200)}`
         );
       }
 
