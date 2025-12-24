@@ -18,7 +18,49 @@ add_action('rest_api_init', function () {
             return current_user_can('upload_files');
         }
     ));
+
+    register_rest_route('xinchao/v1', '/set-featured-image', array(
+        'methods' => 'POST',
+        'callback' => 'xinchao_set_featured_image',
+        'permission_callback' => function () {
+            return current_user_can('edit_pages');
+        }
+    ));
 });
+
+function xinchao_set_featured_image($request) {
+    $post_id = $request->get_param('post_id');
+    $media_id = $request->get_param('media_id');
+    
+    if (empty($post_id) || empty($media_id)) {
+        return new WP_Error('missing_params', 'post_id and media_id are required', array('status' => 400));
+    }
+
+    // set_post_thumbnail internally calls update_post_meta( $post_id, '_thumbnail_id', $media_id );
+    // This is much safer than wp_update_post for Elementor pages
+    $result = set_post_thumbnail($post_id, $media_id);
+    
+    // Also update Yoast SEO or RankMath OG image if present (optional but good)
+    $image_url = wp_get_attachment_url($media_id);
+    update_post_meta($post_id, '_yoast_wpseo_opengraph-image', $image_url);
+    update_post_meta($post_id, '_yoast_wpseo_opengraph-image-id', $media_id);
+    
+    // Rank Math support
+    update_post_meta($post_id, 'rank_math_facebook_image', $image_url);
+    update_post_meta($post_id, 'rank_math_facebook_image_id', $media_id);
+    update_post_meta($post_id, 'rank_math_twitter_use_facebook', 'on');
+    
+    if ($result) {
+        return array(
+            'success' => true, 
+            'post_id' => $post_id, 
+            'media_id' => $media_id,
+            'url' => wp_get_attachment_url($media_id)
+        );
+    } else {
+        return new WP_Error('failed', 'Failed to set featured image. Post ID: ' . $post_id . ', Media ID: ' . $media_id, array('status' => 500));
+    }
+}
 
 function xinchao_upload_image_from_url($request) {
     $image_url = $request->get_param('image_url');

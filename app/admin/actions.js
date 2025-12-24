@@ -55,6 +55,9 @@ export async function publishItemAction(id, target) {
       if (result.mediaId) {
         data.wordpressMediaId = result.mediaId;
       }
+      if (result.localImagePath) {
+        data.localImagePath = result.localImagePath;
+      }
       data.isPublishedMain = true;
       data.publishedAt = new Date();
       data.status = "PUBLISHED";
@@ -70,6 +73,9 @@ export async function publishItemAction(id, target) {
       }
       if (result.mediaId) {
         data.wordpressMediaId = result.mediaId;
+      }
+      if (result.localImagePath) {
+        data.localImagePath = result.localImagePath;
       }
       data.isPublishedMain = true;
       data.isPublishedDaily = true;

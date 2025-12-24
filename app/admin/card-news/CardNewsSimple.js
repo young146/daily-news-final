@@ -6,6 +6,7 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [publishResult, setPublishResult] = useState(null);
   const [selectedNews, setSelectedNews] = useState(null); // 선택된 뉴스 (탑뉴스 또는 최신 뉴스)
+  const [useGradient, setUseGradient] = useState(false); // 그라디언트 사용 여부 (기본값: false)
 
   const { 
     topNews, 
@@ -95,7 +96,8 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topNewsId: currentTopNews?.id || null, 
+          topNewsId: currentTopNews?.id || null,
+          useGradient: useGradient, // 그라디언트 사용 여부 전달
         }),
       });
 
@@ -259,134 +261,139 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
         style={{
           width: "800px",
           height: "420px",
-          position: "relative",
-          overflow: "hidden",
+          display: "flex",
+          flexDirection: "row",
           boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
           borderRadius: "12px",
+          overflow: "hidden",
+          backgroundColor: "#ffffff",
         }}
       >
-        {newsImage ? (
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundImage: `url(${newsImage})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              filter: "brightness(0.4)",
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: "linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)",
-            }}
-          />
-        )}
-
+        {/* 왼쪽: 이미지 영역 (50%) */}
         <div
           style={{
-            position: "relative",
-            zIndex: 10,
-            height: "100%",
+            width: "400px",
+            height: "420px",
             display: "flex",
-            flexDirection: "column",
-            padding: "40px 60px",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "#000000",
           }}
         >
+          {newsImage ? (
+            <img
+              src={newsImage}
+              alt="News"
+              style={{
+                width: "400px",
+                height: "420px",
+                objectFit: "cover",
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: "400px",
+                height: "420px",
+                background: "linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)",
+              }}
+            />
+          )}
+        </div>
+
+        {/* 오른쪽: 텍스트 영역 (50%) */}
+        <div
+          style={{
+            width: "400px",
+            height: "420px",
+            display: "flex",
+            flexDirection: "column",
+            padding: "30px 40px",
+            backgroundColor: "#ffffff",
+          }}
+        >
+          {/* 헤더 */}
           <div
             style={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              marginBottom: "20px",
             }}
           >
             <div
               style={{
-                color: "#ffffff",
-                fontSize: "32px",
+                color: "#1e3a5f",
+                fontSize: "24px",
                 fontWeight: "bold",
-                textShadow: "0 2px 4px rgba(0,0,0,0.5)",
               }}
             >
               Xin Chào Vietnam
             </div>
             <div
               style={{
-                backgroundColor: "rgba(139, 0, 0, 0.9)",
+                backgroundColor: "#8b0000",
                 color: "#ffffff",
-                fontSize: "24px",
+                fontSize: "16px",
                 fontWeight: "bold",
-                padding: "10px 30px",
-                borderRadius: "30px",
-                textShadow: "0 1px 2px rgba(0,0,0,0.3)",
+                padding: "6px 20px",
+                borderRadius: "20px",
               }}
             >
               {dateStr}
             </div>
           </div>
 
+          {/* 메인 콘텐츠 */}
           <div
             style={{
               flex: 1,
               display: "flex",
               flexDirection: "column",
               justifyContent: "center",
-              alignItems: "center",
-              textAlign: "center",
             }}
           >
             <div
               style={{
                 color: "#fbbf24",
-                fontSize: "28px",
+                fontSize: "20px",
                 fontWeight: "bold",
-                marginBottom: "20px",
-                textShadow: "0 2px 4px rgba(0,0,0,0.5)",
+                marginBottom: "15px",
               }}
             >
               오늘의 뉴스
             </div>
             <h1
               style={{
-                color: "#ffffff",
-                fontSize: newsTitle.length > 40 ? "42px" : "52px",
+                color: "#1f2937",
+                fontSize: newsTitle.length > 40 ? "28px" : "32px",
                 fontWeight: "bold",
                 margin: 0,
                 lineHeight: 1.3,
-                maxWidth: "1000px",
-                textShadow: "0 4px 8px rgba(0,0,0,0.7)",
+                marginBottom: "20px",
               }}
             >
               {newsTitle}
             </h1>
           </div>
 
+          {/* 하단 정보 */}
           <div
             style={{
               display: "flex",
-              justifyContent: "center",
-              gap: "40px",
-              paddingTop: "20px",
-              borderTop: "1px solid rgba(255,255,255,0.2)",
+              justifyContent: "flex-start",
+              gap: "20px",
+              paddingTop: "15px",
+              borderTop: "1px solid #e5e7eb",
             }}
           >
             <div
               style={{
-                color: "#ffffff",
-                fontSize: "18px",
+                color: "#374151",
+                fontSize: "14px",
                 display: "flex",
                 alignItems: "center",
-                gap: "8px",
-                textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+                gap: "5px",
               }}
             >
               <span>🌡️</span>
@@ -394,12 +401,11 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
             </div>
             <div
               style={{
-                color: "#ffffff",
-                fontSize: "18px",
+                color: "#374151",
+                fontSize: "14px",
                 display: "flex",
                 alignItems: "center",
-                gap: "8px",
-                textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+                gap: "5px",
               }}
             >
               <span>💵</span>
@@ -407,12 +413,11 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
             </div>
             <div
               style={{
-                color: "#ffffff",
-                fontSize: "18px",
+                color: "#374151",
+                fontSize: "14px",
                 display: "flex",
                 alignItems: "center",
-                gap: "8px",
-                textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+                gap: "5px",
               }}
             >
               <span>💴</span>
@@ -434,11 +439,27 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
           </div>
         )}
         {currentTopNews && !currentTopNews.wordpressImageUrl && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 rounded-lg text-red-800 animate-pulse">
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 rounded-lg text-red-800">
             ⚠️ <strong>주의:</strong> 선택한 뉴스는 아직 WordPress에 발행되지 않아 이미지가 DB에 없습니다. 
-            <strong> 그라디언트 배경으로 생성됩니다.</strong> 이미지가 있는 뉴스를 선택하거나 먼저 뉴스를 발행해주세요.
+            이미지가 있는 뉴스를 선택하거나 먼저 뉴스를 발행해주세요.
           </div>
         )}
+        
+        {/* 그라디언트 사용 옵션 */}
+        <div className="mb-4 p-4 bg-gray-50 border border-gray-300 rounded-lg">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={useGradient}
+              onChange={(e) => setUseGradient(e.target.checked)}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-700">
+              그라디언트 배경 사용 (이미지가 없을 때만 적용)
+            </span>
+          </label>
+        </div>
+        
         <button
           onClick={handlePublishToWordPress}
           disabled={isGenerating || !currentTopNews}

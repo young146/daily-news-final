@@ -37,6 +37,7 @@ model NewsItem {
   wordpressUrl      String?  // URL of the published post on WordPress
   wordpressImageUrl String?  // URL of uploaded image in WordPress media library
   wordpressMediaId  Int?     // Media ID of uploaded image for featured_media
+  localImagePath    String?  // Local file path in public/images/news/ folder
   
   htmlContent       String?  // Generated HTML for email
   publishedAt       DateTime?

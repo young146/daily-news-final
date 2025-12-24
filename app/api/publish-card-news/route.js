@@ -4,12 +4,15 @@ import {
   uploadImageToWordPress,
 } from "@/lib/publisher";
 import { getSeoulWeather, getExchangeRates } from "@/lib/external-data";
+import fs from 'fs';
+import path from 'path';
 
 export const runtime = "nodejs";
 
 export async function POST(request) {
   // 로그 기록을 위한 변수
   let currentTopNewsTitle = "알 수 없음";
+  let baseUrl = "http://localhost:3000";
 
   try {
     console.log("[CardNews API] Received publish request...");
@@ -162,7 +165,12 @@ export async function POST(request) {
     currentTopNewsTitle = topNews.translatedTitle || topNews.title || "Daily News Card";
     const title = currentTopNewsTitle;
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/122b107d-03ae-4b48-9b30-1372e8e984b7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4',location:'app/api/publish-card-news/route.js:165',message:'Selected top news before image generation',data:{topNewsId:topNews?.id,hasWordpressImage:!!topNews?.wordpressImageUrl,hasLocalImage:!!topNews?.localImagePath,useGradient:body.useGradient===true},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+
     // 2. 이미지가 업로드되지 않았으면 서버에서 생성
+    let finalImagePath = null;
     if (!imageBuffer) {
       console.log(
         "[CardNews API] No image uploaded, generating server-side..."
@@ -173,11 +181,67 @@ export async function POST(request) {
 
       const summary = topNews.translatedSummary || topNews.summary || "";
       
-      // ✅ WordPress에 이미 업로드된 이미지만 사용 (외부 원본 URL 사용 금지)
-      const imageUrl = topNews.wordpressImageUrl || "";
+      // ✅ 로컬 이미지 경로 확인 및 생성
+      let imagePath = topNews.localImagePath || null;
       
-      console.log(`[CardNews API] 📸 이미지 선택 (DB 우선):`);
-      console.log(`  - DB 내 WordPress 이미지 URL: ${topNews.wordpressImageUrl || '없음'}`);
+      console.log(`[CardNews API] 📸 이미지 선택:`);
+      console.log(`  - 로컬 이미지 경로: ${topNews.localImagePath || '없음'}`);
+      console.log(`  - WordPress 이미지 URL: ${topNews.wordpressImageUrl || '없음'}`);
+      
+      // 로컬 경로가 없으면 WordPress URL에서 다운로드해서 로컬에 저장
+      if (!imagePath && topNews.wordpressImageUrl) {
+        try {
+          console.log(`[CardNews API] 📥 로컬 이미지가 없어서 WordPress에서 다운로드 중...`);
+          
+          const imageResponse = await fetch(topNews.wordpressImageUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            },
+            signal: AbortSignal.timeout(15000),
+          });
+          
+          if (imageResponse.ok) {
+            const imageArrayBuffer = await imageResponse.arrayBuffer();
+            const imageBuffer = Buffer.from(imageArrayBuffer);
+            
+            // 로컬 저장 경로 생성
+            const imagesDir = path.join(process.cwd(), 'public', 'images', 'news');
+            if (!fs.existsSync(imagesDir)) {
+              fs.mkdirSync(imagesDir, { recursive: true });
+            }
+            
+            // 파일 확장자 추출
+            const urlPath = new URL(topNews.wordpressImageUrl).pathname;
+            const ext = path.extname(urlPath) || '.jpg';
+            const filename = `${topNews.id}${ext}`;
+            const localPath = path.join(imagesDir, filename);
+            
+            // 파일 저장
+            fs.writeFileSync(localPath, imageBuffer);
+            imagePath = `/images/news/${filename}`;
+            
+            console.log(`[CardNews API] ✅ 로컬 이미지 저장 완료: ${imagePath}`);
+            
+            // DB에 localImagePath 업데이트
+            try {
+              await prisma.newsItem.update({
+                where: { id: topNews.id },
+                data: { localImagePath: imagePath }
+              });
+              console.log(`[CardNews API] ✅ DB localImagePath 업데이트 완료`);
+            } catch (dbError) {
+              console.warn(`[CardNews API] ⚠️ DB 업데이트 실패 (무시됨): ${dbError.message}`);
+            }
+          } else {
+            console.warn(`[CardNews API] ⚠️ 이미지 다운로드 실패: HTTP ${imageResponse.status}`);
+          }
+        } catch (error) {
+          console.warn(`[CardNews API] ⚠️ 이미지 다운로드/저장 오류: ${error.message}`);
+        }
+      }
+      
+      // 최종 이미지 경로 (로컬 경로 우선, 없으면 WordPress URL)
+      finalImagePath = imagePath || topNews.wordpressImageUrl || "";
       
       const weatherTemp = weather?.temp ?? "25";
       const usdRate = rates?.usdVnd?.toLocaleString() ?? "25,400";
@@ -186,13 +250,13 @@ export async function POST(request) {
       const params = new URLSearchParams({
         title,
         summary,
-        image: imageUrl,
+        image: finalImagePath, // 로컬 경로 우선, 없으면 WordPress URL
         weather: String(weatherTemp),
         usd: String(usdRate),
         krw: String(krwRate),
+        useGradient: body.useGradient === true ? "true" : "false", // 그라디언트 사용 여부
       });
 
-      let baseUrl = "http://localhost:3000";
       if (process.env.NODE_ENV === "production") {
         if (process.env.NEXT_PUBLIC_BASE_URL) {
           baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
@@ -203,6 +267,10 @@ export async function POST(request) {
       
       const imageApiUrl = `${baseUrl}/api/generate-card-image?${params.toString()}`;
       console.log("[CardNews API] Fetching from:", imageApiUrl);
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/122b107d-03ae-4b48-9b30-1372e8e984b7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H6',location:'app/api/publish-card-news/route.js:264',message:'About to call generate-card-image',data:{imageApiUrl,finalImagePath:finalImagePath||null,weatherTemp,usdRate,krwRate},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
 
       const fetchOptions = {
         headers: { 'Cache-Control': 'no-cache' },
@@ -223,7 +291,7 @@ export async function POST(request) {
           }
 
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 30000);
+          const timeoutId = setTimeout(() => controller.abort(), 60000); // 60초로 증가 (이미지 fetch 시간 고려)
           
           imageResponse = await fetch(imageApiUrl, {
             ...fetchOptions,
@@ -231,9 +299,16 @@ export async function POST(request) {
           });
           
           clearTimeout(timeoutId);
+
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/122b107d-03ae-4b48-9b30-1372e8e984b7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H7',location:'app/api/publish-card-news/route.js:287',message:'generate-card-image response',data:{status:imageResponse?.status,contentType:imageResponse?.headers?.get?.('content-type')||null,attempt},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
           break;
         } catch (error) {
           lastFetchError = error;
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/122b107d-03ae-4b48-9b30-1372e8e984b7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H7',location:'app/api/publish-card-news/route.js:294',message:'generate-card-image fetch error',data:{attempt,errMsg:error?.message||null},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
           if (attempt === maxRetries) {
             throw new Error(`이미지 생성 API 호출 실패: ${error.message}`);
           }
@@ -251,11 +326,19 @@ export async function POST(request) {
       }
 
       const ab = await imageResponse.arrayBuffer();
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/122b107d-03ae-4b48-9b30-1372e8e984b7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H10',location:'app/api/publish-card-news/route.js:308',message:'generate-card-image buffer length',data:{byteLength:ab?.byteLength||0},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+
       if (!ab || ab.byteLength === 0) {
         throw new Error("이미지 생성 실패: 빈 이미지 버퍼를 받았습니다.");
       }
       imageBuffer = Buffer.from(ab);
     }
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/122b107d-03ae-4b48-9b30-1372e8e984b7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H5',location:'app/api/publish-card-news/route.js:314',message:'Image buffer prepared',data:{bufferBytes:imageBuffer?.length||0,baseUrlUsed:baseUrl,finalImagePath:finalImagePath||null},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
 
     if (!imageBuffer || imageBuffer.length === 0) {
       throw new Error("이미지 생성 실패: 이미지 버퍼가 비어있습니다.");
@@ -263,6 +346,9 @@ export async function POST(request) {
 
     // 4. Publish to WordPress
     console.log(`[CardNews API] Publishing to WordPress: ${title}`);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/122b107d-03ae-4b48-9b30-1372e8e984b7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H8',location:'app/api/publish-card-news/route.js:327',message:'Calling publishCardNewsToWordPress',data:{bufferBytes:imageBuffer?.length||0,dateStr,titleSnippet:title?.slice?.(0,80)||null},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     const result = await publishCardNewsToWordPress(imageBuffer, dateStr, {
       topNewsTitle: title,
       terminalUrl: "https://chaovietnam.co.kr/daily-news-terminal/",
@@ -292,6 +378,9 @@ export async function POST(request) {
     );
   } catch (error) {
     console.error("[CardNews API] Error:", error);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/122b107d-03ae-4b48-9b30-1372e8e984b7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H12',location:'app/api/publish-card-news/route.js:357',message:'Publish flow caught error',data:{error:error?.message||null},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
 
     // 6. 실패 로그 기록
     await prisma.crawlerLog.create({
