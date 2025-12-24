@@ -1,4 +1,5 @@
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 import fs from "fs";
 import path from "path";
 import prisma from "@/lib/prisma";
@@ -6,44 +7,52 @@ import { publishCardNewsToWordPress } from "@/lib/publisher";
 
 export async function POST(request) {
   try {
-    // Check if WordPress publish is requested
     const body = await request.json().catch(() => ({}));
     const publishToWP = body.publishToWordPress || false;
 
-    // 1. Launch a hidden browser (Puppeteer)
-    const browser = await puppeteer.launch({
-      headless: "new",
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    const isProduction = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
+    
+    let browser;
+    if (isProduction) {
+      browser = await puppeteer.launch({
+        args: chromium.args,
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
+        ignoreHTTPSErrors: true,
+      });
+    } else {
+      const localPuppeteer = require("puppeteer");
+      browser = await localPuppeteer.launch({
+        headless: "new",
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      });
+    }
+
     const page = await browser.newPage();
     page.setDefaultNavigationTimeout(90000);
     page.setDefaultTimeout(90000);
 
-    // 2. Set viewport to match our card size (Landscape)
     await page.setViewport({ width: 1200, height: 630, deviceScaleFactor: 2 });
 
-    // 3. Navigate to the Clean Print Page
     const targetUrl = `${
-      process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000"
+      process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
     }/print/card-news`;
     console.log(`Puppeteer visiting: ${targetUrl}`);
 
     await page.goto(targetUrl, {
-      waitUntil: "domcontentloaded",
+      waitUntil: "networkidle0",
       timeout: 90000,
     });
     await page.waitForSelector("#capture-target", { timeout: 90000 });
 
-    // Wait a bit for images to load
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    // 4. Generate PNG (for SNS and WordPress)
     const pngBuffer = await page.screenshot({
       type: "png",
       clip: { x: 0, y: 0, width: 1200, height: 630 },
     });
 
-    // 5. Generate PDF
     const pdfBuffer = await page.pdf({
       format: "A4",
       landscape: true,
@@ -53,7 +62,6 @@ export async function POST(request) {
 
     await browser.close();
 
-    // 6. Save to server (public folder) - 베트남 시간대 기준 날짜 사용
     const now = new Date();
     const vietnamTime = new Date(
       now.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
@@ -62,33 +70,23 @@ export async function POST(request) {
     const month = String(vietnamTime.getMonth() + 1).padStart(2, "0");
     const day = String(vietnamTime.getDate()).padStart(2, "0");
     const date = `${year}-${month}-${day}`;
-    const pdfPath = path.join(
-      process.cwd(),
-      "public",
-      `daily-news-${date}.pdf`
-    );
-    const pngPath = path.join(
-      process.cwd(),
-      "public",
-      `daily-news-${date}.png`
-    );
-
-    fs.writeFileSync(pdfPath, pdfBuffer);
-    fs.writeFileSync(pngPath, pngBuffer);
-
-    console.log("Files generated successfully:", pdfPath, pngPath);
+    
+    // Vercel /tmp folder is writable, but /public is not at runtime
+    // Using process.cwd() might work on local but not on Vercel for writing
+    // However, the original code used public, so I'll keep it for local and add try-catch
+    try {
+      const pdfPath = path.join(process.cwd(), "public", `daily-news-${date}.pdf`);
+      const pngPath = path.join(process.cwd(), "public", `daily-news-${date}.png`);
+      fs.writeFileSync(pdfPath, pdfBuffer);
+      fs.writeFileSync(pngPath, pngBuffer);
+      console.log("Files saved locally:", pdfPath, pngPath);
+    } catch (saveError) {
+      console.warn("Could not save files to public folder (expected on Vercel):", saveError.message);
+    }
 
     let wordpressResult = null;
 
-    // 7. Publish to WordPress if requested
     if (publishToWP) {
-      console.log("[CardNews] Publishing to WordPress...");
-
-      // Get the top news for context (오늘 날짜 기준)
-      const now = new Date();
-      const vietnamTime = new Date(
-        now.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
-      );
       const today = new Date(
         vietnamTime.getFullYear(),
         vietnamTime.getMonth(),
