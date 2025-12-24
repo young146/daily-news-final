@@ -4,6 +4,7 @@ import {
   uploadImageToWordPress,
 } from "@/lib/publisher";
 import { getSeoulWeather, getExchangeRates } from "@/lib/external-data";
+import { generateCardImageBuffer } from "@/lib/card-generator";
 import fs from 'fs';
 import path from 'path';
 
@@ -12,7 +13,6 @@ export const runtime = "nodejs";
 export async function POST(request) {
   // 로그 기록을 위한 변수
   let currentTopNewsTitle = "알 수 없음";
-  let baseUrl = "http://localhost:3000";
 
   try {
     console.log("[CardNews API] Received publish request...");
@@ -247,101 +247,26 @@ export async function POST(request) {
       const usdRate = rates?.usdVnd?.toLocaleString() ?? "25,400";
       const krwRate = rates?.krwVnd?.toLocaleString() ?? "17.8";
 
-      const params = new URLSearchParams({
-        title,
-        summary,
-        image: finalImagePath, // 로컬 경로 우선, 없으면 WordPress URL
-        weather: String(weatherTemp),
-        usd: String(usdRate),
-        krw: String(krwRate),
-        useGradient: body.useGradient === true ? "true" : "false", // 그라디언트 사용 여부
-      });
+      console.log("[CardNews API] Generating card image buffer directly to avoid network/auth issues...");
+      try {
+        imageBuffer = await generateCardImageBuffer({
+          title,
+          imageUrl: finalImagePath,
+          weatherTemp: String(weatherTemp),
+          usdRate: String(usdRate),
+          krwRate: String(krwRate),
+          useGradient: body.useGradient === true,
+        });
 
-      if (process.env.NODE_ENV === "production") {
-        if (process.env.NEXT_PUBLIC_BASE_URL) {
-          baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-        } else if (process.env.VERCEL_URL) {
-          baseUrl = `https://${process.env.VERCEL_URL}`;
+        if (!imageBuffer || imageBuffer.length === 0) {
+          throw new Error("이미지 생성 실패: 빈 이미지 버퍼를 받았습니다.");
         }
+        
+        console.log("[CardNews API] ✅ Image buffer generated successfully, size:", imageBuffer.length, "bytes");
+      } catch (genError) {
+        console.error("[CardNews API] ❌ Image generation failed:", genError);
+        throw new Error(`이미지 생성 실패: ${genError.message}`);
       }
-      
-      const imageApiUrl = `${baseUrl}/api/generate-card-image?${params.toString()}`;
-      console.log("[CardNews API] Fetching from:", imageApiUrl);
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/122b107d-03ae-4b48-9b30-1372e8e984b7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H6',location:'app/api/publish-card-news/route.js:264',message:'About to call generate-card-image',data:{imageApiUrl,finalImagePath:finalImagePath||null,weatherTemp,usdRate,krwRate},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-
-      const fetchOptions = {
-        headers: { 'Cache-Control': 'no-cache' },
-      };
-
-      if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) {
-        fetchOptions.headers['x-vercel-protection-bypass'] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-      }
-
-      let imageResponse;
-      let lastFetchError;
-      const maxRetries = 2;
-      
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-          if (attempt > 0) {
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-          }
-
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 60000); // 60초로 증가 (이미지 fetch 시간 고려)
-          
-          imageResponse = await fetch(imageApiUrl, {
-            ...fetchOptions,
-            signal: controller.signal,
-          });
-          
-          clearTimeout(timeoutId);
-
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/122b107d-03ae-4b48-9b30-1372e8e984b7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H7',location:'app/api/publish-card-news/route.js:287',message:'generate-card-image response',data:{status:imageResponse?.status,contentType:imageResponse?.headers?.get?.('content-type')||null,attempt},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
-          break;
-        } catch (error) {
-          lastFetchError = error;
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/122b107d-03ae-4b48-9b30-1372e8e984b7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H7',location:'app/api/publish-card-news/route.js:294',message:'generate-card-image fetch error',data:{attempt,errMsg:error?.message||null},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
-          if (attempt === maxRetries) {
-            throw new Error(`이미지 생성 API 호출 실패: ${error.message}`);
-          }
-        }
-      }
-
-      if (!imageResponse.ok) {
-        const errorText = await imageResponse.text().catch(() => "");
-        throw new Error(`이미지 생성 실패 (${imageResponse.status}): ${errorText.substring(0, 200)}`);
-      }
-
-      const resContentType = imageResponse.headers.get("content-type") || "";
-      if (!resContentType.includes("image/") && !resContentType.includes("application/octet-stream")) {
-        throw new Error(`이미지 생성 API가 이미지가 아닌 응답을 반환했습니다 (${resContentType})`);
-      }
-
-      const ab = await imageResponse.arrayBuffer();
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/122b107d-03ae-4b48-9b30-1372e8e984b7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H10',location:'app/api/publish-card-news/route.js:308',message:'generate-card-image buffer length',data:{byteLength:ab?.byteLength||0},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-
-      if (!ab || ab.byteLength === 0) {
-        throw new Error("이미지 생성 실패: 빈 이미지 버퍼를 받았습니다.");
-      }
-      imageBuffer = Buffer.from(ab);
-    }
-
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/122b107d-03ae-4b48-9b30-1372e8e984b7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H5',location:'app/api/publish-card-news/route.js:314',message:'Image buffer prepared',data:{bufferBytes:imageBuffer?.length||0,baseUrlUsed:baseUrl,finalImagePath:finalImagePath||null},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-
-    if (!imageBuffer || imageBuffer.length === 0) {
-      throw new Error("이미지 생성 실패: 이미지 버퍼가 비어있습니다.");
     }
 
     // 4. Publish to WordPress
