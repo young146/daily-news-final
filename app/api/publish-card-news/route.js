@@ -240,22 +240,21 @@ export async function POST(request) {
         }
       }
       
-      // 최종 이미지 경로 (로컬 경로 우선, 없으면 WordPress URL)
-      finalImagePath = imagePath || topNews.wordpressImageUrl || "";
+      // 최종 이미지 경로 (반드시 워드프레스 URL 사용)
+      finalImagePath = topNews.wordpressImageUrl || imagePath || "";
       
       const weatherTemp = weather?.temp ?? "25";
       const usdRate = rates?.usdVnd?.toLocaleString() ?? "25,400";
       const krwRate = rates?.krwVnd?.toLocaleString() ?? "17.8";
 
-      console.log("[CardNews API] Generating card image buffer directly to avoid network/auth issues...");
+      console.log("[CardNews API] Generating card image buffer directly using Canvas (WP source)...");
       try {
         imageBuffer = await generateCardImageBuffer({
           title,
-          imageUrl: finalImagePath,
+          imageUrl: finalImagePath, // 워드프레스 이미지를 우선적으로 사용
           weatherTemp: String(weatherTemp),
           usdRate: String(usdRate),
           krwRate: String(krwRate),
-          useGradient: body.useGradient === true,
         });
 
         if (!imageBuffer || imageBuffer.length === 0) {
