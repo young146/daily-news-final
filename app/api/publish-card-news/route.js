@@ -93,7 +93,7 @@ export async function POST(request) {
     console.log(`[CardNews API] Using date: ${dateStr} (Vietnam timezone)`);
 
     // isCardNews = true인 오늘 발행된 뉴스들 가져오기
-    const topNewsList = await prisma.newsItem.findMany({
+    let topNewsList = await prisma.newsItem.findMany({
       where: {
         isTopNews: true,
         status: 'PUBLISHED',
