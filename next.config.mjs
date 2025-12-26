@@ -41,6 +41,7 @@ const nextConfig = {
       allowedOrigins: ['*'],
     },
   },
+  serverComponentsExternalPackages: ['canvas'],
 };
 
 export default nextConfig;
