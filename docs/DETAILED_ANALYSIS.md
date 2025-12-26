@@ -391,6 +391,71 @@ if (item.originalUrl) {
 - **해결**: `@media (prefers-color-scheme: dark)` 스타일 추가 필요
 - **영향 요소**: 배지, 섹션 제목, 카드 제목, 메타라인 등
 
+---
+
+## 5. ⚠️ 현재 미해결 문제: "오늘의 뉴스 관리" 섹션 탑뉴스 지정/해제 기능
+
+### 문제 상황 (2025-12-27)
+
+**증상:**
+1. "오늘의 뉴스 관리" 섹션에서 탑뉴스를 해제하면 "해제되었습니다" 메시지가 표시됨
+2. 다른 뉴스를 탑뉴스로 지정하려고 하면 "이미 2개가 지정되어 있습니다" 오류 발생
+3. 즉, 해제가 DB에 반영되지 않았거나, 카운트 로직이 해제된 항목을 포함하고 있음
+4. 스크린샷에서 두 개의 탑뉴스가 "2025. 12. 26." 날짜로 표시됨 (어제 날짜일 가능성)
+
+**관련 파일:**
+- `app/admin/actions.js` - `toggleTopNewsForPublishedAction()` 함수 (275-365줄)
+- `app/admin/settings/page.js` - "오늘의 뉴스 관리" UI (475-490줄)
+- `app/api/published-news/route.js` - 발행된 뉴스 조회 API
+
+**현재 코드 상태:**
+
+```javascript
+// app/admin/actions.js - toggleTopNewsForPublishedAction()
+// 탑뉴스 해제 시:
+await prisma.newsItem.update({
+  where: { id },
+  data: { isTopNews: false },
+});
+
+// 탑뉴스 지정 시 카운트:
+const count = await prisma.$transaction(async (tx) => {
+  return await tx.newsItem.count({
+    where: {
+      isTopNews: true,
+      status: "PUBLISHED",
+      publishedAt: { gte: today }, // 오늘 날짜로 발행된 뉴스만 카운트
+    },
+  });
+});
+```
+
+**시도한 수정 사항 (모두 실패):**
+1. ✅ `/api/published-news/route.js`에서 `updatedAt`을 `publishedAt`으로 변경
+2. ✅ 카운트 쿼리에 트랜잭션 추가
+3. ✅ `app/admin/settings/page.js`에서 서버 액션 성공 후 `fetchPublishedNews()` 호출
+
+**추정 원인:**
+- 날짜 필터링 로직 문제: `publishedAt: { gte: today }`가 어제 발행된 뉴스를 포함할 수 있음
+- DB 업데이트와 카운트 쿼리 사이의 타이밍 이슈
+- 또는 날짜 계산 로직 자체의 문제
+
+**확인 필요 사항:**
+1. 현재 실제 날짜가 무엇인지 (베트남 시간대 기준)
+2. `today` 변수가 올바르게 계산되는지
+3. 어제 발행된 뉴스(`publishedAt: 2025. 12. 26.`)가 카운트에 포함되는지
+4. 탑뉴스 해제 후 DB에 실제로 `isTopNews: false`로 업데이트되는지
+
+**다음 단계:**
+- 날짜 계산 로직 디버깅
+- 카운트 쿼리 결과 로깅
+- 실제 DB 상태 확인
+- WordPress 메타 필드 업데이트 여부 확인 (`updateWordPressTopNewsMeta` 함수)
+
+**참고:**
+- 발행 시점에 탑뉴스로 지정하면 정상 작동함 (`lib/publisher.js`의 `publishToMainSite()` 함수)
+- 문제는 발행 후 "오늘의 뉴스 관리" 섹션에서 탑뉴스를 지정/해제할 때만 발생
+
 
 
 

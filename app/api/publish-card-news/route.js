@@ -85,45 +85,57 @@ export async function POST(request) {
       }
     }
 
-    // 베트남 시간대 기준으로 오늘 날짜 가져오기
+    // 베트남 시간대(UTC+7) 기준으로 오늘 날짜 가져오기 (통일된 로직)
     const now = new Date();
-    const vietnamTime = new Date(
-      now.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
-    );
-    const year = vietnamTime.getFullYear();
-    const month = String(vietnamTime.getMonth() + 1).padStart(2, "0");
-    const day = String(vietnamTime.getDate()).padStart(2, "0");
-    const dateStr = `${year}-${month}-${day}`;
+    const vnDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // "YYYY-MM-DD"
+    const today = new Date(`${vnDateStr}T00:00:00+07:00`);
+    const dateStr = vnDateStr;
     console.log(`[CardNews API] Using date: ${dateStr} (Vietnam timezone)`);
 
-    // isCardNews = true인 뉴스들 가져오기
+    // isCardNews = true인 오늘 발행된 뉴스들 가져오기
     const topNewsList = await prisma.newsItem.findMany({
       where: {
         isTopNews: true,
         status: 'PUBLISHED',
-        isCardNews: true, // ✅ 카드 뉴스로 표시된 것만
+        isCardNews: true, 
+        publishedAt: { gte: today }, // ✅ 오늘 것만
       },
       orderBy: {
         publishedAt: 'desc'
       },
-      take: 2,
     });
 
     const topNewsIds = topNewsList.map(n => n.id);
-    const cardNewsItems = await prisma.newsItem.findMany({
+    let cardNewsItems = await prisma.newsItem.findMany({
       where: {
         id: { notIn: topNewsIds },
         isTopNews: false,
         status: 'PUBLISHED',
-        isCardNews: true, // ✅ 카드 뉴스로 표시된 것만
+        isCardNews: true,
+        publishedAt: { gte: today }, // ✅ 오늘 것만
       },
       orderBy: {
         publishedAt: 'desc'
       },
-      take: 3,
     });
 
-    console.log(`[CardNews API] Found isCardNews=true: Top=${topNewsList.length}, Others=${cardNewsItems.length}`);
+    // ⭐ [지능형 폴백] 선택된 뉴스가 하나도 없다면 오늘 발행된 뉴스 전체를 후보로 삼음
+    if (topNewsList.length === 0 && cardNewsItems.length === 0) {
+      console.log("[CardNews API] 선택된 뉴스가 없어 오늘 발행된 전체 뉴스를 후보로 사용합니다.");
+      topNewsList = await prisma.newsItem.findMany({
+        where: { isTopNews: true, status: 'PUBLISHED', publishedAt: { gte: today } },
+        orderBy: { publishedAt: 'desc' },
+        take: 2,
+      });
+      const fallbackTopIds = topNewsList.map(n => n.id);
+      cardNewsItems = await prisma.newsItem.findMany({
+        where: { id: { notIn: fallbackTopIds }, isTopNews: false, status: 'PUBLISHED', publishedAt: { gte: today } },
+        orderBy: { publishedAt: 'desc' },
+        take: 8,
+      });
+    }
+
+    console.log(`[CardNews API] Found News: Top=${topNewsList.length}, Others=${cardNewsItems.length}`);
 
     // 탑뉴스는 첫 번째 것 사용 (선택된 뉴스가 있으면 그것 사용)
     let topNews = null;

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { updateCategoryAction, toggleTopNewsForPublishedAction } from '../actions';
+import { updateCategoryAction, toggleTopNewsForPublishedAction, toggleCardNewsAction } from '../actions';
 
 export default function SettingsPage() {
   const [crawlStatus, setCrawlStatus] = useState({});
@@ -12,6 +12,7 @@ export default function SettingsPage() {
   const [deletingId, setDeletingId] = useState(null);
   const [updatingCategoryId, setUpdatingCategoryId] = useState(null);
   const [togglingTopNewsId, setTogglingTopNewsId] = useState(null);
+  const [togglingCardNewsId, setTogglingCardNewsId] = useState(null);
   const [crawlerLogs, setCrawlerLogs] = useState([]);
   const [expandedLog, setExpandedLog] = useState(null);
   const [resettingCardNews, setResettingCardNews] = useState(false);
@@ -408,6 +409,7 @@ export default function SettingsPage() {
                   <th style={{ padding: '10px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>제목</th>
                   <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #e5e7eb', width: '100px' }}>카테고리</th>
                   <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #e5e7eb', width: '100px' }}>탑뉴스</th>
+                  <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #e5e7eb', width: '100px' }}>카드뉴스</th>
                   <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #e5e7eb', width: '80px' }}>소스</th>
                   <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #e5e7eb', width: '100px' }}>발행일</th>
                   <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #e5e7eb', width: '80px' }}>WP ID</th>
@@ -477,9 +479,8 @@ export default function SettingsPage() {
                           setTogglingTopNewsId(news.id);
                           const result = await toggleTopNewsForPublishedAction(news.id);
                           if (result.success) {
-                            setPublishedNews(prev => prev.map(n => 
-                              n.id === news.id ? { ...n, isTopNews: !n.isTopNews } : n
-                            ));
+                            // ✅ 서버에서 최신 데이터를 다시 가져와서 state 업데이트
+                            await fetchPublishedNews();
                             if (result.message) {
                               alert(result.message);
                             }
@@ -502,6 +503,36 @@ export default function SettingsPage() {
                         }}
                       >
                         {togglingTopNewsId === news.id ? '...' : (news.isTopNews ? '★ 해제' : '☆ 지정')}
+                      </button>
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'center' }}>
+                      <button
+                        onClick={async () => {
+                          setTogglingCardNewsId(news.id);
+                          const result = await toggleCardNewsAction(news.id);
+                          if (result.success) {
+                            setPublishedNews(prev => prev.map(n => 
+                              n.id === news.id ? { ...n, isCardNews: !n.isCardNews } : n
+                            ));
+                          } else {
+                            alert('카드뉴스 지정 실패: ' + result.error);
+                          }
+                          setTogglingCardNewsId(null);
+                        }}
+                        disabled={togglingCardNewsId === news.id}
+                        style={{
+                          padding: '4px 10px',
+                          background: news.isCardNews ? '#e0e7ff' : '#f3f4f6',
+                          color: news.isCardNews ? '#4338ca' : '#6b7280',
+                          border: news.isCardNews ? '1px solid #c7d2fe' : '1px solid #d1d5db',
+                          borderRadius: '4px',
+                          cursor: togglingCardNewsId === news.id ? 'not-allowed' : 'pointer',
+                          fontSize: '12px',
+                          fontWeight: news.isCardNews ? 'bold' : 'normal',
+                          opacity: togglingCardNewsId === news.id ? 0.6 : 1
+                        }}
+                      >
+                        {togglingCardNewsId === news.id ? '...' : (news.isCardNews ? '📮 해제' : '📮 지정')}
                       </button>
                     </td>
                     <td style={{ padding: '10px', textAlign: 'center', color: '#6b7280' }}>

@@ -26,17 +26,11 @@ async function getNews() {
   const selectionPark = allNews.filter((item) => !item.isSelected);
   const topNews = allNews.filter((item) => item.isSelected);
 
-  // Get today's published count - 베트남 시간대 기준
+  // Get today's published count - 베트남 시간대(UTC+7) 기준으로 '오늘'의 시작을 정확하게 계산
   const now = new Date();
-  const vietnamTime = new Date(
-    now.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
-  );
-  const today = new Date(
-    vietnamTime.getFullYear(),
-    vietnamTime.getMonth(),
-    vietnamTime.getDate()
-  );
-  today.setHours(0, 0, 0, 0);
+  const vnDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // "YYYY-MM-DD"
+  const today = new Date(`${vnDateStr}T00:00:00+07:00`);
+  
   const todayPublishedCount = await prisma.newsItem.count({
     where: {
       status: "PUBLISHED",

@@ -4,28 +4,24 @@ import { revalidatePath } from "next/cache";
 
 export async function GET() {
   try {
-    // 베트남 시간대 기준으로 오늘 날짜 시작 시간 계산
+    // 베트남 시간대(UTC+7) 기준으로 '오늘'의 시작과 끝을 정확하게 계산
     const now = new Date();
-    const vietnamTime = new Date(
-      now.toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" })
-    );
-    const today = new Date(
-      vietnamTime.getFullYear(),
-      vietnamTime.getMonth(),
-      vietnamTime.getDate()
-    );
-    today.setHours(0, 0, 0, 0);
+    const vnDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // "YYYY-MM-DD"
+    const today = new Date(`${vnDateStr}T00:00:00+07:00`);
+    const endOfToday = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 
     const publishedNews = await prisma.newsItem.findMany({
       where: {
         status: "PUBLISHED",
-        updatedAt: {
+        publishedAt: {
           gte: today,
+          lt: endOfToday,
         },
       },
-      orderBy: {
-        updatedAt: "desc",
-      },
+      orderBy: [
+        { isTopNews: "desc" }, // 탑뉴스를 무조건 리스트 최상단에 배치
+        { publishedAt: "desc" },
+      ],
       select: {
         id: true,
         title: true,
@@ -34,10 +30,17 @@ export async function GET() {
         category: true,
         isTopNews: true,
         wordpressUrl: true,
-        updatedAt: true,
+        publishedAt: true,
       },
-      take: 50,
+      // 50개 제한을 없애고 오늘 발행된 모든 뉴스를 보여줌 (유령 뉴스 방지)
     });
+
+    const earliest = publishedNews[publishedNews.length - 1]?.publishedAt || null;
+    const latest = publishedNews[0]?.publishedAt || null;
+
+    // #region agent log
+    fetch('http://127.0.0.1:7244/ingest/f6fc14ce-ac4a-46f5-b5a7-c8a9162c4f22',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run2',hypothesisId:'H4',location:'app/api/published-news/route.js:GET',message:'Published news fetch',data:{count:publishedNews.length,start:today.toISOString(),end:endOfToday.toISOString(),latest,earliest},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
 
     return NextResponse.json({ news: publishedNews });
   } catch (error) {

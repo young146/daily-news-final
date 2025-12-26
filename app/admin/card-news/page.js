@@ -6,62 +6,87 @@ export const dynamic = "force-dynamic"; // ✅ Vercel에서 캐싱 방지, 항�
 
 async function getData() {
   try {
-    // isCardNews = true인 뉴스들만 가져옴 (발행된 뉴스 중)
+    // 1. 베트남 시간대(UTC+7) 기준으로 '오늘'의 시작 시간 계산 (통일된 로직)
+    const now = new Date();
+    const vnDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // "YYYY-MM-DD"
+    const today = new Date(`${vnDateStr}T00:00:00+07:00`);
 
-    // 1. isCardNews = true인 탑뉴스 가져오기 (최대 2개)
-    const topNewsList = await prisma.newsItem.findMany({
+    // 2. 오늘 발행된 뉴스 중 isCardNews = true인 탑뉴스 가져오기 (전체)
+    let topNewsList = await prisma.newsItem.findMany({
       where: {
         isTopNews: true,
         status: "PUBLISHED",
-        isCardNews: true, // ✅ 카드 뉴스로 표시된 것만
+        isCardNews: true,
+        publishedAt: { gte: today },
       },
       orderBy: {
         publishedAt: "desc",
       },
-      take: 2,
+      // 제한을 없애 지정한 모든 탑뉴스가 보이도록 수정
     });
 
-    // 2. isCardNews = true인 일반 뉴스 가져오기 (최대 3개, 탑뉴스 제외)
+    // 3. 오늘 발행된 뉴스 중 isCardNews = true인 일반 뉴스 가져오기 (전체)
     const topNewsIds = topNewsList.map((n) => n.id);
-    const recentNewsList = await prisma.newsItem.findMany({
+    let recentNewsList = await prisma.newsItem.findMany({
       where: {
-        id: { notIn: topNewsIds }, // ✅ Prisma는 빈 배열도 처리 가능
+        id: { notIn: topNewsIds },
         isTopNews: false,
         status: "PUBLISHED",
-        isCardNews: true, // ✅ 카드 뉴스로 표시된 것만
+        isCardNews: true,
+        publishedAt: { gte: today },
       },
       orderBy: {
         publishedAt: "desc",
       },
-      take: 3,
+      // 제한을 없애 지정한 모든 일반 뉴스가 보이도록 수정
     });
 
-    // 3. 전체 뉴스 리스트 (탑뉴스 + 일반 뉴스, 이미 2+3=5개로 제한됨)
+    // 4. ⭐ [지능형 폴백] 선택된 뉴스가 하나도 없다면 오늘 발행된 전체 뉴스 중 최신순으로 채워줌
+    let isUsingFallback = false;
+    let fallbackReason = null;
+
+    if (topNewsList.length === 0 && recentNewsList.length === 0) {
+      console.log("[CardNews] 선택된 뉴스가 없어 오늘 발행된 전체 뉴스를 불러옵니다.");
+      isUsingFallback = true;
+      fallbackReason = "선택된 카드뉴스가 없어 오늘 발행된 뉴스를 자동으로 가져왔습니다.";
+
+      topNewsList = await prisma.newsItem.findMany({
+        where: {
+          isTopNews: true,
+          status: "PUBLISHED",
+          publishedAt: { gte: today },
+        },
+        orderBy: { publishedAt: "desc" },
+        take: 2,
+      });
+
+      const fallbackTopIds = topNewsList.map(n => n.id);
+      recentNewsList = await prisma.newsItem.findMany({
+        where: {
+          id: { notIn: fallbackTopIds },
+          isTopNews: false,
+          status: "PUBLISHED",
+          publishedAt: { gte: today },
+        },
+        orderBy: { publishedAt: "desc" },
+        take: 8, // 폴백 시에는 적당히 8개 정도 보여줌
+      });
+    }
+
+    // 5. 전체 뉴스 리스트
     const allNewsList = [...topNewsList, ...recentNewsList];
 
-    // 4. 기본 선택 뉴스
-    const defaultTopNews =
-      topNewsList.length > 0
-        ? topNewsList[0]
-        : recentNewsList.length > 0
-        ? recentNewsList[0]
-        : null;
+    // 6. 기본 선택 뉴스 결정
+    const defaultTopNews = allNewsList.length > 0 ? allNewsList[0] : null;
 
-    // 5. fallback 여부 확인
-    const isUsingFallback =
-      topNewsList.length === 0 && recentNewsList.length > 0;
-    const fallbackReason = isUsingFallback
-      ? "탑뉴스가 지정되지 않아 최신 뉴스를 사용합니다."
-      : null;
-
-    // 6. 외부 API 병렬 호출 ✅ (성능 개선: 약 1초 단축)
+    // 7. 외부 API 병렬 호출 (날씨, 환율)
     const [weather, rates] = await Promise.all([
       getSeoulWeather(),
       getExchangeRates(),
     ]);
 
     console.log(
-      `[CardNews Page] isCardNews=true 뉴스: Top=${topNewsList.length}, Regular=${recentNewsList.length}, Total=${allNewsList.length}`
+      `[CardNews Page] 뉴스 목록 구성 완료: Top=${topNewsList.length}, Regular=${recentNewsList.length}, Total=${allNewsList.length}, Fallback=${isUsingFallback}`
     );
 
     return {

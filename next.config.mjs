@@ -41,7 +41,8 @@ const nextConfig = {
       allowedOrigins: ['*'],
     },
   },
-  serverComponentsExternalPackages: ['canvas'],
+  // ✅ Next.js 16에서는 serverExternalPackages로 루트 레벨에 설정
+  serverExternalPackages: ['canvas'],
 };
 
 export default nextConfig;
