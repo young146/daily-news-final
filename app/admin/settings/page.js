@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { updateCategoryAction, toggleTopNewsForPublishedAction } from '../actions';
 
 export default function SettingsPage() {
   const [crawlStatus, setCrawlStatus] = useState({});
@@ -9,6 +10,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [publishedNews, setPublishedNews] = useState([]);
   const [deletingId, setDeletingId] = useState(null);
+  const [updatingCategoryId, setUpdatingCategoryId] = useState(null);
+  const [togglingTopNewsId, setTogglingTopNewsId] = useState(null);
   const [crawlerLogs, setCrawlerLogs] = useState([]);
   const [expandedLog, setExpandedLog] = useState(null);
   const [resettingCardNews, setResettingCardNews] = useState(false);
@@ -387,10 +390,10 @@ export default function SettingsPage() {
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
         <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>
-          🗑️ 오늘 발행된 뉴스 관리
+          📰 오늘 발행된 뉴스 관리
         </h2>
         <p style={{ color: '#6b7280', marginBottom: '20px', fontSize: '14px' }}>
-          오늘 발행된 뉴스를 DB에서 삭제할 수 있습니다. (WordPress 글은 별도 삭제 필요)
+          발행된 뉴스의 카테고리 수정, 탑뉴스 지정, 삭제가 가능합니다. (WordPress 글은 별도 삭제 필요)
         </p>
         
         {publishedNews.length === 0 ? (
@@ -403,6 +406,8 @@ export default function SettingsPage() {
               <thead>
                 <tr style={{ background: '#f9fafb', position: 'sticky', top: 0 }}>
                   <th style={{ padding: '10px', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>제목</th>
+                  <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #e5e7eb', width: '100px' }}>카테고리</th>
+                  <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #e5e7eb', width: '100px' }}>탑뉴스</th>
                   <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #e5e7eb', width: '80px' }}>소스</th>
                   <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #e5e7eb', width: '100px' }}>발행일</th>
                   <th style={{ padding: '10px', textAlign: 'center', borderBottom: '1px solid #e5e7eb', width: '80px' }}>WP ID</th>
@@ -411,16 +416,93 @@ export default function SettingsPage() {
               </thead>
               <tbody>
                 {publishedNews.map(news => (
-                  <tr key={news.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                  <tr key={news.id} style={{ borderBottom: '1px solid #f3f4f6', background: news.isTopNews ? '#fef3c7' : 'transparent' }}>
                     <td style={{ padding: '10px' }}>
                       <div style={{ fontWeight: '500', color: '#1f2937' }}>
                         {news.translatedTitle || news.title}
+                        {news.isTopNews && (
+                          <span style={{ marginLeft: '8px', fontSize: '12px', background: '#fbbf24', color: '#92400e', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
+                            ★ TOP
+                          </span>
+                        )}
                       </div>
                       {news.translatedTitle && (
                         <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
                           {news.title?.substring(0, 50)}...
                         </div>
                       )}
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'center' }}>
+                      <select
+                        value={news.category || 'Society'}
+                        onChange={async (e) => {
+                          setUpdatingCategoryId(news.id);
+                          const result = await updateCategoryAction(news.id, e.target.value);
+                          if (result.success) {
+                            setPublishedNews(prev => prev.map(n => 
+                              n.id === news.id ? { ...n, category: e.target.value } : n
+                            ));
+                          } else {
+                            alert('카테고리 수정 실패: ' + result.error);
+                            setUpdatingCategoryId(null);
+                          }
+                          setUpdatingCategoryId(null);
+                        }}
+                        disabled={updatingCategoryId === news.id}
+                        style={{
+                          padding: '4px 8px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          background: 'white',
+                          cursor: updatingCategoryId === news.id ? 'not-allowed' : 'pointer',
+                          opacity: updatingCategoryId === news.id ? 0.6 : 1
+                        }}
+                      >
+                        <option value="Society">Society</option>
+                        <option value="Economy">Economy</option>
+                        <option value="Culture">Culture</option>
+                        <option value="Politics">Politics</option>
+                        <option value="International">International</option>
+                        <option value="Korea-Vietnam">Korea-Vietnam</option>
+                        <option value="Community">Community</option>
+                        <option value="Travel">Travel</option>
+                        <option value="Health">Health</option>
+                        <option value="Food">Food</option>
+                      </select>
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'center' }}>
+                      <button
+                        onClick={async () => {
+                          setTogglingTopNewsId(news.id);
+                          const result = await toggleTopNewsForPublishedAction(news.id);
+                          if (result.success) {
+                            setPublishedNews(prev => prev.map(n => 
+                              n.id === news.id ? { ...n, isTopNews: !n.isTopNews } : n
+                            ));
+                            if (result.message) {
+                              alert(result.message);
+                            }
+                          } else {
+                            alert('탑뉴스 지정 실패: ' + result.error);
+                          }
+                          setTogglingTopNewsId(null);
+                        }}
+                        disabled={togglingTopNewsId === news.id}
+                        style={{
+                          padding: '4px 10px',
+                          background: news.isTopNews ? '#fef3c7' : '#f3f4f6',
+                          color: news.isTopNews ? '#92400e' : '#6b7280',
+                          border: news.isTopNews ? '1px solid #fbbf24' : '1px solid #d1d5db',
+                          borderRadius: '4px',
+                          cursor: togglingTopNewsId === news.id ? 'not-allowed' : 'pointer',
+                          fontSize: '12px',
+                          fontWeight: news.isTopNews ? 'bold' : 'normal',
+                          opacity: togglingTopNewsId === news.id ? 0.6 : 1
+                        }}
+                      >
+                        {togglingTopNewsId === news.id ? '...' : (news.isTopNews ? '★ 해제' : '☆ 지정')}
+                      </button>
                     </td>
                     <td style={{ padding: '10px', textAlign: 'center', color: '#6b7280' }}>
                       {news.source}

@@ -32,6 +32,7 @@ export async function GET() {
         translatedTitle: true,
         source: true,
         category: true,
+        isTopNews: true,
         wordpressUrl: true,
         updatedAt: true,
       },
