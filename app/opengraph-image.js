@@ -16,9 +16,27 @@ async function loadImage(src) {
         if (!src) return null;
         let buffer;
         if (src.startsWith('http')) {
-            const res = await fetch(src);
-            if (!res.ok) throw new Error('Failed to fetch image');
-            buffer = await res.arrayBuffer();
+            // ✅ 타임아웃 추가 (5초) - 빌드 환경에서 외부 이미지 로드 실패 방지
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            
+            try {
+                const res = await fetch(src, { 
+                    signal: controller.signal,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0'
+                    }
+                });
+                clearTimeout(timeoutId);
+                if (!res.ok) throw new Error('Failed to fetch image');
+                buffer = await res.arrayBuffer();
+            } catch (fetchError) {
+                clearTimeout(timeoutId);
+                if (fetchError.name === 'AbortError') {
+                    throw new Error('Image fetch timeout');
+                }
+                throw fetchError;
+            }
         } else if (src.startsWith('/')) {
             const filePath = path.join(process.cwd(), 'public', src);
             if (fs.existsSync(filePath)) {
@@ -28,8 +46,6 @@ async function loadImage(src) {
 
         if (buffer) {
             const base64 = Buffer.from(buffer).toString('base64');
-            // Assume PNG for simplicity, or detect mime type if needed. 
-            // Most images here are likely PNG or JPG.
             const mimeType = src.endsWith('.jpg') || src.endsWith('.jpeg') ? 'image/jpeg' : 'image/png';
             return `data:${mimeType};base64,${base64}`;
         }
@@ -57,15 +73,25 @@ export default async function Image() {
     const title = topNews?.translatedTitle || topNews?.title || 'Xin Chao Daily News';
     const summary = topNews?.translatedSummary || topNews?.summary || 'Vietnam & Korea Daily News Updates';
 
-    let imageUrl = topNews?.imageUrl || '/logo-full.png';
-    let imageBuffer = await loadImage(imageUrl);
-
+    // ✅ 이미지 우선순위: WordPress 이미지 > 로컬 이미지 > 원본 이미지 > 기본 로고
+    // WordPress 이미지는 이미 업로드되어 있어서 로드가 빠르고 안정적
+    let imageBuffer = null;
+    if (topNews?.wordpressImageUrl) {
+        imageBuffer = await loadImage(topNews.wordpressImageUrl);
+    }
+    if (!imageBuffer && topNews?.localImagePath) {
+        imageBuffer = await loadImage(topNews.localImagePath);
+    }
+    if (!imageBuffer && topNews?.imageUrl) {
+        imageBuffer = await loadImage(topNews.imageUrl);
+    }
     if (!imageBuffer) {
         imageBuffer = await loadImage('/logo-full.png');
     }
 
     const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
 
+    // ✅ 이전 구조로 복원: position 기반 레이아웃 (display 문제 없음)
     return new ImageResponse(
         (
             <div
@@ -73,106 +99,91 @@ export default async function Image() {
                     display: 'flex',
                     width: '100%',
                     height: '100%',
-                    backgroundColor: '#ffffff',
+                    backgroundColor: '#1f2937',
                     position: 'relative',
-                    border: '1px solid #e5e7eb', // 흰색 테두리
                 }}
             >
-                {/* Card Container */}
+                {/* Background Image */}
+                {imageBuffer && (
+                    <img
+                        src={imageBuffer}
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                        }}
+                    />
+                )}
+
+                {/* Gradient Overlay */}
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        background: 'linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0.9) 100%)',
+                    }}
+                />
+
+                {/* Content Container */}
                 <div
                     style={{
                         display: 'flex',
                         flexDirection: 'column',
+                        justifyContent: 'space-between',
                         width: '100%',
                         height: '100%',
+                        padding: '40px',
+                        position: 'relative',
+                        zIndex: 10,
                     }}
                 >
-                    {/* Top Section - Image */}
-                    <div
-                        style={{
-                            width: '100%',
-                            height: '50%',
-                            position: 'relative',
-                            backgroundColor: '#f3f4f6',
-                            overflow: 'hidden',
-                        }}
-                    >
-                        {imageBuffer && (
-                            <img
-                                src={imageBuffer}
-                                style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                }}
-                            />
-                        )}
-                        {/* Header Overlay */}
-                        <div
-                            style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'flex-start',
-                                padding: '30px 40px',
-                                background: 'linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 100%)',
-                            }}
-                        >
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontSize: 28, color: '#fff', fontStyle: 'italic', fontFamily: 'serif' }}>Xin Chao</span>
-                                <span style={{ fontSize: 14, color: '#fb923c', fontWeight: 'bold', letterSpacing: '0.2em', textTransform: 'uppercase' }}>Today News</span>
-                            </div>
-                            <div style={{
-                                padding: '6px 14px',
-                                backgroundColor: 'rgba(0,0,0,0.6)',
-                                borderRadius: '999px',
-                                border: '1px solid rgba(255,255,255,0.2)',
-                                color: 'white',
-                                fontSize: 14,
-                            }}>
-                                {today}
-                            </div>
+                    {/* Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: 32, color: '#fff', fontStyle: 'italic', fontFamily: 'serif' }}>Xin Chao</span>
+                            <span style={{ fontSize: 16, color: '#fb923c', fontWeight: 'bold', letterSpacing: '0.2em', textTransform: 'uppercase' }}>Today News</span>
+                        </div>
+                        <div style={{
+                            padding: '8px 16px',
+                            backgroundColor: 'rgba(0,0,0,0.6)',
+                            borderRadius: '999px',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            color: 'white',
+                            fontSize: 16,
+                        }}>
+                            {today}
                         </div>
                     </div>
 
-                    {/* Bottom Section - Text with Light Background */}
-                    <div
-                        style={{
-                            width: '100%',
-                            height: '50%',
-                            backgroundColor: '#f9fafb', // 옅은 배경색
-                            borderTop: '1px solid #e5e7eb', // 구분선
-                            padding: '40px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'center',
-                        }}
-                    >
-                        {/* Main Title */}
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <div style={{
-                                fontSize: 42,
-                                fontWeight: 'bold',
-                                color: '#111827',
-                                lineHeight: 1.2,
-                                marginBottom: 16,
-                            }}>
-                                {title}
-                            </div>
-                            <div style={{
-                                fontSize: 20,
-                                color: '#374151',
-                                lineHeight: 1.4,
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                overflow: 'hidden',
-                            }}>
-                                {summary}
-                            </div>
+                    {/* Main Title */}
+                    <div style={{ display: 'flex', flexDirection: 'column', maxWidth: '80%' }}>
+                        <div style={{
+                            fontSize: 48,
+                            fontWeight: 'bold',
+                            color: 'white',
+                            lineHeight: 1.2,
+                            marginBottom: 20,
+                            textShadow: '0 2px 10px rgba(0,0,0,0.5)'
+                        }}>
+                            {title}
+                        </div>
+                        <div style={{
+                            fontSize: 24,
+                            color: '#e5e7eb',
+                            lineHeight: 1.4,
+                            textShadow: '0 2px 5px rgba(0,0,0,0.5)',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                        }}>
+                            {summary}
                         </div>
                     </div>
                 </div>
