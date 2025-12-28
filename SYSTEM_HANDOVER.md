@@ -59,6 +59,74 @@
 - [ ] 탑뉴스 지정 시 Jenny 게시판에 즉시 반영되는지 최종 사용자 확인 대기.
 - [ ] 카드뉴스 생성 시 특정 긴 제목이 영역을 벗어나는지 엣지 케이스 테스트 필요.
 
+## 6. 금일 작업 내용 (2025-12-28 시행 사항)
+
+### ✅ WordPress 플러그인 리팩토링 (코드 다이어트)
+- **목적**: 1607줄의 단일 파일을 구조화하고 유지보수성 향상
+- **작업 내용**:
+  - 설정값 상수화: 카테고리 순서, 섹션 정의, 카테고리 매핑을 함수로 분리
+  - 함수 분리: `render_jenny_card`를 독립 함수로 분리, 중복 코드 제거
+  - Excerpt 정제 로직 단순화: 6개 이상의 정규식 패턴을 하나의 함수로 통합
+  - 모바일 스타일 중복 제거: `jenny_get_styles()`와 `jenny_add_global_mobile_styles()` 중복 제거
+  - 포스트 가져오기 로직 분리: 날짜별 포스트 조회를 별도 함수로 분리
+- **결과**: 코드 가독성 및 유지보수성 대폭 향상, 기능은 100% 유지
+
+### ✅ 카테고리 기능 확장
+- **추가**: "기타(Other)" 카테고리 추가
+- **적용 범위**:
+  - WordPress 플러그인 (`jenny-daily-news.php`)
+  - 관리자 설정 페이지 (`app/admin/settings/page.js`)
+  - 카테고리 선택 컴포넌트 (`app/admin/category-selector.js`)
+  - 수동 뉴스 폼 (`app/admin/manual-news-form.js`)
+  - 뉴스 편집 페이지 (`app/admin/news/[id]/page.js`)
+- **용도**: 분류가 애매한 뉴스를 "기타"로 처리
+
+### ✅ 번역 로그 개선
+- **추가**: 번역 시작/완료 로그 추가
+- **파일**: `lib/translator.js`, `lib/crawler-service.js`, `scripts/crawler.js`
+- **효과**: 번역 진행 상황을 터미널에서 실시간으로 확인 가능
+
+### ✅ Open Graph 이미지 빌드 에러 수정
+- **문제**: 
+  1. HTML 구조 에러: `display: flex` 누락으로 빌드 실패
+  2. 이미지 로드 타임아웃: 외부 이미지 로드 시 타임아웃으로 빌드 실패
+- **해결**:
+  1. **이전 구조로 복원**: position 기반 레이아웃으로 되돌림 (display 문제 해결)
+  2. **타임아웃 추가**: 외부 이미지 로드에 5초 타임아웃 설정
+  3. **이미지 우선순위 개선**: WordPress 이미지 → 로컬 이미지 → 원본 이미지 → 기본 로고
+- **파일**: `app/opengraph-image.js`
+
+### ⚠️ 중요: 이미지 로드 전략 (Image Loading Strategy)
+
+**원본 이미지 직접 로드는 항상 불안정합니다:**
+- 외부 서버 응답 지연/타임아웃 위험
+- 빌드 환경에서 네트워크 제한 가능
+- CORS 또는 Hotlink Protection 문제
+
+**권장 방식: WordPress에 이미 올린 이미지 사용**
+- `wordpressImageUrl` 또는 `localImagePath` 우선 사용
+- 이미 업로드된 이미지는 로드가 빠르고 안정적
+- 빌드 실패 위험 최소화
+
+**현재 구현:**
+```javascript
+// 우선순위: WordPress 이미지 > 로컬 이미지 > 원본 이미지 > 기본 로고
+if (topNews?.wordpressImageUrl) {
+    imageBuffer = await loadImage(topNews.wordpressImageUrl);
+}
+if (!imageBuffer && topNews?.localImagePath) {
+    imageBuffer = await loadImage(topNews.localImagePath);
+}
+if (!imageBuffer && topNews?.imageUrl) {
+    imageBuffer = await loadImage(topNews.imageUrl); // 타임아웃 위험
+}
+```
+
+**다음 작업 시 참고:**
+- Open Graph 이미지 생성 시 항상 WordPress/로컬 이미지 우선 사용
+- 원본 이미지(`imageUrl`)는 최후의 수단으로만 사용
+- 타임아웃 설정은 필수 (5초 권장)
+
 ---
 **이 시스템의 목표는 '오늘'이라는 시간에 갇히지 않고, 언제나 가장 최신의 뉴스가 살아 움직이는 게시판을 만드는 것입니다.**
 
