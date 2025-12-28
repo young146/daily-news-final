@@ -207,13 +207,17 @@ async function updateWordPressPostMeta(wordpressUrl, metaData) {
       console.log(`[WP Meta] ✅ Post ID 찾음: ${postId}`);
     }
     
-    // 메타 필드 업데이트 (WordPress REST API v2)
+    // 메타 필드 업데이트 (WordPress REST API v2 표준 방식)
     const updateUrl = `${WP_URL}/wp-json/wp/v2/posts/${postId}`;
+    
+    // 워드프레스가 가장 선호하는 표준 객체 구조로 전달
     const updateBody = {
-      meta: metaData
+      meta: {
+        ...metaData
+      }
     };
     
-    console.log(`[WP Meta] 📤 WordPress 메타 필드 업데이트 요청: ${updateUrl}`, updateBody);
+    console.log(`[WP Meta] 📤 워드프레스 표준 통로로 배달 중: ${updateUrl}`, JSON.stringify(updateBody));
     
     const updateResponse = await fetch(updateUrl, {
       method: 'POST',
@@ -226,158 +230,165 @@ async function updateWordPressPostMeta(wordpressUrl, metaData) {
     
     if (!updateResponse.ok) {
       const errorData = await updateResponse.json().catch(() => ({}));
-      console.error(`[WP Meta] ❌ 업데이트 실패: ${updateResponse.status}`, errorData);
-      
-      // 대체 방법: 메타 엔드포인트 개별 업데이트 시도 (첫 번째 키만)
-      const firstKey = Object.keys(metaData)[0];
-      const metaUrl = `${WP_URL}/wp-json/wp/v2/posts/${postId}/meta/${firstKey}`;
-      console.log(`[WP Meta] 🔄 메타 엔드포인트로 재시도: ${metaUrl}`);
-      
-      await fetch(metaUrl, {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${auth}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          value: metaData[firstKey]
-        }),
-      });
+      console.error(`[WP Meta] ❌ 배달 사고(업데이트 실패): ${updateResponse.status}`, errorData);
     } else {
-      console.log(`[WP Meta] ✅ WordPress 업데이트 성공 (Post ID: ${postId})`);
+      console.log(`[WP Meta] ✅ 배달 완료(업데이트 성공)! (Post ID: ${postId})`);
     }
   } catch (error) {
     console.warn(`[WP Meta] WordPress 업데이트 실패 (무시됨): ${error.message}`);
   }
 }
 
-// 발행된 뉴스용 탑뉴스 토글 (status 제한 없음)
+// 최신 발행분의 모든 메타를 WordPress와 강제 동기화 (탑뉴스 + 카테고리)
+export async function syncAllTopNewsAction() {
+  try {
+    console.log("[Sync] 🔄 최신 발행분 전체 동기화 시작...");
+    
+    // 1. 최신 발행 날짜 찾기
+    const latestItem = await prisma.newsItem.findFirst({
+      where: { status: "PUBLISHED" },
+      orderBy: { publishedAt: "desc" },
+      select: { publishedAt: true }
+    });
+    
+    if (!latestItem || !latestItem.publishedAt) {
+      return { success: false, error: "발행된 뉴스가 없습니다." };
+    }
+    
+    // 최신 발행일의 시작과 끝
+    const latestDate = new Date(latestItem.publishedAt);
+    const startOfDay = new Date(latestDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(latestDate);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    console.log(`[Sync] 📅 최신 발행일: ${latestDate.toISOString().split('T')[0]}`);
+    
+    // 2. 최신 발행일의 뉴스만 가져오기
+    const latestNews = await prisma.newsItem.findMany({
+      where: { 
+        status: "PUBLISHED",
+        publishedAt: {
+          gte: startOfDay,
+          lte: endOfDay
+        }
+      },
+      orderBy: { publishedAt: "desc" }
+    });
+    
+    console.log(`[Sync] 📊 최신 발행분 뉴스: ${latestNews.length}개`);
+    
+    // 3. 이전 발행분의 모든 탑뉴스 해제
+    const olderTopNews = await prisma.newsItem.findMany({
+      where: {
+        status: "PUBLISHED",
+        isTopNews: true,
+        publishedAt: { lt: startOfDay }
+      }
+    });
+    
+    for (const old of olderTopNews) {
+      await prisma.newsItem.update({ where: { id: old.id }, data: { isTopNews: false } });
+      if (old.wordpressUrl) {
+        await updateWordPressPostMeta(old.wordpressUrl, { is_top_news: '0' });
+      }
+      console.log(`[Sync] 🔻 이전 탑뉴스 해제: ${old.translatedTitle || old.title}`);
+    }
+    
+    // 4. 최신 발행분 동기화 (탑뉴스 + 카테고리)
+    let syncedCount = 0;
+    let topNewsCount = 0;
+    const categoryCounts = {};
+    
+    for (const item of latestNews) {
+      if (!item.wordpressUrl) continue;
+      
+      // 메타 데이터 준비
+      const metaData = {
+        is_top_news: item.isTopNews ? '1' : '0',
+        news_category: item.category || 'Society'
+      };
+      
+      // WordPress 업데이트
+      await updateWordPressPostMeta(item.wordpressUrl, metaData);
+      
+      syncedCount++;
+      if (item.isTopNews) {
+        topNewsCount++;
+        console.log(`[Sync] ⭐ 탑뉴스: ${item.translatedTitle || item.title}`);
+      }
+      
+      // 카테고리 카운트
+      const cat = item.category || 'Society';
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+    }
+    
+    console.log(`[Sync] ✅ 동기화 완료!`);
+    console.log(`[Sync] 📊 총 ${syncedCount}개 뉴스 동기화, 탑뉴스 ${topNewsCount}개`);
+    console.log(`[Sync] 📊 카테고리별:`, categoryCounts);
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/settings");
+    return { 
+      success: true, 
+      message: `동기화 완료! ${syncedCount}개 뉴스 동기화됨 (탑뉴스 ${topNewsCount}개, 카테고리: ${JSON.stringify(categoryCounts)})` 
+    };
+  } catch (error) {
+    console.error("[Sync] ❌ 동기화 실패:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ✅ 탑뉴스 토글
+// 새 탑뉴스 지정 시: 해당 뉴스보다 오래된 탑뉴스들만 해제 (같은 발행분은 유지)
 export async function toggleTopNewsForPublishedAction(id) {
   try {
     const item = await prisma.newsItem.findUnique({ where: { id } });
-    if (!item) {
-      return { success: false, error: "뉴스를 찾을 수 없습니다." };
+    if (!item) return { success: false, error: "뉴스를 찾을 수 없습니다." };
+
+    const newTopNewsStatus = !item.isTopNews;
+
+    if (newTopNewsStatus && item.publishedAt) {
+      // ✅ 탑뉴스 지정 시: 해당 뉴스보다 오래된 탑뉴스들 해제 (DB + WordPress)
+      const olderTopNews = await prisma.newsItem.findMany({
+        where: { 
+          isTopNews: true, 
+          status: "PUBLISHED", 
+          id: { not: id },
+          publishedAt: { lt: item.publishedAt } // 이 뉴스보다 오래된 것만
+        }
+      });
+      
+      for (const old of olderTopNews) {
+        await prisma.newsItem.update({ where: { id: old.id }, data: { isTopNews: false } });
+        if (old.wordpressUrl) {
+          await updateWordPressPostMeta(old.wordpressUrl, { is_top_news: '0' });
+        }
+        console.log(`[TopNews] 🔄 이전 탑뉴스 자동 해제: ${old.translatedTitle || old.title}`);
+      }
     }
 
-    if (item.isTopNews) {
-      // 탑뉴스 해제
-      await prisma.newsItem.update({
-        where: { id },
-        data: { isTopNews: false },
+    // DB 업데이트
+    await prisma.newsItem.update({ 
+      where: { id }, 
+      data: { isTopNews: newTopNewsStatus } 
+    });
+
+    // WordPress 메타 업데이트
+    if (item.wordpressUrl) {
+      await updateWordPressPostMeta(item.wordpressUrl, { 
+        is_top_news: newTopNewsStatus ? '1' : '0' 
       });
-
-      // ✅ 동일한 제목을 가진 다른 중복 항목들도 모두 탑뉴스 해제 (중복 방지)
-      if (item.title) {
-        await prisma.newsItem.updateMany({
-          where: { 
-            title: item.title,
-            isTopNews: true 
-          },
-          data: { isTopNews: false }
-        });
-      }
-      
-      // ✅ WordPress 메타 필드도 업데이트
-      if (item.wordpressUrl) {
-        await updateWordPressPostMeta(item.wordpressUrl, { is_top_news: '0' });
-      }
-      
-      revalidatePath("/admin");
-      revalidatePath("/admin/settings");
-      revalidatePath("/admin/card-news");
-      return { success: true, message: "탑뉴스가 해제되었습니다." };
-    } else {
-      // 탑뉴스 설정 시도 (오늘 날짜로 발행된 뉴스만 카운트)
-      // 베트남 시간대(UTC+7) 기준으로 '오늘'의 시작과 끝을 정확하게 계산
-      const now = new Date();
-      const vnDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // "YYYY-MM-DD"
-      const today = new Date(`${vnDateStr}T00:00:00+07:00`);
-      const endOfToday = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/f6fc14ce-ac4a-46f5-b5a7-c8a9162c4f22',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run2',hypothesisId:'H1',location:'app/admin/actions.js:toggleTopNewsForPublishedAction',message:'Computed VN day range',data:{start:today.toISOString(),end:endOfToday.toISOString()},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-      
-      // ✅ 트랜잭션을 사용하여 최신 데이터를 읽도록 보장
-      const count = await prisma.$transaction(async (tx) => {
-        return await tx.newsItem.count({
-          where: {
-            isTopNews: true,
-            status: "PUBLISHED",
-            publishedAt: { gte: today, lt: endOfToday }, // ✅ 오늘 날짜로 발행된 뉴스만 카운트
-          },
-        });
-      });
-
-      // 모든 탑뉴스 목록(오늘 범위) 확인 로그
-      const allTopNewsToday = await prisma.newsItem.findMany({
-        where: {
-          isTopNews: true,
-          status: "PUBLISHED",
-          publishedAt: { gte: today, lt: endOfToday },
-        },
-        select: { id: true, publishedAt: true, title: true, translatedTitle: true },
-        orderBy: { publishedAt: "asc" },
-      });
-
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/f6fc14ce-ac4a-46f5-b5a7-c8a9162c4f22',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run2',hypothesisId:'H2',location:'app/admin/actions.js:toggleTopNewsForPublishedAction',message:'Current top news count',data:{count,rangeStart:today.toISOString(),rangeEnd:endOfToday.toISOString()},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/f6fc14ce-ac4a-46f5-b5a7-c8a9162c4f22',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run2',hypothesisId:'H5',location:'app/admin/actions.js:toggleTopNewsForPublishedAction',message:'Top news list today',data:{items:allTopNewsToday},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-
-      if (count >= 2) {
-        // 현재 탑뉴스 목록 조회 (오늘 날짜로 발행된 것만)
-        // ✅ 트랜잭션을 사용하여 최신 데이터를 읽도록 보장
-        const currentTopNews = await prisma.$transaction(async (tx) => {
-          return await tx.newsItem.findMany({
-            where: {
-              isTopNews: true,
-              status: "PUBLISHED",
-              publishedAt: { gte: today, lt: endOfToday }, // ✅ 오늘 날짜로 발행된 뉴스만
-            },
-            select: { translatedTitle: true, title: true, id: true, publishedAt: true },
-            take: 2,
-          });
-        });
-
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/f6fc14ce-ac4a-46f5-b5a7-c8a9162c4f22',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run2',hypothesisId:'H3',location:'app/admin/actions.js:toggleTopNewsForPublishedAction',message:'Top news blocked - current items',data:{items:currentTopNews},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-
-        const topNewsTitles = currentTopNews
-          .map((n) => `${n.translatedTitle || n.title} (${new Date(n.publishedAt).toLocaleDateString('ko-KR')})`)
-          .join(", ");
-        return {
-          success: false,
-          error: `탑뉴스는 최대 2개까지만 지정할 수 있습니다.\n\n현재 지정된 탑뉴스:\n${topNewsTitles}\n\n기존 탑뉴스를 해제한 후 다시 시도해주세요.`,
-        };
-      }
-
-      await prisma.newsItem.update({
-        where: { id },
-        data: { isTopNews: true },
-      });
-
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/f6fc14ce-ac4a-46f5-b5a7-c8a9162c4f22',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run2',hypothesisId:'H2',location:'app/admin/actions.js:toggleTopNewsForPublishedAction',message:'Set top news success',data:{id,rangeStart:today.toISOString(),rangeEnd:endOfToday.toISOString()},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-      
-      // ✅ WordPress 메타 필드도 업데이트
-      if (item.wordpressUrl) {
-        await updateWordPressPostMeta(item.wordpressUrl, { is_top_news: '1' });
-      }
-      
-      revalidatePath("/admin");
-      revalidatePath("/admin/settings");
-      revalidatePath("/admin/card-news");
-      return { success: true, message: "탑뉴스로 지정되었습니다." };
     }
+
+    console.log(`[TopNews] ${newTopNewsStatus ? '✅ 지정' : '❌ 해제'}: ${item.translatedTitle || item.title}`);
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/settings");
+    return { success: true };
   } catch (error) {
     console.error("Toggle top news failed:", error);
-    return { success: false, error: `탑뉴스 지정 실패: ${error.message}` };
+    return { success: false, error: error.message };
   }
 }
 

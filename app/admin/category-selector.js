@@ -38,6 +38,7 @@ export default function CategorySelector({ id, initialCategory }) {
             <option value="Travel">Travel (여행)</option>
             <option value="Health">Health (건강)</option>
             <option value="Food">Food (음식)</option>
+            <option value="Other">Other (기타)</option>
         </select>
     );
 }

@@ -29,6 +29,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'media.urbanistnetwork.com' },
       { protocol: 'https', hostname: 'soranews24.com' },
       { protocol: 'https', hostname: 'en.cand.com.vn' },
+      { protocol: 'https', hostname: 'img.cand.com.vn' },
     ],
   },
   allowedDevOrigins: [

@@ -36,6 +36,7 @@ export default function ManualNewsForm({ onClose, onSuccess, editData = null }) 
     "Travel",
     "Health",
     "Food",
+    "Other",
   ];
 
   const handleImageUpload = (e) => {

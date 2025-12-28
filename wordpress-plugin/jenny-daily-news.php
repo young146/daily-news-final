@@ -2,12 +2,266 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 1.8
+ * Version: 1.9
  * Author: Jenny (Antigravity)
  */
 
 if (!defined('ABSPATH')) {
     exit;
+}
+
+// ============================================================================
+// 상수 및 설정값 정의
+// ============================================================================
+
+/**
+ * 카테고리 순서 정의
+ */
+function jenny_get_category_order() {
+    return array(
+        '사회' => 1, 'Society' => 1,
+        '경제' => 2, 'Economy' => 2,
+        '문화' => 3, 'Culture' => 3,
+        '정치' => 4, '정책' => 4, 'Politics' => 4, 'Policy' => 4,
+        '국제' => 5, 'International' => 5,
+        '한베' => 6, '한-베' => 6, 'Korea-Vietnam' => 6,
+        '교민' => 7, '교민소식' => 7, 'Community' => 7,
+        '여행' => 8, 'Travel' => 8,
+        '건강' => 9, 'Health' => 9,
+        '음식' => 10, 'Food' => 10,
+        '기타' => 11, 'Other' => 11,
+    );
+}
+
+/**
+ * 섹션 키 정의
+ */
+function jenny_get_sections_keys() {
+    return array(
+        'economy' => array('Economy', '경제'),
+        'society' => array('Society', '사회'),
+        'culture' => array('Culture', '문화'),
+        'politics' => array('Politics', 'Policy', '정치', '정책'),
+        'international' => array('International', '국제'),
+        'korea_vietnam' => array('Korea-Vietnam', '한-베', '한베'),
+        'community' => array('Community', '교민', '교민소식'),
+        'travel' => array('Travel', '여행'),
+        'health' => array('Health', '건강'),
+        'food' => array('Food', '음식'),
+        'other' => array('Other', '기타'),
+    );
+}
+
+/**
+ * 카테고리 표시 이름 매핑
+ */
+function jenny_get_category_map() {
+    return array(
+        'Society' => '사회', '사회' => '사회',
+        'Economy' => '경제', '경제' => '경제',
+        'Culture' => '문화/스포츠', '문화' => '문화/스포츠',
+        'Politics' => '정치/정책', 'Policy' => '정치/정책',
+        '정치' => '정치/정책', '정책' => '정치/정책',
+        'International' => '국제', '국제' => '국제',
+        'Korea-Vietnam' => '한-베', '한-베' => '한-베', '한베' => '한-베',
+        'Community' => '교민소식', '교민' => '교민소식', '교민소식' => '교민소식',
+        'Travel' => '여행', '여행' => '여행',
+        'Health' => '건강', '건강' => '건강',
+        'Food' => '음식', '음식' => '음식',
+        'Other' => '기타', '기타' => '기타',
+    );
+}
+
+/**
+ * 섹션 정의
+ */
+function jenny_get_sections() {
+    return array(
+        'economy' => array('title' => '📈 경제 (Economy)', 'keys' => array('Economy', '경제')),
+        'society' => array('title' => '👥 사회 (Society)', 'keys' => array('Society', '사회')),
+        'culture' => array('title' => '🎭 문화/스포츠 (Culture)', 'keys' => array('Culture', '문화')),
+        'politics' => array('title' => '⚖️ 정치/정책 (Politics)', 'keys' => array('Politics', 'Policy', '정치', '정책')),
+        'international' => array('title' => '🌏 국제 (International)', 'keys' => array('International', '국제')),
+        'korea_vietnam' => array('title' => '🇰🇷🇻🇳 한-베 관계 (Korea-Vietnam)', 'keys' => array('Korea-Vietnam', '한-베', '한베')),
+        'community' => array('title' => '📢 교민 소식 (Community)', 'keys' => array('Community', '교민', '교민소식')),
+        'travel' => array('title' => '✈️ 여행 (Travel)', 'keys' => array('Travel', '여행')),
+        'health' => array('title' => '🏥 건강 (Health)', 'keys' => array('Health', '건강')),
+        'food' => array('title' => '🍽️ 음식 (Food)', 'keys' => array('Food', '음식')),
+        'other' => array('title' => '✨ 기타 (Other)', 'keys' => array('Other', '기타'))
+    );
+}
+
+/**
+ * 섹션 네비게이션 항목 정의
+ */
+function jenny_get_section_nav_items() {
+    return array(
+        'economy' => array('label' => '경제', 'icon' => '📈'),
+        'society' => array('label' => '사회', 'icon' => '👥'),
+        'culture' => array('label' => '문화/스포츠', 'icon' => '🎭'),
+        'politics' => array('label' => '정치/정책', 'icon' => '⚖️'),
+        'international' => array('label' => '국제', 'icon' => '🌏'),
+        'korea_vietnam' => array('label' => '한-베', 'icon' => '🇰🇷🇻🇳'),
+        'community' => array('label' => '교민소식', 'icon' => '📢'),
+        'travel' => array('label' => '여행', 'icon' => '✈️'),
+        'health' => array('label' => '건강', 'icon' => '🏥'),
+        'food' => array('label' => '음식', 'icon' => '🍽️'),
+        'other' => array('label' => '기타', 'icon' => '✨'),
+    );
+}
+
+// ============================================================================
+// 유틸리티 함수
+// ============================================================================
+
+/**
+ * 본문에서 출처/날짜/원문 정보 제거
+ */
+function jenny_clean_content($content) {
+    // 1. <style> 태그와 내용을 먼저 제거
+    $content = preg_replace('/<style[^>]*>.*?<\/style>/is', '', $content);
+    // 2. 나머지 HTML 태그 제거
+    $content = strip_tags($content);
+    
+    // 3. 출처/날짜/원문 정보 제거 패턴들
+    $patterns = array(
+        '/출처\s*:\s*[^날]+날짜\s*:\s*[0-9.\s]+\.{0,2}\s*/i',  // 패턴 1: "출처: [소스명] 날짜: [날짜]"
+        '/출처\s*:\s*[^|]*\s*\|/i',                            // 패턴 2: "출처: [소스명] |"
+        '/날짜\s*:\s*[^|]*\s*\|/i',                            // 패턴 2: "날짜: [날짜] |"
+        '/원문\s*(기사\s*)?(전체\s*)?보기[^가-힣a-zA-Z0-9]*/i', // 패턴 3: "원문 보기"
+        '/https?:\/\/[^\s]+/i',                                // 패턴 4: URL 제거
+        '/\s*[|]\s*/',                                          // 패턴 5: 구분선 제거
+        '/\s{2,}/',                                            // 패턴 6: 연속된 공백 정리
+    );
+    
+    foreach ($patterns as $pattern) {
+        $content = preg_replace($pattern, ' ', $content);
+    }
+    
+    return trim($content);
+}
+
+/**
+ * 포스트에서 카테고리 추출
+ */
+function jenny_get_post_category($post_id) {
+    $news_category = get_post_meta($post_id, 'news_category', true);
+    if (empty($news_category) || trim($news_category) === '') {
+        $categories = get_the_category($post_id);
+        $news_category = !empty($categories) ? $categories[0]->name : '뉴스';
+    }
+    return trim($news_category);
+}
+
+/**
+ * 카테고리를 섹션 키로 변환
+ */
+function jenny_get_section_key($category, $sections_keys) {
+    $cat = trim($category);
+    foreach ($sections_keys as $sec_key => $keys) {
+        if (in_array($cat, $keys, true)) return $sec_key;
+        foreach ($keys as $key) {
+            if (strcasecmp($cat, $key) === 0) return $sec_key;
+        }
+    }
+    return 'other';
+}
+
+/**
+ * 카테고리 표시 이름 가져오기
+ */
+function jenny_get_category_display_name($news_category, $category_map) {
+    $news_category = trim($news_category);
+    if (empty($news_category)) {
+        return '뉴스';
+    }
+    
+    // 정확한 매칭 시도
+    if (isset($category_map[$news_category])) {
+        return $category_map[$news_category];
+    }
+    
+    // 대소문자 무시 매칭 시도
+    foreach ($category_map as $key => $value) {
+        if (strcasecmp($news_category, $key) === 0) {
+            return $value;
+        }
+    }
+    
+    return $news_category; // 기본값
+}
+
+/**
+ * 뉴스 카드 렌더링
+ */
+function jenny_render_news_card($post_data, $category_map) {
+    $post_obj = get_post($post_data['post_id']);
+    setup_postdata($post_obj);
+
+    $thumb_url = get_the_post_thumbnail_url($post_data['post_id'], 'medium_large');
+    if (!$thumb_url) {
+        $thumb_url = 'https://via.placeholder.com/600x400?text=News';
+    }
+
+    $cat_name = jenny_get_category_display_name($post_data['category'], $category_map);
+
+    // 본문에서 excerpt 생성
+    $content = jenny_clean_content($post_obj->post_content);
+    
+    if (!empty($content)) {
+        $excerpt = wp_trim_words($content, 50, '...');
+        // excerpt에서도 한 번 더 정제 (안전장치)
+        $excerpt = jenny_clean_content($excerpt);
+    } else {
+        $excerpt = get_the_excerpt($post_data['post_id']);
+        if (empty($excerpt)) {
+            $excerpt = '';
+        }
+    }
+
+    // 링크 정보
+    $permalink = get_permalink($post_data['post_id']);
+    $original_url = get_post_meta($post_data['post_id'], 'news_original_url', true);
+
+    // Source meta
+    $news_source = get_post_meta($post_data['post_id'], 'news_source', true);
+    if (empty($news_source)) {
+        $categories = get_the_category($post_data['post_id']);
+        $news_source = !empty($categories) ? $categories[0]->name : '출처 미상';
+    }
+
+    $date_str = get_the_date('Y.m.d', $post_data['post_id']);
+
+    // Metadata Line: Source | Date | Original Link
+    $meta_line = '<div class="jenny-meta-line">';
+    $meta_line .= '<span class="jenny-source">' . esc_html($news_source) . '</span>';
+    $meta_line .= '<span class="jenny-separator">|</span>';
+    $meta_line .= '<span class="jenny-date">' . $date_str . '</span>';
+    if (!empty($original_url)) {
+        $meta_line .= '<span class="jenny-separator">|</span>';
+        $meta_line .= '<a href="' . esc_url($original_url) . '" target="_blank" rel="noopener noreferrer" class="jenny-original-link">원문 보기</a>';
+    }
+    $meta_line .= '</div>';
+
+    $html = '<div class="jenny-news-card">';
+    $html .= '<div class="jenny-card-image">';
+    $html .= '<a href="' . esc_url($permalink) . '">';
+    $html .= '<img src="' . esc_url($thumb_url) . '" alt="' . esc_attr(get_the_title($post_data['post_id'])) . '" loading="lazy">';
+    $html .= '</a>';
+    $html .= '<span class="jenny-badge">' . esc_html($cat_name) . '</span>';
+    $html .= '</div>';
+
+    $html .= '<div class="jenny-content">';
+    $html .= '<h3 class="jenny-title"><a href="' . esc_url($permalink) . '">' . get_the_title($post_data['post_id']) . '</a></h3>';
+    $html .= $meta_line;
+    if (!empty($excerpt)) {
+        $html .= '<div class="jenny-excerpt">' . esc_html($excerpt) . '</div>';
+    }
+    $html .= '<a href="' . esc_url($permalink) . '" class="jenny-link"><span class="jenny-link-text">자세히 보기</span></a>';
+    $html .= '</div>';
+    $html .= '</div>';
+
+    return $html;
 }
 
 function jenny_get_weather_html()
@@ -112,7 +366,118 @@ function jenny_get_exchange_data()
     return $exchange_data;
 }
 
+/**
+ * 특정 날짜의 포스트를 가져와서 top_news와 regular_posts로 분류
+ */
+function jenny_get_posts_by_date($date, $category_id, $category_order) {
+    $date_parts = explode('-', $date);
+    
+    $args = array(
+        'post_type' => 'post',
+        'posts_per_page' => -1,
+        'cat' => intval($category_id),
+        'post_status' => 'publish',
+        'orderby' => 'date',
+        'order' => 'DESC',
+        'date_query' => array(
+            array(
+                'year' => intval($date_parts[0]),
+                'month' => intval($date_parts[1]),
+                'day' => intval($date_parts[2]),
+            ),
+        ),
+    );
+    
+    $query = new WP_Query($args);
+    $top_news_posts = array();
+    $top_news_ids = array();
+    $regular_posts = array();
+    
+    if ($query->have_posts()) {
+        while ($query->have_posts()) {
+            $query->the_post();
+            $post_id = get_the_ID();
+            $news_category = jenny_get_post_category($post_id);
+            $order = isset($category_order[$news_category]) ? $category_order[$news_category] : 99;
+            
+            $is_top_raw = get_post_meta($post_id, 'is_top_news', true);
+            $is_top = ($is_top_raw === '1' || $is_top_raw === 1 || $is_top_raw === true);
+            
+            $item = array(
+                'post_id' => $post_id,
+                'order' => $order,
+                'date' => get_the_date('Y-m-d H:i:s'),
+                'category' => $news_category,
+                'is_top' => $is_top
+            );
+            
+            if ($is_top) {
+                $top_news_posts[] = $item;
+                $top_news_ids[] = $post_id;
+            } else {
+                $regular_posts[] = $item;
+            }
+        }
+        wp_reset_postdata();
+    }
+    
+    return array(
+        'top_news' => $top_news_posts,
+        'top_news_ids' => $top_news_ids,
+        'regular' => $regular_posts
+    );
+}
 
+/**
+ * 오늘 날짜 또는 최근 발행일 가져오기
+ */
+function jenny_get_target_date($now, $category_id) {
+    $today_vn = $now->format('Y-m-d');
+    
+    // 오늘 날짜의 뉴스 확인
+    $today_args = array(
+        'post_type' => 'post',
+        'posts_per_page' => 1,
+        'cat' => intval($category_id),
+        'post_status' => 'publish',
+        'orderby' => 'date',
+        'order' => 'DESC',
+        'date_query' => array(
+            array(
+                'year' => intval($now->format('Y')),
+                'month' => intval($now->format('m')),
+                'day' => intval($now->format('d')),
+            ),
+        ),
+    );
+    
+    $today_query = new WP_Query($today_args);
+    if ($today_query->have_posts()) {
+        wp_reset_postdata();
+        return $today_vn;
+    }
+    wp_reset_postdata();
+    
+    // 오늘 뉴스가 없으면 가장 최근 발행일 가져오기
+    $latest_args = array(
+        'post_type' => 'post',
+        'posts_per_page' => 1,
+        'cat' => intval($category_id),
+        'post_status' => 'publish',
+        'orderby' => 'date',
+        'order' => 'DESC',
+    );
+    $latest_query = new WP_Query($latest_args);
+    if ($latest_query->have_posts()) {
+        $latest_query->the_post();
+        $target_date = get_the_date('Y-m-d');
+        wp_reset_postdata();
+        return $target_date;
+    }
+    wp_reset_postdata();
+    
+    return $today_vn;
+}
 
 function jenny_daily_news_shortcode($atts)
 {
@@ -121,346 +486,36 @@ function jenny_daily_news_shortcode($atts)
         'category' => 31,
     ), $atts);
 
+    // 날짜 필터: 오직 "지난 뉴스 보기"에서만 사용
     $selected_date = '';
     if (isset($_GET['news_date'])) {
         $selected_date = sanitize_text_field($_GET['news_date']);
     }
     $is_filtered = ($selected_date !== '');
 
-    // 오늘 날짜 (WordPress 타임존 기준)
-    $today = current_time('Y-m-d');
+    // 베트남 시간대 (UI 표시용)
+    $tz = new DateTimeZone('Asia/Ho_Chi_Minh');
+    $now = new DateTime('now', $tz);
 
-    $args = array(
-        'post_type' => 'post',
-        'posts_per_page' => -1,
-        'cat' => intval($atts['category']),
-        'post_status' => 'publish',
-        'orderby' => 'date',
-        'order' => 'DESC',
-    );
+    // 설정값 가져오기
+    $category_order = jenny_get_category_order();
+    $sections_keys = jenny_get_sections_keys();
+    $category_map = jenny_get_category_map();
+    $sections = jenny_get_sections();
 
-    // 날짜 필터 적용 (선택된 날짜 또는 오늘)
-    $filter_date = $is_filtered ? $selected_date : $today;
-    $date_parts = explode('-', $filter_date);
-    if (count($date_parts) === 3) {
-        $args['date_query'] = array(
-            array(
-                'year' => intval($date_parts[0]),
-                'month' => intval($date_parts[1]),
-                'day' => intval($date_parts[2]),
-            ),
-        );
-    }
-
-    $query = new WP_Query($args);
-    
-    // 오늘 뉴스가 없고 사용자가 날짜를 선택하지 않았을 때, 전날 뉴스 자동 표시 (최대 7일 전까지)
-    $actual_filter_date = $filter_date;
-    $is_fallback = false;
-    if (!$is_filtered && !$query->have_posts()) {
-        // 오늘 뉴스가 없으면 어제부터 최근 7일 전까지 순차적으로 조회
-        for ($days_back = 1; $days_back <= 7; $days_back++) {
-            $fallback_date = date('Y-m-d', strtotime("-$days_back days", strtotime($today)));
-            $fallback_args = array(
-                'post_type' => 'post',
-                'posts_per_page' => -1,
-                'cat' => intval($atts['category']),
-                'post_status' => 'publish',
-                'orderby' => 'date',
-                'order' => 'DESC',
-                'date_query' => array(
-                    array(
-                        'year' => intval(date('Y', strtotime($fallback_date))),
-                        'month' => intval(date('m', strtotime($fallback_date))),
-                        'day' => intval(date('d', strtotime($fallback_date))),
-                    ),
-                ),
-            );
-            
-            $fallback_query = new WP_Query($fallback_args);
-            if ($fallback_query->have_posts()) {
-                // 전날 뉴스를 찾았으면 해당 쿼리 사용
-                wp_reset_postdata();
-                $query = $fallback_query;
-                $actual_filter_date = $fallback_date;
-                $is_fallback = true;
-                break;
-            }
-            wp_reset_postdata();
-        }
-    }
-
-    // 카테고리 순서 정의 (sections와 일치하도록 모든 변형 포함)
-    $category_order = array(
-        // Society
-        '사회' => 1,
-        'Society' => 1,
-        // Economy
-        '경제' => 2,
-        'Economy' => 2,
-        // Culture
-        '문화' => 3,
-        'Culture' => 3,
-        // Politics (Policy 포함, 정책 포함)
-        '정치' => 4,
-        '정책' => 4,
-        'Politics' => 4,
-        'Policy' => 4, // Backward compat with Policy
-        // International
-        '국제' => 5,
-        'International' => 5,
-        // Korea-Vietnam (모든 변형 포함)
-        '한베' => 6,
-        '한-베' => 6,
-        'Korea-Vietnam' => 6,
-        // Community (모든 변형 포함)
-        '교민' => 7,
-        '교민소식' => 7,
-        'Community' => 7,
-        // Travel
-        '여행' => 8,
-        'Travel' => 8,
-        // Health
-        '건강' => 9,
-        'Health' => 9,
-        // Food
-        '음식' => 10,
-        'Food' => 10,
-    );
-
-    // 뉴스를 카테고리별로 정렬하고 Top News 분리
-    $sorted_posts = array();
-    $top_news_posts = array();
-    $regular_posts = array();
-
-    // 오늘 뉴스 (현재 쿼리 결과)
-    $today_posts = array();
-    if ($query->have_posts()) {
-        while ($query->have_posts()) {
-            $query->the_post();
-            $post_id = get_the_ID();
-
-            // 카테고리 확인 - news_category 메타 필드 우선 확인
-            $news_category = get_post_meta($post_id, 'news_category', true);
-            
-            // 메타 필드가 비어있거나 잘못된 경우 WordPress 카테고리에서 가져오기
-            if (empty($news_category) || trim($news_category) === '') {
-                $categories = get_the_category($post_id);
-                $news_category = !empty($categories) ? $categories[0]->name : '뉴스';
-            }
-            
-            // 카테고리 값 정규화 (공백 제거, 대소문자 통일)
-            $news_category = trim($news_category);
-            
-            // 디버깅: 카테고리 값 로깅 (개발 환경에서만)
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log("Jenny Plugin - Post ID: $post_id, Category: $news_category");
-            }
-
-            // Top News 확인 - 명시적으로 체크 (문자열 '1', 숫자 1, boolean true 모두 처리)
-            $is_top_raw = get_post_meta($post_id, 'is_top_news', true);
-            $is_top = ($is_top_raw === '1' || $is_top_raw === 1 || $is_top_raw === true || $is_top_raw === 'true');
-
-            // 순서 결정
-            $order = isset($category_order[$news_category]) ? $category_order[$news_category] : 99;
-
-            $item = array(
-                'post_id' => $post_id,
-                'order' => $order,
-                'date' => get_the_date('Y-m-d H:i:s'),
-                'category' => $news_category,
-                'is_top' => $is_top  // 디버깅용으로 저장
-            );
-
-            $today_posts[] = $item;
-        }
-        wp_reset_postdata();
-    }
-
-    // 오늘 뉴스가 있고 날짜 필터가 없는 경우 (오늘 뉴스 표시 모드), 전날 뉴스로 보완
-    // 날짜 필터가 있는 경우(지난 뉴스 보기)에는 이 로직을 적용하지 않음
-    $past_posts = array();
-    if (!$is_filtered && !$is_fallback && !empty($today_posts)) {
-        // 전날 뉴스 가져오기 (오늘 날짜가 아닌 모든 이전 뉴스)
-        $past_args = array(
-            'post_type' => 'post',
-            'posts_per_page' => -1,
-            'cat' => intval($atts['category']),
-            'post_status' => 'publish',
-            'orderby' => 'date',
-            'order' => 'DESC',
-            'date_query' => array(
-                array(
-                    'before' => $today,
-                    'inclusive' => false,
-                ),
-            ),
-        );
-        $past_query = new WP_Query($past_args);
-        
-        if ($past_query->have_posts()) {
-            while ($past_query->have_posts()) {
-                $past_query->the_post();
-                $post_id = get_the_ID();
-
-                // 카테고리 확인
-                $news_category = get_post_meta($post_id, 'news_category', true);
-                if (empty($news_category) || trim($news_category) === '') {
-                    $categories = get_the_category($post_id);
-                    $news_category = !empty($categories) ? $categories[0]->name : '뉴스';
-                }
-                $news_category = trim($news_category);
-
-                // Top News는 제외 (오늘 뉴스의 탑뉴스만 사용)
-                $is_top_raw = get_post_meta($post_id, 'is_top_news', true);
-                $is_top = ($is_top_raw === '1' || $is_top_raw === 1 || $is_top_raw === true || $is_top_raw === 'true');
-                
-                if ($is_top) {
-                    continue; // 전날 탑뉴스는 제외
-                }
-
-                $order = isset($category_order[$news_category]) ? $category_order[$news_category] : 99;
-
-                $item = array(
-                    'post_id' => $post_id,
-                    'order' => $order,
-                    'date' => get_the_date('Y-m-d H:i:s'),
-                    'category' => $news_category,
-                    'is_top' => false
-                );
-
-                $past_posts[] = $item;
-            }
-            wp_reset_postdata();
-        }
-    }
-
-    // 섹션 정의 (나중에 사용)
-    $sections_keys = array(
-        'economy' => array('Economy', '경제'),
-        'society' => array('Society', '사회'),
-        'culture' => array('Culture', '문화'),
-        'politics' => array('Politics', 'Policy', '정치', '정책'),
-        'international' => array('International', '국제'),
-        'korea_vietnam' => array('Korea-Vietnam', '한-베', '한베'),
-        'community' => array('Community', '교민', '교민소식'),
-        'travel' => array('Travel', '여행'),
-        'health' => array('Health', '건강'),
-        'food' => array('Food', '음식'),
-    );
-
-    // 카테고리를 섹션 키로 변환하는 함수
-    $get_section_key = function($category) use ($sections_keys) {
-        $cat = trim($category);
-        foreach ($sections_keys as $sec_key => $keys) {
-            if (in_array($cat, $keys, true)) {
-                return $sec_key;
-            }
-            foreach ($keys as $key) {
-                if (strcasecmp($cat, $key) === 0) {
-                    return $sec_key;
-                }
-            }
-        }
-        return 'other';
-    };
-
-    // 날짜 필터가 있는 경우(지난 뉴스 보기)에는 기존 로직 사용
-    // 날짜 필터가 없고 오늘 뉴스가 있는 경우에만 최소 10개 유지 로직 적용
-    if ($is_filtered || $is_fallback) {
-        // 날짜 필터가 있거나 fallback인 경우 기존 로직 사용
-        foreach ($today_posts as $post) {
-            if ($post['is_top']) {
-                $top_news_posts[] = $post;
-            } else {
-                $regular_posts[] = $post;
-            }
-        }
+    // 포스트 가져오기
+    if ($is_filtered) {
+        // 케이스 1: "지난 뉴스 보기" (날짜 필터 있음)
+        $result = jenny_get_posts_by_date($selected_date, $atts['category'], $category_order);
     } else {
-        // 오늘 뉴스 표시 모드: 각 섹션별로 최소 10개 유지
-        // 오늘 뉴스를 섹션별로 그룹화
-        $today_by_section = array();
-        foreach ($today_posts as $post) {
-            $sec_key = $get_section_key($post['category']);
-            if (!isset($today_by_section[$sec_key])) {
-                $today_by_section[$sec_key] = array();
-            }
-            $today_by_section[$sec_key][] = $post;
-        }
-
-        // 전날 뉴스를 섹션별로 그룹화
-        $past_by_section = array();
-        foreach ($past_posts as $post) {
-            $sec_key = $get_section_key($post['category']);
-            if (!isset($past_by_section[$sec_key])) {
-                $past_by_section[$sec_key] = array();
-            }
-            $past_by_section[$sec_key][] = $post;
-        }
-
-        // 각 섹션별로 최소 10개 유지하도록 보완
-        $min_posts_per_section = 10;
-        $final_posts = array();
-        
-        foreach ($today_posts as $post) {
-            if ($post['is_top']) {
-                $top_news_posts[] = $post;
-            } else {
-                $sec_key = $get_section_key($post['category']);
-                if (!isset($final_posts[$sec_key])) {
-                    $final_posts[$sec_key] = array();
-                }
-                $final_posts[$sec_key][] = $post;
-            }
-        }
-
-        // 각 섹션별로 부족한 만큼 전날 뉴스로 채우기
-        foreach ($sections_keys as $sec_key => $keys) {
-            $today_count = isset($final_posts[$sec_key]) ? count($final_posts[$sec_key]) : 0;
-            
-            if ($today_count < $min_posts_per_section && isset($past_by_section[$sec_key])) {
-                $needed = $min_posts_per_section - $today_count;
-                $past_section_posts = $past_by_section[$sec_key];
-                
-                // 날짜순 정렬 (최신순)
-                usort($past_section_posts, function($a, $b) {
-                    return strcmp($b['date'], $a['date']);
-                });
-                
-                // 필요한 만큼만 추가
-                $added = 0;
-                foreach ($past_section_posts as $past_post) {
-                    if ($added >= $needed) break;
-                    
-                    // 이미 추가된 뉴스인지 확인 (중복 방지)
-                    $already_added = false;
-                    if (isset($final_posts[$sec_key])) {
-                        foreach ($final_posts[$sec_key] as $existing) {
-                            if ($existing['post_id'] === $past_post['post_id']) {
-                                $already_added = true;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if (!$already_added) {
-                        if (!isset($final_posts[$sec_key])) {
-                            $final_posts[$sec_key] = array();
-                        }
-                        $final_posts[$sec_key][] = $past_post;
-                        $added++;
-                    }
-                }
-            }
-        }
-
-        // final_posts를 regular_posts로 변환
-        foreach ($final_posts as $sec_posts) {
-            foreach ($sec_posts as $post) {
-                $regular_posts[] = $post;
-            }
-        }
+        // 케이스 2: 기본 보기 (오늘 뉴스만, 갯수 제한 없음)
+        $target_date = jenny_get_target_date($now, $atts['category']);
+        $result = jenny_get_posts_by_date($target_date, $atts['category'], $category_order);
     }
+    
+    $top_news_posts = $result['top_news'];
+    $top_news_ids = $result['top_news_ids'];
+    $regular_posts = $result['regular'];
 
     // 정렬 함수
     $sort_func = function ($a, $b) {
@@ -473,17 +528,34 @@ function jenny_daily_news_shortcode($atts)
     usort($top_news_posts, $sort_func);
     usort($regular_posts, $sort_func);
 
-    // 가능한 많은 날짜 가져오기 (오늘 날짜 제외)
+    // UI용 날짜 계산 (지난 뉴스 보기 드롭다운용)
+    $board_date = $now->format('Y-m-d');
+    $latest_post_args = array(
+        'post_type' => 'post',
+        'posts_per_page' => 1,
+        'cat' => intval($atts['category']),
+        'post_status' => 'publish',
+        'orderby' => 'date',
+        'order' => 'DESC',
+    );
+    $latest_post_query = new WP_Query($latest_post_args);
+    if ($latest_post_query->have_posts()) {
+        $latest_post_query->the_post();
+        $board_date = get_the_date('Y-m-d');
+        wp_reset_postdata();
+    }
+    
+    // 가능한 많은 날짜 가져오기 (지난 뉴스 보기 드롭다운용)
     $date_args = array(
         'post_type' => 'post',
-        'posts_per_page' => -1, // 모든 게시물 가져오기
+        'posts_per_page' => -1,
         'cat' => intval($atts['category']),
         'post_status' => 'publish',
         'orderby' => 'date',
         'order' => 'DESC',
         'date_query' => array(
             array(
-                'before' => $today, // 오늘 이전 날짜만
+                'before' => $board_date,
                 'inclusive' => false,
             ),
         ),
@@ -493,8 +565,8 @@ function jenny_daily_news_shortcode($atts)
     while ($date_query->have_posts()) {
         $date_query->the_post();
         $post_date = get_the_date('Y-m-d');
-        // 오늘 날짜는 제외
-        if ($post_date !== $today && !in_array($post_date, $available_dates)) {
+        // 기준 날짜는 제외
+        if ($post_date !== $board_date && !in_array($post_date, $available_dates)) {
             $available_dates[] = $post_date;
         }
     }
@@ -545,18 +617,7 @@ function jenny_daily_news_shortcode($atts)
     $output .= '<div class="jenny-section-nav-list">';
     
     // 섹션 네비게이션 항목 (탑뉴스 제외)
-    $section_nav_items = array(
-        'economy' => array('label' => '경제', 'icon' => '📈'),
-        'society' => array('label' => '사회', 'icon' => '👥'),
-        'culture' => array('label' => '문화/스포츠', 'icon' => '🎭'),
-        'politics' => array('label' => '정치/정책', 'icon' => '⚖️'),
-        'international' => array('label' => '국제', 'icon' => '🌏'),
-        'korea_vietnam' => array('label' => '한-베', 'icon' => '🇰🇷🇻🇳'),
-        'community' => array('label' => '교민소식', 'icon' => '📢'),
-        'travel' => array('label' => '여행', 'icon' => '✈️'),
-        'health' => array('label' => '건강', 'icon' => '🏥'),
-        'food' => array('label' => '음식', 'icon' => '🍽️'),
-    );
+    $section_nav_items = jenny_get_section_nav_items();
     
     foreach ($section_nav_items as $sec_key => $nav_info) {
         $output .= '<a href="#jenny-section-' . esc_attr($sec_key) . '" class="jenny-section-nav-item" data-section="' . esc_attr($sec_key) . '">';
@@ -573,18 +634,8 @@ function jenny_daily_news_shortcode($atts)
     if ($is_filtered) {
         $sel_date_obj = new DateTime($selected_date);
         $display_date = $sel_date_obj->format('Y') . '년 ' . $sel_date_obj->format('m') . '월 ' . $sel_date_obj->format('d') . '일';
-        $output .= '<div class="jenny-filter-info">' . esc_html($display_date) . ' 뉴스를 보고 있습니다. <a href="' . esc_url($page_url) . '">오늘의 뉴스로 돌아가기</a></div>';
-    } elseif ($is_fallback) {
-        // 오늘 뉴스가 없어서 전날 뉴스를 표시하는 경우
-        $fallback_date_obj = new DateTime($actual_filter_date);
-        $fallback_display_date = $fallback_date_obj->format('Y') . '년 ' . $fallback_date_obj->format('m') . '월 ' . $fallback_date_obj->format('d') . '일';
-        $output .= '<div class="jenny-filter-info" style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 16px 0; border-radius: 4px;">';
-        $output .= '<strong>📅 ' . esc_html($fallback_display_date) . ' 뉴스를 표시하고 있습니다.</strong><br>';
-        $output .= '<small style="color: #92400e;">오늘의 뉴스가 아직 게시되지 않아 최근 뉴스를 보여드립니다. 오늘의 뉴스가 게시되면 자동으로 업데이트됩니다.</small>';
-        $output .= '</div>';
+        $output .= '<div class="jenny-filter-info">' . esc_html($display_date) . ' 뉴스를 보고 있습니다. <a href="' . esc_url($page_url) . '">최신 뉴스로 돌아가기</a></div>';
     }
-
-    $output .= '</div>'; // Close jenny-date-filter
 
     if (empty($top_news_posts) && empty($regular_posts)) {
         $output .= '<p style="text-align:center; padding: 40px 20px; color: #6b7280;">선택한 날짜에 등록된 뉴스가 없습니다.</p>';
@@ -592,260 +643,18 @@ function jenny_daily_news_shortcode($atts)
         return $output;
     }
 
-    // 카테고리 표시 이름 매핑 (모든 가능한 입력값에 대해 한글 표시명 제공)
-    $category_map = array(
-        // Society
-        'Society' => '사회',
-        '사회' => '사회',
-        // Economy
-        'Economy' => '경제',
-        '경제' => '경제',
-        // Culture
-        'Culture' => '문화/스포츠',
-        '문화' => '문화/스포츠',
-        // Politics
-        'Politics' => '정치/정책',
-        'Policy' => '정치/정책',
-        '정치' => '정치/정책',
-        '정책' => '정치/정책',
-        // International
-        'International' => '국제',
-        '국제' => '국제',
-        // Korea-Vietnam
-        'Korea-Vietnam' => '한-베',
-        '한-베' => '한-베',
-        '한베' => '한-베',
-        // Community
-        'Community' => '교민소식',
-        '교민' => '교민소식',
-        '교민소식' => '교민소식',
-        // Travel
-        'Travel' => '여행',
-        '여행' => '여행',
-        // Health
-        'Health' => '건강',
-        '건강' => '건강',
-        // Food
-        'Food' => '음식',
-        '음식' => '음식',
-    );
 
-    // Helpers for rendering
-    function render_jenny_card($post_data, $category_map)
-    {
-        $post_obj = get_post($post_data['post_id']);
-        setup_postdata($post_obj);
-
-        $thumb_url = get_the_post_thumbnail_url($post_data['post_id'], 'medium_large');
-        if (!$thumb_url) {
-            $thumb_url = 'https://via.placeholder.com/600x400?text=News';
-        }
-
-        $news_category = trim($post_data['category']);
-        if (!empty($news_category)) {
-            // 정확한 매칭 시도
-            if (isset($category_map[$news_category])) {
-                $cat_name = $category_map[$news_category];
-            } else {
-                // 대소문자 무시 매칭 시도
-                $cat_name = $news_category; // 기본값
-                foreach ($category_map as $key => $value) {
-                    if (strcasecmp($news_category, $key) === 0) {
-                        $cat_name = $value;
-                        break;
-                    }
-                }
-            }
-        } else {
-            $cat_name = '뉴스';
-        }
-
-        // 본문에서 출처/날짜/원문 정보를 먼저 제거한 후 excerpt 생성
-        // 1. <style> 태그와 내용을 먼저 제거 (CSS 코드가 excerpt에 노출되는 것을 방지)
-        $content = preg_replace('/<style[^>]*>.*?<\/style>/is', '', $post_obj->post_content);
-        // 2. 나머지 HTML 태그 제거
-        $content = strip_tags($content);
-        
-        // 본문에서 출처/날짜/원문 정보 제거 (Jenny 페이지용 - 메타 라인과 중복 방지)
-        // 패턴 1: "출처: [소스명] 날짜: [날짜]" 형식 (공백 포함 소스명 지원)
-        // "출처: " 다음에 여러 단어(공백 포함), 그 다음 "날짜: " 다음에 날짜 패턴(점 포함)까지 제거
-        $content = preg_replace('/출처\s*:\s*[^날]+날짜\s*:\s*[0-9.\s]+\.{0,2}\s*/i', '', $content);
-        // 패턴 2: "출처: [소스명] | 날짜: [날짜] |" 형식
-        $content = preg_replace('/출처\s*:\s*[^|]*\s*\|/i', '', $content);
-        $content = preg_replace('/날짜\s*:\s*[^|]*\s*\|/i', '', $content);
-        // 패턴 3: "원문 기사 전체 보기" 또는 "원문 보기" 링크 제거 (점 전까지)
-        $content = preg_replace('/원문\s*(기사\s*)?(전체\s*)?보기[^가-힣a-zA-Z0-9]*/i', '', $content);
-        // 패턴 4: URL 제거 (http:// 또는 https://로 시작하는 전체 URL)
-        $content = preg_replace('/https?:\/\/[^\s]+/i', '', $content);
-        // 패턴 5: 남은 구분선 제거
-        $content = preg_replace('/\s*[|]\s*/', ' ', $content);
-        // 패턴 6: 연속된 공백 정리
-        $content = preg_replace('/\s{2,}/', ' ', $content);
-        $content = trim($content);
-        
-        // 정제된 본문에서 excerpt 생성 (첫 문장부터 시작)
-        if (!empty($content)) {
-            $excerpt = wp_trim_words($content, 50, '...');
-        } else {
-            // 본문이 비어있으면 WordPress excerpt 사용
-            $excerpt = get_the_excerpt($post_data['post_id']);
-            if (empty($excerpt)) {
-                $excerpt = '';
-            }
-        }
-        
-        // excerpt에서도 한 번 더 정제 (안전장치)
-        if (!empty($excerpt)) {
-            $excerpt = preg_replace('/출처\s*:\s*[^날]+날짜\s*:\s*[0-9.\s]+\.{0,2}\s*/i', '', $excerpt);
-            $excerpt = preg_replace('/출처\s*:\s*[^|]*\s*\|/i', '', $excerpt);
-            $excerpt = preg_replace('/날짜\s*:\s*[^|]*\s*\|/i', '', $excerpt);
-            $excerpt = preg_replace('/원문\s*(기사\s*)?(전체\s*)?보기[^가-힣a-zA-Z0-9]*/i', '', $excerpt);
-            // URL 제거 (http:// 또는 https://로 시작하는 전체 URL)
-            $excerpt = preg_replace('/https?:\/\/[^\s]+/i', '', $excerpt);
-            $excerpt = preg_replace('/\s*[|]\s*/', ' ', $excerpt);
-            $excerpt = preg_replace('/\s{2,}/', ' ', $excerpt);
-            $excerpt = trim($excerpt);
-        }
-
-        // WordPress 본문 링크 (모든 카드 요소는 이 링크 사용)
-        $permalink = get_permalink($post_data['post_id']);
-        // 원문 링크는 메타 라인의 "원문 보기"에만 사용
-        $original_url = get_post_meta($post_data['post_id'], 'news_original_url', true);
-
-        // Source meta
-        $news_source = get_post_meta($post_data['post_id'], 'news_source', true);
-        if (empty($news_source)) {
-            $categories = get_the_category($post_data['post_id']);
-            $news_source = !empty($categories) ? $categories[0]->name : '출처 미상';
-        }
-
-        $date_str = get_the_date('Y.m.d', $post_data['post_id']);
-
-        // Metadata Line: Source | Date | Original Link
-        $meta_line = '<div class="jenny-meta-line">';
-        $meta_line .= '<span class="jenny-source">' . esc_html($news_source) . '</span>';
-        $meta_line .= '<span class="jenny-separator">|</span>';
-        $meta_line .= '<span class="jenny-date">' . $date_str . '</span>';
-        if (!empty($original_url)) {
-            $meta_line .= '<span class="jenny-separator">|</span>';
-            $meta_line .= '<a href="' . esc_url($original_url) . '" target="_blank" rel="noopener noreferrer" class="jenny-original-link">원문 보기</a>';
-        }
-        $meta_line .= '</div>';
-
-        $html = '<div class="jenny-news-card">';
-        $html .= '<div class="jenny-card-image">';
-        // 이미지 링크는 항상 WordPress 본문으로 연결
-        $html .= '<a href="' . esc_url($permalink) . '">';
-        $html .= '<img src="' . esc_url($thumb_url) . '" alt="' . esc_attr(get_the_title($post_data['post_id'])) . '" loading="lazy">';
-        $html .= '</a>';
-        // Badge removed for flat design preference? Or kept? User asked for "flat". Let's keep badge but simple.
-        $html .= '<span class="jenny-badge">' . esc_html($cat_name) . '</span>';
-        $html .= '</div>';
-
-        $html .= '<div class="jenny-content">';
-        // 제목 링크는 항상 WordPress 본문으로 연결
-        $html .= '<h3 class="jenny-title"><a href="' . esc_url($permalink) . '">' . get_the_title($post_data['post_id']) . '</a></h3>';
-        $html .= $meta_line; // Insert Meta Line below title
-        // excerpt가 있을 때만 표시
-        if (!empty($excerpt)) {
-            $html .= '<div class="jenny-excerpt">' . esc_html($excerpt) . '</div>';
-        }
-        // "자세히 보기"는 WP 본문으로 이동
-        $html .= '<a href="' . esc_url($permalink) . '" class="jenny-link"><span class="jenny-link-text">자세히 보기</span></a>';
-        $html .= '</div>';
-        $html .= '</div>';
-
-        return $html;
-    }
-
-    // Define Sections and their Category Keys
-    // Keys match the 'news_category' or mapped name
-    $sections = array(
-        'economy' => array('title' => '📈 경제 (Economy)', 'keys' => array('Economy', '경제')),
-        'society' => array('title' => '👥 사회 (Society)', 'keys' => array('Society', '사회')),
-        'culture' => array('title' => '🎭 문화/스포츠 (Culture)', 'keys' => array('Culture', '문화')),
-        'politics' => array('title' => '⚖️ 정치/정책 (Politics)', 'keys' => array('Politics', 'Policy', '정치', '정책')),
-        'international' => array('title' => '🌏 국제 (International)', 'keys' => array('International', '국제')),
-        'korea_vietnam' => array('title' => '🇰🇷🇻🇳 한-베 관계 (Korea-Vietnam)', 'keys' => array('Korea-Vietnam', '한-베', '한베')),
-        'community' => array('title' => '📢 교민 소식 (Community)', 'keys' => array('Community', '교민', '교민소식')),
-        'travel' => array('title' => '✈️ 여행 (Travel)', 'keys' => array('Travel', '여행')),
-        'health' => array('title' => '🏥 건강 (Health)', 'keys' => array('Health', '건강')),
-        'food' => array('title' => '🍽️ 음식 (Food)', 'keys' => array('Food', '음식')),
-        'other' => array('title' => '✨ 기타 뉴스', 'keys' => array()) // Fallback
-    );
-
-    // Bucket posts into sections
+    // regular_posts를 섹션별로 그룹화
     $grouped_posts = array();
     
-    // 날짜 필터가 있거나 fallback인 경우 regular_posts를 섹션별로 그룹화
-    if ($is_filtered || $is_fallback) {
-        foreach ($regular_posts as $post) {
-            $cat = trim($post['category']);
-            $found = false;
-
-            // Find which section this post belongs to
-            foreach ($sections as $sec_key => $sec_info) {
-                if ($sec_key === 'other')
-                    continue;
-
-                // 정확한 매칭 시도
-                if (in_array($cat, $sec_info['keys'], true)) {
-                    if (!isset($grouped_posts[$sec_key])) {
-                        $grouped_posts[$sec_key] = array();
-                    }
-                    $grouped_posts[$sec_key][] = $post;
-                    $found = true;
-                    break;
-                }
-                
-                // 대소문자 무시 매칭
-                foreach ($sec_info['keys'] as $key) {
-                    if (strcasecmp($cat, $key) === 0) {
-                        if (!isset($grouped_posts[$sec_key])) {
-                            $grouped_posts[$sec_key] = array();
-                        }
-                        $grouped_posts[$sec_key][] = $post;
-                        $found = true;
-                        break 2;
-                    }
-                }
-            }
-
-            // 매칭 실패 시 기타로 분류
-            if (!$found) {
-                if (!isset($grouped_posts['other'])) {
-                    $grouped_posts['other'] = array();
-                }
-                $grouped_posts['other'][] = $post;
-            }
-        }
-    } else {
-        // 오늘 뉴스 표시 모드: 이미 $final_posts에 섹션별로 그룹화되어 있음
-        $grouped_posts = isset($final_posts) ? $final_posts : array();
+    foreach ($regular_posts as $post) {
+        $cat = trim($post['category']);
+        $sec_key = jenny_get_section_key($cat, $sections_keys);
         
-        // regular_posts에 있지만 섹션에 매칭되지 않은 항목들을 'other'로 추가
-        foreach ($regular_posts as $post) {
-            $cat = trim($post['category']);
-            $found = false;
-            
-            // 이미 그룹화된 항목인지 확인
-            foreach ($grouped_posts as $sec_key => $sec_posts) {
-                foreach ($sec_posts as $existing) {
-                    if ($existing['post_id'] === $post['post_id']) {
-                        $found = true;
-                        break 2;
-                    }
-                }
-            }
-            
-            // 매칭되지 않은 항목은 'other'로 분류
-            if (!$found) {
-                if (!isset($grouped_posts['other'])) {
-                    $grouped_posts['other'] = array();
-                }
-                $grouped_posts['other'][] = $post;
-            }
+        if (!isset($grouped_posts[$sec_key])) {
+            $grouped_posts[$sec_key] = array();
         }
+        $grouped_posts[$sec_key][] = $post;
     }
 
     // sort function reused
@@ -862,14 +671,14 @@ function jenny_daily_news_shortcode($atts)
         foreach ($top_news_posts as $post) {
             if ($top_count >= 2) {
                 // If extra top news, add to regular posts in the correct section
-                $sec_key = $get_section_key($post['category']);
+                $sec_key = jenny_get_section_key($post['category'], $sections_keys);
                 if (!isset($grouped_posts[$sec_key])) {
                     $grouped_posts[$sec_key] = array();
                 }
                 $grouped_posts[$sec_key][] = $post;
                 continue;
             }
-            $output .= render_jenny_card($post, $category_map);
+            $output .= jenny_render_news_card($post, $category_map);
             $top_count++;
         }
         $output .= '</div>'; // Close jenny-top-news-row
@@ -888,7 +697,7 @@ function jenny_daily_news_shortcode($atts)
             $output .= '<div class="jenny-news-grid">'; // 4-column grid
 
             foreach ($grouped_posts[$sec_key] as $post) {
-                $output .= render_jenny_card($post, $category_map);
+                $output .= jenny_render_news_card($post, $category_map);
             }
 
             $output .= '</div>';
@@ -909,10 +718,18 @@ add_shortcode('daily_news_list', 'jenny_daily_news_shortcode');
 function jenny_register_meta_fields()
 {
     if (function_exists('register_post_meta')) {
-        register_post_meta('post', 'news_category', array('show_in_rest' => true, 'single' => true, 'type' => 'string'));
-        register_post_meta('post', 'is_top_news', array('show_in_rest' => true, 'single' => true, 'type' => 'string'));
-        register_post_meta('post', 'news_source', array('show_in_rest' => true, 'single' => true, 'type' => 'string'));
-        register_post_meta('post', 'news_original_url', array('show_in_rest' => true, 'single' => true, 'type' => 'string'));
+        $meta_args = array(
+            'show_in_rest' => true,
+            'single'       => true,
+            'type'         => 'string',
+            'auth_callback' => function() {
+                return current_user_can('edit_posts');
+            }
+        );
+        register_post_meta('post', 'news_category', $meta_args);
+        register_post_meta('post', 'is_top_news', $meta_args);
+        register_post_meta('post', 'news_source', $meta_args);
+        register_post_meta('post', 'news_original_url', $meta_args);
     }
 }
 add_action('init', 'jenny_register_meta_fields');
@@ -1452,21 +1269,22 @@ function jenny_get_styles()
             }
         }
 
-        /* FLAT CARD STYLE - REMOVED BORDERS/SHADOWS */
-        .jenny-news-card {
-            background: #ffffff !important;
-            border: none !important;
-            box-shadow: none !important;
-            border-radius: 0 !important;
-            display: flex;
-            flex-direction: column;
-            overflow: visible !important; /* Allow overflow if needed */
-        }
-        .jenny-news-card:hover {
-            transform: none !important;
-            box-shadow: none !important;
-        }
-        
+/* FLAT CARD STYLE - WITH BORDER AND SEPARATED SECTIONS */
+.jenny-news-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb; /* 흰색 테두리 */
+    box-shadow: none;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* 테두리 내부로 오버플로우 제한 */
+}
+.jenny-news-card:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: #d1d5db; /* 호버 시 테두리 색상 약간 진하게 */
+}
+
         /* IMAGE - NO RADIUS */
         .jenny-card-image {
             position: relative;
@@ -1504,13 +1322,15 @@ function jenny_get_styles()
             text-transform: uppercase;
         }
 
-        /* CONTENT */
+        /* CONTENT - 아래부분에 옅은 배경색 추가 */
         .jenny-content { 
-            padding: 0; /* No padding needed without border */
+            padding: 16px; /* 패딩 추가 */
             flex-grow: 1; 
             display: flex; 
             flex-direction: column; 
-            text-align: left; 
+            text-align: left;
+            background: #f9fafb; /* 옅은 회색 배경 */
+            border-top: 1px solid #e5e7eb; /* 위부분과 구분선 */
         }
 
         /* TITLE - 뉴스 제목은 항상 검정색으로 확실하게 고정 */
@@ -1637,108 +1457,5 @@ function jenny_get_styles()
             color: #ffffff;
         }
 
-        /* WordPress 본문 페이지 모바일 표시 보장 */
-        @media (max-width: 768px) {
-            /* 본문 콘텐츠가 모바일에서 보이도록 보장 - 모든 가능한 WordPress 본문 클래스 포함 */
-            .entry-content,
-            .post-content,
-            .content-area .entry-content,
-            article .entry-content,
-            .single-post .entry-content,
-            .post .entry-content,
-            .single .entry-content,
-            .page .entry-content,
-            .type-post .entry-content,
-            .news-body-content,
-            .post-content-area,
-            .article-content,
-            main .entry-content,
-            .site-main .entry-content,
-            #content .entry-content,
-            .content .entry-content {
-                display: block !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                overflow: visible !important;
-                position: relative !important;
-                z-index: 1 !important;
-                background-color: transparent !important;
-                font-size: 16px !important;
-                line-height: 1.6 !important;
-            }
-            /* 본문 내부 텍스트 요소가 모바일에서 보이도록 (이미지 제외) */
-            .entry-content p,
-            .entry-content div:not(.wp-block-image):not(.wp-block-gallery),
-            .post-content p,
-            .post-content div:not(.wp-block-image):not(.wp-block-gallery),
-            .news-body-content p,
-            .news-body-content div:not(.wp-block-image):not(.wp-block-gallery) {
-                display: block !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-            }
-            /* 본문 텍스트가 모바일에서 보이도록 - 모든 텍스트 요소 포함 */
-            .entry-content p,
-            .post-content p,
-            .entry-content div,
-            .post-content div,
-            .entry-content span,
-            .post-content span,
-            .entry-content li,
-            .post-content li,
-            .entry-content td,
-            .post-content td,
-            .news-body-content p,
-            .news-body-content div,
-            .news-body-content span {
-                display: block !important;
-                visibility: visible !important;
-                color: #111827 !important;
-                opacity: 1 !important;
-            }
-            /* 인라인 요소도 보이도록 */
-            .entry-content strong,
-            .entry-content em,
-            .entry-content a,
-            .post-content strong,
-            .post-content em,
-            .post-content a,
-            .news-body-content strong,
-            .news-body-content em,
-            .news-body-content a {
-                display: inline !important;
-                visibility: visible !important;
-                color: #111827 !important;
-                opacity: 1 !important;
-            }
-            /* 링크는 파란색으로 */
-            .entry-content a,
-            .post-content a,
-            .news-body-content a {
-                color: #2563eb !important;
-                text-decoration: underline !important;
-            }
-            /* 리스트도 보이도록 */
-            .entry-content ul,
-            .entry-content ol,
-            .post-content ul,
-            .post-content ol,
-            .news-body-content ul,
-            .news-body-content ol {
-                display: block !important;
-                visibility: visible !important;
-                margin: 16px 0 !important;
-                padding-left: 24px !important;
-            }
-            .entry-content li,
-            .post-content li,
-            .news-body-content li {
-                display: list-item !important;
-                visibility: visible !important;
-                color: #111827 !important;
-            }
-        }
     </style>';
 }

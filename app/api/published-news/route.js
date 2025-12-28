@@ -4,23 +4,43 @@ import { revalidatePath } from "next/cache";
 
 export async function GET() {
   try {
-    // 베트남 시간대(UTC+7) 기준으로 '오늘'의 시작과 끝을 정확하게 계산
+    // ✅ 단순화: 최신 1회 발행분만 가져옵니다
+    // "발행분" = 같은 날짜에 발행된 뉴스 묶음
+    // 탑뉴스는 해당 발행분 안에서만 의미가 있습니다
+    
     const now = new Date();
-    const vnDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // "YYYY-MM-DD"
-    const today = new Date(`${vnDateStr}T00:00:00+07:00`);
-    const endOfToday = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    const vnDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+    
+    // 가장 최근 발행일 찾기
+    const latestPublished = await prisma.newsItem.findFirst({
+      where: { status: 'PUBLISHED' },
+      orderBy: { publishedAt: 'desc' },
+      select: { publishedAt: true }
+    });
 
+    // 발행된 뉴스가 없으면 빈 배열 반환
+    if (!latestPublished || !latestPublished.publishedAt) {
+      return NextResponse.json({ news: [] });
+    }
+
+    // 최신 발행일 계산 (베트남 시간 기준)
+    const latestDateStr = latestPublished.publishedAt.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+    const dayStart = new Date(`${latestDateStr}T00:00:00+07:00`);
+    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+
+    // 최신 1회 발행분만 가져오기
     const publishedNews = await prisma.newsItem.findMany({
       where: {
         status: "PUBLISHED",
         publishedAt: {
-          gte: today,
-          lt: endOfToday,
-        },
+          gte: dayStart,
+          lt: dayEnd
+        }
       },
       orderBy: [
-        { isTopNews: "desc" }, // 탑뉴스를 무조건 리스트 최상단에 배치
-        { publishedAt: "desc" },
+        { isTopNews: "desc" }, // 탑뉴스 먼저
+        { category: "asc" },   // 카테고리순
+        { publishedAt: "desc" } // 최신순
       ],
       select: {
         id: true,
@@ -29,18 +49,12 @@ export async function GET() {
         source: true,
         category: true,
         isTopNews: true,
+        isCardNews: true,
         wordpressUrl: true,
         publishedAt: true,
+        updatedAt: true
       },
-      // 50개 제한을 없애고 오늘 발행된 모든 뉴스를 보여줌 (유령 뉴스 방지)
     });
-
-    const earliest = publishedNews[publishedNews.length - 1]?.publishedAt || null;
-    const latest = publishedNews[0]?.publishedAt || null;
-
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/f6fc14ce-ac4a-46f5-b5a7-c8a9162c4f22',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run2',hypothesisId:'H4',location:'app/api/published-news/route.js:GET',message:'Published news fetch',data:{count:publishedNews.length,start:today.toISOString(),end:endOfToday.toISOString(),latest,earliest},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
 
     return NextResponse.json({ news: publishedNews });
   } catch (error) {

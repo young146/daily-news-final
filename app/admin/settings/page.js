@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { updateCategoryAction, toggleTopNewsForPublishedAction, toggleCardNewsAction } from '../actions';
+import { updateCategoryAction, toggleTopNewsForPublishedAction, toggleCardNewsAction, syncAllTopNewsAction } from '../actions';
 
 export default function SettingsPage() {
   const [crawlStatus, setCrawlStatus] = useState({});
@@ -13,6 +13,7 @@ export default function SettingsPage() {
   const [updatingCategoryId, setUpdatingCategoryId] = useState(null);
   const [togglingTopNewsId, setTogglingTopNewsId] = useState(null);
   const [togglingCardNewsId, setTogglingCardNewsId] = useState(null);
+  const [syncingTopNews, setSyncingTopNews] = useState(false);
   const [crawlerLogs, setCrawlerLogs] = useState([]);
   const [expandedLog, setExpandedLog] = useState(null);
   const [resettingCardNews, setResettingCardNews] = useState(false);
@@ -24,26 +25,28 @@ export default function SettingsPage() {
   }, []);
 
   const resetCardNews = async () => {
-    if (!confirm('카드 엽서 대상 뉴스를 초기화하시겠습니까?\n\n모든 isCardNews 플래그가 false로 설정됩니다.')) {
+    // ... (기존 코드)
+  };
+
+  const syncTopNews = async () => {
+    if (!confirm('모든 발행 뉴스의 탑뉴스 상태를 WordPress와 강제 동기화하시겠습니까?\n\n이 작업은 시간이 다소 걸릴 수 있으며, WordPress에 남아있는 과거 유령 탑뉴스들을 모두 해제합니다.')) {
       return;
     }
     
-    setResettingCardNews(true);
+    setSyncingTopNews(true);
     try {
-      const res = await fetch('/api/reset-card-news', {
-        method: 'POST'
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert(`✅ ${data.count}개의 카드 뉴스 플래그가 초기화되었습니다.`);
+      const result = await syncAllTopNewsAction();
+      if (result.success) {
+        alert(result.message);
+        await fetchPublishedNews();
       } else {
-        alert('초기화 실패: ' + data.error);
+        alert('동기화 실패: ' + result.error);
       }
     } catch (error) {
-      console.error('Failed to reset:', error);
-      alert('초기화 실패: ' + error.message);
+      console.error('Failed to sync:', error);
+      alert('동기화 실패: ' + error.message);
     } finally {
-      setResettingCardNews(false);
+      setSyncingTopNews(false);
     }
   };
 
@@ -471,6 +474,7 @@ export default function SettingsPage() {
                         <option value="Travel">Travel</option>
                         <option value="Health">Health</option>
                         <option value="Food">Food</option>
+                        <option value="Other">Other</option>
                       </select>
                     </td>
                     <td style={{ padding: '10px', textAlign: 'center' }}>
@@ -862,22 +866,40 @@ export default function SettingsPage() {
           <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#92400e' }}>
             📋 일일 워크플로우
           </h2>
-          <button
-            onClick={resetCardNews}
-            disabled={resettingCardNews}
-            style={{
-              padding: '8px 16px',
-              background: resettingCardNews ? '#d1d5db' : '#dc2626',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: resettingCardNews ? 'not-allowed' : 'pointer',
-              fontSize: '13px',
-              fontWeight: '600'
-            }}
-          >
-            {resettingCardNews ? '초기화 중...' : '🔄 카드 엽서 초기화'}
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={syncTopNews}
+              disabled={syncingTopNews}
+              style={{
+                padding: '8px 16px',
+                background: syncingTopNews ? '#d1d5db' : '#f59e0b',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: syncingTopNews ? 'not-allowed' : 'pointer',
+                fontSize: '13px',
+                fontWeight: '600'
+              }}
+            >
+              {syncingTopNews ? '동기화 중...' : '🔥 탑뉴스 전체 동기화'}
+            </button>
+            <button
+              onClick={resetCardNews}
+              disabled={resettingCardNews}
+              style={{
+                padding: '8px 16px',
+                background: resettingCardNews ? '#d1d5db' : '#dc2626',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: resettingCardNews ? 'not-allowed' : 'pointer',
+                fontSize: '13px',
+                fontWeight: '600'
+              }}
+            >
+              {resettingCardNews ? '초기화 중...' : '🔄 카드 엽서 초기화'}
+            </button>
+          </div>
         </div>
         
         <ol style={{ paddingLeft: '24px', color: '#78350f', lineHeight: '2' }}>

@@ -96,6 +96,7 @@ async function main() {
     console.log(`\n📝 [${item.source}] ${item.title.substring(0, 50)}...`);
 
     // GPT로 제목 번역 + 카테고리 분류 (통합 모듈 사용)
+    console.log(`   🔄 번역 중...`);
     const processed = await translateAndCategorize(item);
     
     if (processed.translatedTitle) {
