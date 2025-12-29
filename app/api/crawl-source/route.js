@@ -7,6 +7,8 @@ const koreanSources = ['Yonhap', 'Saigoneer'];
 const sourceNames = {
   'vnexpress': 'VnExpress',
   'vnexpress-vn': 'VnExpress VN',
+  'vnexpress-economy': 'VnExpress Economy',
+  'cafef': 'Cafef',
   'yonhap': 'Yonhap',
   'insidevina': 'InsideVina',
   'tuoitre': 'TuoiTre',
@@ -222,6 +224,8 @@ async function crawlVnExpressHealth() {
 const crawlers = {
   'vnexpress': () => require('@/scripts/crawlers/vnexpress')(),
   'vnexpress-vn': () => require('@/scripts/crawlers/vnexpress-vn')(),
+  'vnexpress-economy': () => require('@/scripts/crawlers/vnexpress-economy')(),
+  'cafef': () => require('@/scripts/crawlers/cafef')(),
   'yonhap': () => require('@/scripts/crawlers/yonhap')(),
   'insidevina': () => require('@/scripts/crawlers/insidevina')(),
   'tuoitre': () => require('@/scripts/crawlers/tuoitre')(),

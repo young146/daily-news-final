@@ -692,13 +692,27 @@ async function crawlHealth() {
     return await crawlFn();
 }
 
+async function crawlVnExpressEconomy() {
+    const crawlVnExpressEconomyModule = await import('@/scripts/crawlers/vnexpress-economy');
+    const crawlFn = crawlVnExpressEconomyModule.default || crawlVnExpressEconomyModule;
+    return await crawlFn();
+}
+
+async function crawlCafef() {
+    const crawlCafefModule = await import('@/scripts/crawlers/cafef');
+    const crawlFn = crawlCafefModule.default || crawlCafefModule;
+    return await crawlFn();
+}
+
 export async function POST(request) {
     try {
-        console.log('🚀 Starting News Crawl (15 Sources with Detail Pages)...');
+        console.log('🚀 Starting News Crawl (17 Sources with Detail Pages)...');
         
         const results = await Promise.all([
             crawlVnExpress(),
             crawlVnExpressVN(),
+            crawlVnExpressEconomy(),
+            crawlCafef(),
             crawlYonhap(),
             crawlInsideVina(),
             crawlTuoitre(),
@@ -714,8 +728,8 @@ export async function POST(request) {
             crawlHealth()
         ]);
         
-        const [vnItems, vnvnItems, yhItems, ivItems, ttItems, tnItems, psItems, sgItems, soraItems, thedodoItems, petmdItems, travelItems, healthItems, bonappetitItems, healthMagItems] = results;
-        const allItems = [...vnItems, ...vnvnItems, ...yhItems, ...ivItems, ...ttItems, ...tnItems, ...psItems, ...sgItems, ...soraItems, ...thedodoItems, ...petmdItems, ...travelItems, ...healthItems, ...bonappetitItems, ...healthMagItems];
+        const [vnItems, vnvnItems, vneItems, cafefItems, yhItems, ivItems, ttItems, tnItems, psItems, sgItems, soraItems, thedodoItems, petmdItems, travelItems, healthItems, bonappetitItems, healthMagItems] = results;
+        const allItems = [...vnItems, ...vnvnItems, ...vneItems, ...cafefItems, ...yhItems, ...ivItems, ...ttItems, ...tnItems, ...psItems, ...sgItems, ...soraItems, ...thedodoItems, ...petmdItems, ...travelItems, ...healthItems, ...bonappetitItems, ...healthMagItems];
         
         console.log(`Total items found: ${allItems.length}`);
         
@@ -723,6 +737,8 @@ export async function POST(request) {
         const sources = {
             'VnExpress': vnItems.length,
             'VnExpress VN': vnvnItems.length,
+            'VnExpress Economy': vneItems.length,
+            'Cafef': cafefItems.length,
             'Yonhap News': yhItems.length,
             'InsideVina': ivItems.length,
             'TuoiTre': ttItems.length,

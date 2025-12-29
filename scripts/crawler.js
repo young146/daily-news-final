@@ -6,6 +6,8 @@ const crawlInsideVina = require('./crawlers/insidevina');
 const crawlTuoitre = require('./crawlers/tuoitre');
 const crawlThanhNien = require('./crawlers/thanhnien');
 const crawlVnExpressVN = require('./crawlers/vnexpress-vn');
+const crawlVnExpressEconomy = require('./crawlers/vnexpress-economy');
+const crawlCafef = require('./crawlers/cafef');
 const crawlPublicSecurity = require('./crawlers/publicsecurity');
 const crawlSaigoneer = require('./crawlers/saigoneer');
 const crawlSoraNews24 = require('./crawlers/soranews24');
@@ -27,7 +29,7 @@ async function loadTranslator() {
 async function main() {
   await loadTranslator();
   
-  console.log('🚀 크롤러 시작 (13개 소스 + AI 번역/요약/분류)...');
+  console.log('🚀 크롤러 시작 (15개 소스 + AI 번역/요약/분류)...');
   console.log('================================================');
 
   const crawlers = [
@@ -37,6 +39,8 @@ async function main() {
     { name: 'TuoiTre', fn: crawlTuoitre },
     { name: 'ThanhNien', fn: crawlThanhNien },
     { name: 'VnExpressVN', fn: crawlVnExpressVN },
+    { name: 'VnExpress Economy', fn: crawlVnExpressEconomy },
+    { name: 'Cafef', fn: crawlCafef },
     { name: 'PublicSecurity', fn: crawlPublicSecurity },
     { name: 'Saigoneer', fn: crawlSaigoneer },
     { name: 'SoraNews24', fn: crawlSoraNews24 },
@@ -76,50 +80,84 @@ async function main() {
   console.log(`📰 총 수집: ${allItems.length}개 (${failedSources.length}개 소스 실패)`);
   console.log('================================================');
 
-  let savedCount = 0;
-  let translatedCount = 0;
-
-  for (const item of allItems) {
+  // 1단계: 중복 체크 (병렬 처리)
+  console.log('\n📋 중복 체크 중...');
+  const newItems = [];
+  const checkPromises = allItems.map(async (item) => {
     const exists = await prisma.newsItem.findFirst({
       where: { originalUrl: item.originalUrl }
     });
-
-    if (exists) {
-      continue;
-    }
-
-    // 연합뉴스는 Korea-Vietnam 카테고리로 고정
-    if (item.source === 'Yonhap News') {
-      item.category = 'Korea-Vietnam';
-    }
-
-    console.log(`\n📝 [${item.source}] ${item.title.substring(0, 50)}...`);
-
-    // GPT로 제목 번역 + 카테고리 분류 (통합 모듈 사용)
-    console.log(`   🔄 번역 중...`);
-    const processed = await translateAndCategorize(item);
-    
-    if (processed.translatedTitle) {
-      console.log(`   → 제목: ${processed.translatedTitle.substring(0, 50)}...`);
-    }
-    // 연합뉴스가 아니면 AI 분류 카테고리 사용
-    const finalCategory = item.source === 'Yonhap News' ? 'Korea-Vietnam' : processed.category;
-    console.log(`   → 카테고리: ${finalCategory}`);
-    if (processed.error) {
-      console.log(`   ⚠️ 번역 오류: ${processed.error}`);
-    }
-    translatedCount++;
-
-    await prisma.newsItem.create({
-      data: {
-        ...item,
-        translatedTitle: processed.translatedTitle || null,
-        category: finalCategory,
+    if (!exists) {
+      // 연합뉴스는 Korea-Vietnam 카테고리로 고정
+      if (item.source === 'Yonhap News') {
+        item.category = 'Korea-Vietnam';
       }
-    });
+      newItems.push(item);
+    }
+  });
+  await Promise.all(checkPromises);
+  console.log(`✅ 중복 체크 완료: ${allItems.length}개 중 ${newItems.length}개 신규`);
+
+  // 2단계: 병렬 번역 (배치 처리)
+  const BATCH_SIZE = 5; // 동시에 5개씩 번역 (OpenAI rate limit 고려)
+  let savedCount = 0;
+  let translatedCount = 0;
+
+  console.log(`\n🔄 병렬 번역 시작 (배치 크기: ${BATCH_SIZE}개)...`);
+  
+  for (let i = 0; i < newItems.length; i += BATCH_SIZE) {
+    const batch = newItems.slice(i, i + BATCH_SIZE);
+    const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+    const totalBatches = Math.ceil(newItems.length / BATCH_SIZE);
     
-    savedCount++;
-    console.log(`   ✅ 저장 완료`);
+    console.log(`\n📦 배치 ${batchNum}/${totalBatches} 처리 중 (${batch.length}개)...`);
+
+    // 배치 내 병렬 번역
+    const translationResults = await Promise.allSettled(
+      batch.map(async (item) => {
+        console.log(`   🔄 [${item.source}] ${item.title.substring(0, 40)}...`);
+        const processed = await translateAndCategorize(item);
+        return { item, processed };
+      })
+    );
+
+    // 번역 결과 처리 및 저장
+    for (const result of translationResults) {
+      if (result.status === 'fulfilled') {
+        const { item, processed } = result.value;
+        
+        if (processed.translatedTitle) {
+          console.log(`   ✅ [${item.source}] ${processed.translatedTitle.substring(0, 40)}...`);
+        }
+        
+        const finalCategory = item.source === 'Yonhap News' ? 'Korea-Vietnam' : processed.category;
+        if (processed.error) {
+          console.log(`   ⚠️ 번역 오류: ${processed.error}`);
+        }
+        
+        translatedCount++;
+
+        // DB 저장
+        await prisma.newsItem.create({
+          data: {
+            ...item,
+            translatedTitle: processed.translatedTitle || null,
+            category: finalCategory,
+          }
+        });
+        
+        savedCount++;
+      } else {
+        console.error(`   ❌ 번역 실패:`, result.reason);
+      }
+    }
+    
+    console.log(`   ✅ 배치 ${batchNum} 완료 (${savedCount}/${newItems.length}개 저장됨)`);
+    
+    // 배치 간 짧은 대기 (rate limit 방지)
+    if (i + BATCH_SIZE < newItems.length) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
   }
 
   const status = failedSources.length === 0 ? 'SUCCESS' : 

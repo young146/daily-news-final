@@ -386,17 +386,27 @@ function jenny_get_posts_by_date($date, $category_id, $category_order) {
                 'day' => intval($date_parts[2]),
             ),
         ),
+        'suppress_filters' => false, // 필터 활성화 (중복 방지)
+        'no_found_rows' => true, // 성능 최적화
     );
     
     $query = new WP_Query($args);
     $top_news_posts = array();
     $top_news_ids = array();
     $regular_posts = array();
+    $processed_post_ids = array(); // 중복 방지용 (안전장치)
     
     if ($query->have_posts()) {
         while ($query->have_posts()) {
             $query->the_post();
             $post_id = get_the_ID();
+            
+            // 중복 체크: 이미 처리된 포스트는 건너뛰기 (안전장치)
+            if (in_array($post_id, $processed_post_ids)) {
+                continue;
+            }
+            $processed_post_ids[] = $post_id;
+            
             $news_category = jenny_get_post_category($post_id);
             $order = isset($category_order[$news_category]) ? $category_order[$news_category] : 99;
             
@@ -412,10 +422,23 @@ function jenny_get_posts_by_date($date, $category_id, $category_order) {
             );
             
             if ($is_top) {
-                $top_news_posts[] = $item;
-                $top_news_ids[] = $post_id;
+                // 탑뉴스도 중복 체크
+                if (!in_array($post_id, $top_news_ids)) {
+                    $top_news_posts[] = $item;
+                    $top_news_ids[] = $post_id;
+                }
             } else {
-                $regular_posts[] = $item;
+                // 일반 뉴스도 중복 체크 (같은 post_id가 이미 regular_posts에 있는지 확인)
+                $already_in_regular = false;
+                foreach ($regular_posts as $existing) {
+                    if ($existing['post_id'] === $post_id) {
+                        $already_in_regular = true;
+                        break;
+                    }
+                }
+                if (!$already_in_regular) {
+                    $regular_posts[] = $item;
+                }
             }
         }
         wp_reset_postdata();
@@ -644,10 +667,18 @@ function jenny_daily_news_shortcode($atts)
     }
 
 
-    // regular_posts를 섹션별로 그룹화
+    // regular_posts를 섹션별로 그룹화 (중복 방지)
     $grouped_posts = array();
+    $grouped_post_ids = array(); // 그룹화된 포스트 ID 추적
     
     foreach ($regular_posts as $post) {
+        $post_id = $post['post_id'];
+        
+        // 이미 다른 섹션에 추가된 포스트는 건너뛰기
+        if (in_array($post_id, $grouped_post_ids)) {
+            continue;
+        }
+        
         $cat = trim($post['category']);
         $sec_key = jenny_get_section_key($cat, $sections_keys);
         
@@ -655,6 +686,7 @@ function jenny_daily_news_shortcode($atts)
             $grouped_posts[$sec_key] = array();
         }
         $grouped_posts[$sec_key][] = $post;
+        $grouped_post_ids[] = $post_id; // 추가된 포스트 ID 기록
     }
 
     // sort function reused
@@ -670,12 +702,16 @@ function jenny_daily_news_shortcode($atts)
         $top_count = 0;
         foreach ($top_news_posts as $post) {
             if ($top_count >= 2) {
-                // If extra top news, add to regular posts in the correct section
-                $sec_key = jenny_get_section_key($post['category'], $sections_keys);
-                if (!isset($grouped_posts[$sec_key])) {
-                    $grouped_posts[$sec_key] = array();
+                // If extra top news, add to regular posts in the correct section (중복 체크)
+                $post_id = $post['post_id'];
+                if (!in_array($post_id, $grouped_post_ids)) {
+                    $sec_key = jenny_get_section_key($post['category'], $sections_keys);
+                    if (!isset($grouped_posts[$sec_key])) {
+                        $grouped_posts[$sec_key] = array();
+                    }
+                    $grouped_posts[$sec_key][] = $post;
+                    $grouped_post_ids[] = $post_id;
                 }
-                $grouped_posts[$sec_key][] = $post;
                 continue;
             }
             $output .= jenny_render_news_card($post, $category_map);
