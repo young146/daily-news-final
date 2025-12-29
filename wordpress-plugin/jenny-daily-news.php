@@ -205,16 +205,17 @@ function jenny_render_news_card($post_data, $category_map) {
 
     $cat_name = jenny_get_category_display_name($post_data['category'], $category_map);
 
-    // 본문에서 excerpt 생성
-    $content = jenny_clean_content($post_obj->post_content);
+    // WordPress excerpt 필드를 먼저 확인 (translatedSummary가 저장된 경우)
+    $excerpt = get_the_excerpt($post_data['post_id']);
     
-    if (!empty($content)) {
-        $excerpt = wp_trim_words($content, 50, '...');
-        // excerpt에서도 한 번 더 정제 (안전장치)
-        $excerpt = jenny_clean_content($excerpt);
-    } else {
-        $excerpt = get_the_excerpt($post_data['post_id']);
-        if (empty($excerpt)) {
+    // excerpt가 없거나 비어있으면 본문에서 생성
+    if (empty($excerpt)) {
+        $content = jenny_clean_content($post_obj->post_content);
+        if (!empty($content)) {
+            $excerpt = wp_trim_words($content, 50, '...');
+            // excerpt에서도 한 번 더 정제 (안전장치)
+            $excerpt = jenny_clean_content($excerpt);
+        } else {
             $excerpt = '';
         }
     }
