@@ -98,8 +98,8 @@ async function main() {
   await Promise.all(checkPromises);
   console.log(`✅ 중복 체크 완료: ${allItems.length}개 중 ${newItems.length}개 신규`);
 
-  // 2단계: 병렬 번역 (배치 처리)
-  const BATCH_SIZE = 5; // 동시에 5개씩 번역 (OpenAI rate limit 고려)
+  // 2단계: 병렬 번역 (배치 처리) - 성능 개선
+  const BATCH_SIZE = 10; // 동시에 10개씩 번역 (배치 크기 증가)
   let savedCount = 0;
   let translatedCount = 0;
 
@@ -121,8 +121,8 @@ async function main() {
       })
     );
 
-    // 번역 결과 처리 및 저장
-    for (const result of translationResults) {
+    // 번역 결과 병렬 저장 (순차 저장 대신)
+    const savePromises = translationResults.map(async (result) => {
       if (result.status === 'fulfilled') {
         const { item, processed } = result.value;
         
@@ -137,7 +137,7 @@ async function main() {
         
         translatedCount++;
 
-        // DB 저장
+        // 병렬 저장
         await prisma.newsItem.create({
           data: {
             ...item,
@@ -147,16 +147,21 @@ async function main() {
         });
         
         savedCount++;
+        return { success: true };
       } else {
         console.error(`   ❌ 번역 실패:`, result.reason);
+        return { success: false };
       }
-    }
+    });
+
+    // 모든 저장 작업 완료 대기
+    await Promise.all(savePromises);
     
     console.log(`   ✅ 배치 ${batchNum} 완료 (${savedCount}/${newItems.length}개 저장됨)`);
     
-    // 배치 간 짧은 대기 (rate limit 방지)
+    // 배치 간 짧은 대기 (rate limit 방지) - 딜레이 감소
     if (i + BATCH_SIZE < newItems.length) {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 200)); // 500ms -> 200ms
     }
   }
 

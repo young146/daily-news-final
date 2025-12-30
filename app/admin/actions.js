@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { translateNewsItem, translateText } from "@/lib/translator";
-import { publishToMainSite } from "@/lib/publisher";
+import { publishToMainSite, deleteWordPressPost } from "@/lib/publisher";
 import { postToSNS } from "@/lib/sns";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -441,46 +441,54 @@ export async function toggleCardNewsAction(id) {
 
 export async function batchTranslateAction(ids) {
   try {
-    // Process in parallel to speed up and avoid timeouts
-    // We use Promise.allSettled to ensure one failure doesn't stop the rest,
-    // but for simplicity in this context, Promise.all is also okay if we want to fail fast.
-    // However, handling individual errors inside the map is better.
+    // Process in parallel with batch size limit to avoid rate limits
+    // 배치 크기 제한으로 rate limit 방지 및 성능 최적화
+    const BATCH_SIZE = 3; // 동시에 3개씩 처리 (본문 번역은 시간이 오래 걸리므로)
+    
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+      const batch = ids.slice(i, i + BATCH_SIZE);
+      
+      await Promise.allSettled(
+        batch.map(async (id) => {
+          try {
+            const item = await prisma.newsItem.findUnique({ where: { id } });
+            // Translate if any part is missing or status is PENDING
+            if (
+              item &&
+              (!item.translatedTitle ||
+                !item.translatedSummary ||
+                !item.translatedContent ||
+                item.translationStatus === "PENDING")
+            ) {
+              const { translatedTitle, translatedSummary, translatedContent } =
+                await translateNewsItem(
+                  item.title,
+                  item.summary,
+                  item.content || item.summary
+                );
 
-    await Promise.all(
-      ids.map(async (id) => {
-        try {
-          const item = await prisma.newsItem.findUnique({ where: { id } });
-          // Translate if any part is missing or status is PENDING
-          if (
-            item &&
-            (!item.translatedTitle ||
-              !item.translatedSummary ||
-              !item.translatedContent ||
-              item.translationStatus === "PENDING")
-          ) {
-            const { translatedTitle, translatedSummary, translatedContent } =
-              await translateNewsItem(
-                item.title,
-                item.summary,
-                item.content || item.summary
-              );
-
-            await prisma.newsItem.update({
-              where: { id },
-              data: {
-                translatedTitle,
-                translatedSummary,
-                translatedContent,
-                translationStatus: "DRAFT",
-              },
-            });
+              await prisma.newsItem.update({
+                where: { id },
+                data: {
+                  translatedTitle,
+                  translatedSummary,
+                  translatedContent,
+                  translationStatus: "DRAFT",
+                },
+              });
+            }
+          } catch (e) {
+            console.error(`Failed to translate item ${id}:`, e);
+            // We continue with other items
           }
-        } catch (e) {
-          console.error(`Failed to translate item ${id}:`, e);
-          // We continue with other items
-        }
-      })
-    );
+        })
+      );
+      
+      // 배치 간 짧은 대기 (rate limit 방지)
+      if (i + BATCH_SIZE < ids.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
 
     revalidatePath("/admin");
     return { success: true };
@@ -563,6 +571,73 @@ export async function deleteSelectedNewsAction(id) {
     return { success: true };
   } catch (error) {
     console.error("Delete selected news failed:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * 발행된 뉴스를 삭제합니다 (WordPress 포스트 + DB)
+ * 안전장치: 번역이 완료된 뉴스는 삭제 불가
+ */
+export async function deletePublishedNewsAction(id) {
+  try {
+    const item = await prisma.newsItem.findUnique({ where: { id } });
+    if (!item) {
+      return { success: false, error: "뉴스를 찾을 수 없습니다." };
+    }
+
+    // WordPress 포스트 삭제 (휴지통으로 이동)
+    let wpDeleted = false;
+    if (item.wordpressUrl) {
+      wpDeleted = await deleteWordPressPost(item.wordpressUrl);
+      if (!wpDeleted) {
+        console.warn(`[Delete] WordPress 삭제 실패했지만 DB는 삭제합니다: ${item.wordpressUrl}`);
+      }
+    }
+
+    // DB에서 삭제
+    await prisma.newsItem.delete({ where: { id } });
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/published-news");
+    
+    return { 
+      success: true, 
+      message: wpDeleted 
+        ? "WordPress 포스트와 데이터베이스에서 삭제되었습니다." 
+        : "데이터베이스에서 삭제되었습니다. (WordPress 삭제 실패)" 
+    };
+  } catch (error) {
+    console.error("Delete published news failed:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * 발행된 뉴스를 일괄 삭제합니다
+ */
+export async function batchDeletePublishedNewsAction(ids) {
+  try {
+    const results = [];
+    
+    for (const id of ids) {
+      const result = await deletePublishedNewsAction(id);
+      results.push({ id, ...result });
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.filter(r => !r.success).length;
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/published-news");
+
+    return {
+      success: true,
+      message: `${successCount}개 삭제 완료${failCount > 0 ? `, ${failCount}개 실패` : ''}`,
+      results
+    };
+  } catch (error) {
+    console.error("Batch delete published news failed:", error);
     return { success: false, error: error.message };
   }
 }

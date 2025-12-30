@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, FileText, Settings, LogOut, Users } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings, LogOut, Users, Newspaper } from 'lucide-react';
 
 export default function AdminLayout({ children }) {
     const [user, setUser] = useState(null);
@@ -45,6 +45,7 @@ export default function AdminLayout({ children }) {
 
     const navItems = [
         { href: '/admin', icon: LayoutDashboard, label: '대시보드' },
+        { href: '/admin/published-news', icon: Newspaper, label: '발행된 뉴스 관리' },
         { href: '/admin/drafts', icon: FileText, label: '초안' },
         { href: '/admin/settings', icon: Settings, label: '설정' },
     ];

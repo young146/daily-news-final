@@ -205,10 +205,16 @@ function jenny_render_news_card($post_data, $category_map) {
 
     $cat_name = jenny_get_category_display_name($post_data['category'], $category_map);
 
-    // WordPress excerpt 필드를 먼저 확인 (translatedSummary가 저장된 경우)
-    $excerpt = get_the_excerpt($post_data['post_id']);
+    // 요약문 가져오기 (우선순위: 커스텀 필드 > excerpt 필드 > 본문에서 생성)
+    // 1. 커스텀 필드에서 요약문 확인 (가장 확실한 방법)
+    $excerpt = get_post_meta($post_data['post_id'], 'news_summary', true);
     
-    // excerpt가 없거나 비어있으면 본문에서 생성
+    // 2. 커스텀 필드가 없으면 excerpt 필드 확인
+    if (empty($excerpt)) {
+        $excerpt = trim($post_obj->post_excerpt);
+    }
+    
+    // 3. excerpt도 없으면 본문에서 생성
     if (empty($excerpt)) {
         $content = jenny_clean_content($post_obj->post_content);
         if (!empty($content)) {
