@@ -30,6 +30,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'soranews24.com' },
       { protocol: 'https', hostname: 'en.cand.com.vn' },
       { protocol: 'https', hostname: 'img.cand.com.vn' },
+      { protocol: 'https', hostname: 'cafefcdn.com' },
     ],
   },
   allowedDevOrigins: [
