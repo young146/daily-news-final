@@ -1,19 +1,23 @@
 import prisma from "@/lib/prisma";
 import PublishedNewsList from "./published-news-list";
 
+export const dynamic = "force-dynamic"; // ✅ Vercel에서 캐싱 방지, 항상 최신 데이터 가져오기
+
 async function getPublishedNews() {
   // 오늘 발행된 뉴스만 가져오기 (베트남 시간대 기준)
-  const tz = 'Asia/Ho_Chi_Minh';
+  // 베트남 시간대(UTC+7) 기준으로 '오늘'의 시작과 끝 시간 계산 (통일된 로직)
   const now = new Date();
-  const today = new Date(now.toLocaleString('en-US', { timeZone: tz }));
-  today.setHours(0, 0, 0, 0);
-  
-  const todayStart = new Date(today.toISOString());
+  const vnDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // "YYYY-MM-DD"
+  const todayStart = new Date(`${vnDateStr}T00:00:00+07:00`);
+  const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
   
   const publishedNews = await prisma.newsItem.findMany({
     where: {
       isPublishedMain: true,
-      publishedAt: { gte: todayStart },
+      publishedAt: {
+        gte: todayStart,
+        lt: todayEnd
+      },
       wordpressUrl: { not: null }
     },
     orderBy: {
