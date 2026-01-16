@@ -31,6 +31,7 @@ export default function CategorySelector({ id, initialCategory }) {
             <option value="Society">Society (사회)</option>
             <option value="Economy">Economy (경제)</option>
             <option value="Culture">Culture (문화)</option>
+            <option value="Real Estate">Real Estate (부동산)</option>
             <option value="Politics">Politics (정치)</option>
             <option value="International">International (국제)</option>
             <option value="Korea-Vietnam">Korea-Vietnam (한-베)</option>

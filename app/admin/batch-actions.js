@@ -116,63 +116,74 @@ export function CardNewsToggle({ id, isCardNews }) {
 
 export function WorkflowButton({ topNews }) {
     const [isPending, startTransition] = useTransition();
+    const [isTranslating, setIsTranslating] = useState(false);
     const router = useRouter();
 
-    // 1. Check if any items need translation (Title, Summary, OR Content missing)
-    const needsTranslation = topNews.some(n => !n.translatedTitle || !n.translatedSummary || !n.translatedContent);
+    // 번역이 필요한 항목 (제목, 요약, 본문 중 하나라도 없음)
+    const itemsNeedingTranslation = topNews.filter(n => !n.translatedTitle || !n.translatedSummary || !n.translatedContent);
+    const needsTranslation = itemsNeedingTranslation.length > 0;
 
-    // 2. Check if any items need review (are translated but not COMPLETED and not SKIPPED)
-    // We prioritize DRAFT items.
-    // Ensure we DO NOT pick up items that are already COMPLETED.
-    // 2. Check if any items need review (are translated but not COMPLETED and not SKIPPED)
-    // We prioritize DRAFT items, but also catch anything that is NOT completed/skipped.
-    const nextReviewItem = topNews.find(n =>
-        n.translationStatus !== 'COMPLETED' &&
+    // 리뷰가 필요한 항목 (COMPLETED/SKIPPED가 아닌 것)
+    const draftItems = topNews.filter(n => 
+        n.translationStatus !== 'COMPLETED' && 
         n.translationStatus !== 'SKIPPED'
     );
+    const nextReviewItem = draftItems[0];
     const skippedItems = topNews.filter(n => n.translationStatus === 'SKIPPED');
     const completedItems = topNews.filter(n => n.translationStatus === 'COMPLETED');
 
-    // If we have DRAFT items, we are NOT complete.
-    // If we have NO DRAFT items, but have SKIPPED items, we are "Technically Complete" but have leftovers.
-    const hasPendingReviews = !!nextReviewItem;
+    const hasPendingReviews = draftItems.length > 0;
+    const hasCompletedItems = completedItems.length > 0;
     const hasSkippedItems = skippedItems.length > 0;
-    const isFullyComplete = !hasPendingReviews && !hasSkippedItems;
 
-    const handleAction = () => {
-        startTransition(async () => {
-            if (needsTranslation) {
-                // Step 1: Translate All (or missing ones)
-                // We send ALL IDs to be safe, the server action will check which ones actually need work
-                const idsToTranslate = topNews.map(n => n.id);
-                await batchTranslateAction(idsToTranslate);
-
-                // After translation, go to the first item to start review
+    // 백그라운드 번역 (페이지를 떠나도 계속 진행)
+    const handleBackgroundTranslate = async () => {
+        const idsToTranslate = topNews.map(n => n.id);
+        setIsTranslating(true);
+        
+        try {
+            // API 호출 (백그라운드에서 실행됨)
+            const response = await fetch('/api/batch-translate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: idsToTranslate }),
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert(`✅ 번역 완료!\n\n번역: ${result.translatedCount}개\n스킵(이미완료): ${result.skippedCount}개\n실패: ${result.failedCount}개`);
+                // 번역 완료 후 첫 번째 항목으로 리뷰 시작
                 if (topNews.length > 0) {
                     router.push(`/admin/news/${topNews[0].id}/translate`);
                 }
-            } else if (hasPendingReviews) {
-                // Step 2: Continue Review (Prioritize DRAFTs)
-                if (nextReviewItem) {
-                    router.push(`/admin/news/${nextReviewItem.id}/translate`);
-                }
             } else {
-                // Step 3: Publish All (Completed ones)
-                // If there are skipped items, we mention them.
+                alert(`❌ 번역 실패: ${result.error}`);
+            }
+        } catch (error) {
+            alert(`❌ 번역 중 오류: ${error.message}`);
+        } finally {
+            setIsTranslating(false);
+            router.refresh();
+        }
+    };
 
-                const topCount = completedItems.filter(n => n.isTopNews).length;
-                const socCount = completedItems.filter(n => (n.category === 'Society' || n.category === '사회') && !n.isTopNews).length;
-                const ecoCount = completedItems.filter(n => (n.category === 'Economy' || n.category === '경제') && !n.isTopNews).length;
-                const culCount = completedItems.filter(n => (n.category === 'Culture' || n.category === '문화') && !n.isTopNews).length;
-                const polCount = completedItems.filter(n => (n.category === 'Politics' || n.category === 'Policy' || n.category === '정치' || n.category === '정책') && !n.isTopNews).length;
-                const intCount = completedItems.filter(n => (n.category === 'International' || n.category === '국제') && !n.isTopNews).length;
-                const kvCount = completedItems.filter(n => (n.category === 'Korea-Vietnam' || n.category === '한-베' || n.category === '한베') && !n.isTopNews).length;
-                const comCount = completedItems.filter(n => (n.category === 'Community' || n.category === '교민' || n.category === '교민소식') && !n.isTopNews).length;
-                const travelCount = completedItems.filter(n => (n.category === 'Travel' || n.category === '여행') && !n.isTopNews).length;
-                const healthCount = completedItems.filter(n => (n.category === 'Health' || n.category === '건강') && !n.isTopNews).length;
-                const foodCount = completedItems.filter(n => (n.category === 'Food' || n.category === '음식') && !n.isTopNews).length;
+    // 발행 핸들러
+    const handlePublish = () => {
+        const topCount = completedItems.filter(n => n.isTopNews).length;
+        const socCount = completedItems.filter(n => (n.category === 'Society' || n.category === '사회') && !n.isTopNews).length;
+        const ecoCount = completedItems.filter(n => (n.category === 'Economy' || n.category === '경제') && !n.isTopNews).length;
+        const realEstateCount = completedItems.filter(n => (n.category === 'Real Estate' || n.category === '부동산') && !n.isTopNews).length;
+        const culCount = completedItems.filter(n => (n.category === 'Culture' || n.category === '문화') && !n.isTopNews).length;
+        const polCount = completedItems.filter(n => (n.category === 'Politics' || n.category === 'Policy' || n.category === '정치' || n.category === '정책') && !n.isTopNews).length;
+        const intCount = completedItems.filter(n => (n.category === 'International' || n.category === '국제') && !n.isTopNews).length;
+        const kvCount = completedItems.filter(n => (n.category === 'Korea-Vietnam' || n.category === '한-베' || n.category === '한베') && !n.isTopNews).length;
+        const comCount = completedItems.filter(n => (n.category === 'Community' || n.category === '교민' || n.category === '교민소식') && !n.isTopNews).length;
+        const travelCount = completedItems.filter(n => (n.category === 'Travel' || n.category === '여행') && !n.isTopNews).length;
+        const healthCount = completedItems.filter(n => (n.category === 'Health' || n.category === '건강') && !n.isTopNews).length;
+        const foodCount = completedItems.filter(n => (n.category === 'Food' || n.category === '음식') && !n.isTopNews).length;
 
-                let message = `
+        let message = `
 ✨ Ready to Publish!
 
 Summary of COMPLETED Reviews:
@@ -181,6 +192,7 @@ Summary of COMPLETED Reviews:
 -----------------------------
 • Society: ${socCount}
 • Economy: ${ecoCount}
+• Real Estate: ${realEstateCount}
 • Culture: ${culCount}
 • Politics: ${polCount}
 • International: ${intCount}
@@ -193,81 +205,83 @@ Summary of COMPLETED Reviews:
 Total Completed: ${completedItems.length} items
 `;
 
-                if (hasSkippedItems) {
-                    message += `
-⚠️ WARNING: You have ${skippedItems.length} SKIPPED items.
-These will NOT be published now. You can review them later.
-`;
-                }
+        if (draftItems.length > 0) {
+            message += `\n⚠️ ${draftItems.length}개 DRAFT 항목은 발행되지 않습니다.`;
+        }
+        if (hasSkippedItems) {
+            message += `\n⚠️ ${skippedItems.length}개 SKIPPED 항목은 발행되지 않습니다.`;
+        }
 
-                message += `\nDo you want to PUBLISH these ${completedItems.length} items to the Daily News site now?`;
+        message += `\n\nDo you want to PUBLISH these ${completedItems.length} items now?`;
 
-                if (confirm(message.trim())) {
-                    const result = await batchPublishDailyAction(completedItems.map(n => n.id));
-                    if (result.failCount > 0) {
-                        alert(`⚠️ 일부 뉴스 발행 실패\n\n성공: ${result.successCount}개\n실패: ${result.failCount}개\n\n[에러 내용]\n${result.errors.join('\n')}`);
-                    } else {
-                        alert(`✅ ${result.successCount}개 뉴스 발행 완료!`);
-                    }
-                } else if (hasSkippedItems && confirm("Do you want to review the SKIPPED items now instead?")) {
-                    router.push(`/admin/news/${skippedItems[0].id}/translate`);
+        if (confirm(message.trim())) {
+            startTransition(async () => {
+                const result = await batchPublishDailyAction(completedItems.map(n => n.id));
+                if (result.failCount > 0) {
+                    alert(`⚠️ 일부 뉴스 발행 실패\n\n성공: ${result.successCount}개\n실패: ${result.failCount}개\n\n[에러 내용]\n${result.errors.join('\n')}`);
+                } else {
+                    alert(`✅ ${result.successCount}개 뉴스 발행 완료!`);
                 }
-            }
-        });
+            });
+        }
     };
 
-    if (needsTranslation) {
-        return (
-            <button
-                type="button"
-                onClick={handleAction}
-                disabled={isPending}
-                className="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700 flex items-center gap-2 font-bold"
-            >
-                {isPending ? 'Translating & Generating...' : '🚀 Translate & Generate (Selected Items Only)'}
-            </button>
-        );
-    }
+    // 리뷰 계속하기
+    const handleContinueReview = () => {
+        if (nextReviewItem) {
+            router.push(`/admin/news/${nextReviewItem.id}/translate`);
+        }
+    };
 
-    if (hasPendingReviews) {
-        const completedCount = topNews.filter(n => n.translationStatus === 'COMPLETED').length;
-        return (
-            <div className="flex flex-col gap-1 items-end">
+    // 버튼 렌더링 - 상황에 따라 여러 버튼 표시
+    return (
+        <div className="flex flex-col gap-2 items-end">
+            {/* 1. 번역 필요 시 번역 버튼 */}
+            {needsTranslation && (
                 <button
                     type="button"
-                    onClick={handleAction}
+                    onClick={handleBackgroundTranslate}
+                    disabled={isTranslating || isPending}
+                    className="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700 flex items-center gap-2 font-bold"
+                >
+                    {isTranslating ? '⏳ 번역 중... (페이지 이동 가능)' : `🚀 번역 & 요약 생성 (${itemsNeedingTranslation.length}개)`}
+                </button>
+            )}
+
+            {/* 2. 리뷰할 DRAFT가 있으면 리뷰 버튼 */}
+            {!needsTranslation && hasPendingReviews && (
+                <button
+                    type="button"
+                    onClick={handleContinueReview}
                     disabled={isPending}
                     className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2 font-bold"
                 >
-                    {isPending ? 'Loading...' : `▶ Continue Review (${completedCount}/${topNews.length} Done)`}
+                    ▶ 리뷰 계속하기 ({completedItems.length}/{topNews.length} 완료)
                 </button>
-                {completedCount > 0 && (
-                    <button
-                        type="button"
-                        onClick={() => {
-                            if (confirm(`Publish the ${completedCount} COMPLETED items now? (Others will remain as Draft/Skipped)`)) {
-                                startTransition(() => batchPublishDailyAction(completedItems.map(n => n.id)));
-                            }
-                        }}
-                        disabled={isPending}
-                        className="text-sm bg-green-100 text-green-800 px-3 py-1.5 rounded border border-green-300 hover:bg-green-200 font-bold flex items-center gap-1 mt-1"
-                    >
-                        ⚡ Publish {completedCount} Completed Items Now
-                    </button>
-                )}
-            </div>
-        );
-    }
+            )}
 
-    // Ready to Publish (either fully complete or with skipped items)
-    return (
-        <button
-            type="button"
-            onClick={handleAction}
-            disabled={isPending}
-            className={`text-white px-4 py-2 rounded shadow flex items-center gap-2 font-bold ${hasSkippedItems ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-600 hover:bg-green-700'}`}
-        >
-            {isPending ? 'Publishing...' : hasSkippedItems ? `✨ Publish ${completedItems.length} Items (Skip ${skippedItems.length})` : '✨ Publish All to Daily (Final Step)'}
-        </button>
+            {/* 3. COMPLETED 항목이 있으면 발행 버튼 (항상 표시) */}
+            {hasCompletedItems && (
+                <button
+                    type="button"
+                    onClick={handlePublish}
+                    disabled={isPending}
+                    className={`px-4 py-2 rounded shadow flex items-center gap-2 font-bold ${
+                        !hasPendingReviews && !needsTranslation
+                            ? 'bg-green-600 text-white hover:bg-green-700'
+                            : 'bg-green-100 text-green-800 border border-green-300 hover:bg-green-200'
+                    }`}
+                >
+                    {isPending ? '발행 중...' : `✨ ${completedItems.length}개 발행하기`}
+                </button>
+            )}
+
+            {/* 4. 모든 작업 완료 상태 */}
+            {!needsTranslation && !hasPendingReviews && !hasCompletedItems && (
+                <div className="text-gray-500 text-sm">
+                    선정된 뉴스가 없습니다
+                </div>
+            )}
+        </div>
     );
 }

@@ -3,13 +3,29 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { batchDeleteAction } from './actions';
+import { batchDeleteAction, translateItemAction } from './actions';
 import CategorySelector from './category-selector';
 
 export default function CollectedNewsList({ items, addToTopAction, deleteNewsItemAction }) {
     const [selectedIds, setSelectedIds] = useState([]);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [translatingId, setTranslatingId] = useState(null);
     const router = useRouter();
+
+    const handleRetranslate = async (id) => {
+        setTranslatingId(id);
+        try {
+            const result = await translateItemAction(id);
+            if (result.success) {
+                router.refresh();
+            } else {
+                alert('번역 실패: ' + result.error);
+            }
+        } catch (error) {
+            alert('번역 중 오류: ' + error.message);
+        }
+        setTranslatingId(null);
+    };
 
     const toggleSelect = (id) => {
         setSelectedIds(prev => 
@@ -91,12 +107,28 @@ export default function CollectedNewsList({ items, addToTopAction, deleteNewsIte
                                 {item.translatedTitle || item.title}
                             </Link>
                             {item.translatedTitle && <span className="block text-xs text-gray-500 font-normal mt-1">{item.title}</span>}
+                            {!item.translatedTitle && (
+                                <span className="inline-block text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded ml-2">
+                                    ⚠️ 번역 필요
+                                </span>
+                            )}
                         </h3>
                         <div className="flex justify-between items-center mt-2">
                             <div className="w-40">
                                 <CategorySelector id={item.id} initialCategory={item.category} />
                             </div>
                             <div className="flex gap-2">
+                                {/* 번역 실패 또는 미번역 시 재번역 버튼 표시 */}
+                                {!item.translatedTitle && (
+                                    <button
+                                        onClick={() => handleRetranslate(item.id)}
+                                        disabled={translatingId === item.id}
+                                        className="text-sm bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600 transition disabled:opacity-50"
+                                        title="재번역"
+                                    >
+                                        {translatingId === item.id ? '⏳' : '🔄'}
+                                    </button>
+                                )}
                                 <form action={deleteNewsItemAction}>
                                     <input type="hidden" name="id" value={item.id} />
                                     <button type="submit" className="text-sm bg-gray-200 text-gray-600 px-2 py-1 rounded hover:bg-red-100 hover:text-red-600 transition" title="Delete">

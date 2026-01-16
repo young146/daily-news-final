@@ -101,16 +101,13 @@ export default function SettingsPage() {
     { id: "vnexpress", name: "VnExpress (영문)", file: "vnexpress" },
     { id: "vnexpress-vn", name: "VnExpress (베트남어)", file: "vnexpress-vn" },
     { id: "vnexpress-economy", name: "VnExpress Economy (경제)", file: "vnexpress-economy" },
+    { id: "vnexpress-realestate", name: "VnExpress Real Estate (부동산)", file: "vnexpress-realestate" },
     { id: "cafef", name: "Cafef (경제 전문)", file: "cafef" },
+    { id: "cafef-realestate", name: "Cafef Real Estate (부동산)", file: "cafef-realestate" },
     { id: "yonhap", name: "Yonhap (연합뉴스)", file: "yonhap" },
     { id: "insidevina", name: "InsideVina", file: "insidevina" },
     { id: "tuoitre", name: "TuoiTre", file: "tuoitre" },
     { id: "thanhnien", name: "ThanhNien", file: "thanhnien" },
-    {
-      id: "publicsecurity",
-      name: "공안신문 (PublicSecurity)",
-      file: "publicsecurity",
-    },
     {
       id: "saigoneer",
       name: "Saigoneer 한글판 (음식/여행)",
@@ -140,10 +137,10 @@ export default function SettingsPage() {
       description: "모든 뉴스 소스에서 크롤링",
     },
     {
-      title: "공안신문만 크롤링",
+      title: "VnExpress 부동산 크롤링",
       command:
-        "node -e \"require('./scripts/crawlers/publicsecurity')().then(i => console.log(i.length, 'items'))\"",
-      description: "공안신문만 테스트 (DB 저장 없음)",
+        "node -e \"require('./scripts/crawlers/vnexpress-realestate')().then(i => console.log(i.length, 'items'))\"",
+      description: "VnExpress 부동산만 테스트 (DB 저장 없음)",
     },
     {
       title: "Yonhap만 크롤링",

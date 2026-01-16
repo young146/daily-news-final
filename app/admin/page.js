@@ -140,6 +140,9 @@ export default async function AdminPage() {
   const ecoCount = topNews.filter(
     (n) => (n.category === "Economy" || n.category === "경제") && !n.isTopNews
   ).length;
+  const realEstateCount = topNews.filter(
+    (n) => (n.category === "Real Estate" || n.category === "부동산") && !n.isTopNews
+  ).length;
   const culCount = topNews.filter(
     (n) => (n.category === "Culture" || n.category === "문화") && !n.isTopNews
   ).length;
@@ -222,6 +225,7 @@ export default async function AdminPage() {
           <Counter label="탑뉴스" count={topCount} target={2} />
           <Counter label="Society" count={socCount} target={4} />
           <Counter label="Economy" count={ecoCount} target={4} />
+          <Counter label="Real Estate" count={realEstateCount} target={4} />
           <Counter label="Culture" count={culCount} target={4} />
           <Counter label="Politics" count={polCount} target={4} />
           <Counter label="International" count={intCount} target={4} />

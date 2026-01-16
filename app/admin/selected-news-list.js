@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import CategorySelector from './category-selector';
 import { CardNewsToggle, WorkflowButton, DeleteSelectedNewsButton } from './batch-actions';
+import { translateItemAction } from './actions';
 
 export default function SelectedNewsList({ 
     initialTopNews, 
@@ -13,11 +14,27 @@ export default function SelectedNewsList({
     todayPublishedCount 
 }) {
     const [topNews, setTopNews] = useState(initialTopNews);
+    const [translatingId, setTranslatingId] = useState(null);
     const router = useRouter();
 
     useEffect(() => {
         setTopNews(initialTopNews);
     }, [initialTopNews]);
+
+    const handleRetranslate = async (id) => {
+        setTranslatingId(id);
+        try {
+            const result = await translateItemAction(id);
+            if (result.success) {
+                router.refresh();
+            } else {
+                alert('번역 실패: ' + result.error);
+            }
+        } catch (error) {
+            alert('번역 중 오류: ' + error.message);
+        }
+        setTranslatingId(null);
+    };
 
     const handleRemoveFromTop = async (formData) => {
         const id = formData.get('id');
@@ -97,6 +114,18 @@ export default function SelectedNewsList({
                                 {item.translatedTitle || item.title}
                                 <span className="opacity-0 group-hover:opacity-100 text-xs text-blue-500">✎ Edit</span>
                             </Link>
+                            {!item.translatedTitle && (
+                                <span className="inline-flex items-center gap-1 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded mt-1">
+                                    ⚠️ 번역 필요
+                                    <button
+                                        onClick={() => handleRetranslate(item.id)}
+                                        disabled={translatingId === item.id}
+                                        className="ml-1 bg-yellow-500 text-white px-1.5 py-0.5 rounded hover:bg-yellow-600 disabled:opacity-50"
+                                    >
+                                        {translatingId === item.id ? '⏳' : '🔄 재번역'}
+                                    </button>
+                                </span>
+                            )}
                         </h3>
 
                         <div className="mb-3">

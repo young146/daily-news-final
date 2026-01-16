@@ -443,23 +443,41 @@ export async function batchTranslateAction(ids) {
   try {
     // Process in parallel with batch size limit to avoid rate limits
     // 배치 크기 제한으로 rate limit 방지 및 성능 최적화
-    const BATCH_SIZE = 3; // 동시에 3개씩 처리 (본문 번역은 시간이 오래 걸리므로)
+    const BATCH_SIZE = 10; // 동시에 10개씩 처리 (gpt-4o-mini는 rate limit이 높음)
+    
+    // 통계 추적
+    let skippedCount = 0;
+    let translatedCount = 0;
+    let failedCount = 0;
     
     for (let i = 0; i < ids.length; i += BATCH_SIZE) {
       const batch = ids.slice(i, i + BATCH_SIZE);
       
-      await Promise.allSettled(
+      const results = await Promise.allSettled(
         batch.map(async (id) => {
           try {
             const item = await prisma.newsItem.findUnique({ where: { id } });
-            // Translate if any part is missing or status is PENDING
+            
+            // COMPLETED 상태는 무조건 스킵 (이미 완료된 번역)
+            if (item?.translationStatus === "COMPLETED") {
+              console.log(`[Skip] Already COMPLETED: ${item.title?.substring(0, 30)}...`);
+              return { status: 'skipped', reason: 'COMPLETED' };
+            }
+            
+            // DRAFT 상태이고 3개 필드가 모두 있으면 스킵 (이미 번역 완료)
             if (
-              item &&
-              (!item.translatedTitle ||
-                !item.translatedSummary ||
-                !item.translatedContent ||
-                item.translationStatus === "PENDING")
+              item?.translationStatus === "DRAFT" &&
+              item.translatedTitle &&
+              item.translatedSummary &&
+              item.translatedContent
             ) {
+              console.log(`[Skip] Already DRAFT with all fields: ${item.title?.substring(0, 30)}...`);
+              return { status: 'skipped', reason: 'DRAFT_COMPLETE' };
+            }
+            
+            // 번역 필요: PENDING 상태이거나, 필드 중 하나라도 비어있음
+            if (item) {
+              console.log(`[Translate] ${item.title?.substring(0, 30)}...`);
               const { translatedTitle, translatedSummary, translatedContent } =
                 await translateNewsItem(
                   item.title,
@@ -476,22 +494,44 @@ export async function batchTranslateAction(ids) {
                   translationStatus: "DRAFT",
                 },
               });
+              console.log(`[Done] ${translatedTitle?.substring(0, 30)}...`);
+              return { status: 'translated' };
             }
+            return { status: 'skipped', reason: 'NOT_FOUND' };
           } catch (e) {
             console.error(`Failed to translate item ${id}:`, e);
-            // We continue with other items
+            return { status: 'failed', error: e.message };
           }
         })
       );
       
+      // 결과 집계
+      results.forEach(r => {
+        if (r.status === 'fulfilled') {
+          if (r.value.status === 'skipped') skippedCount++;
+          else if (r.value.status === 'translated') translatedCount++;
+          else if (r.value.status === 'failed') failedCount++;
+        } else {
+          failedCount++;
+        }
+      });
+      
       // 배치 간 짧은 대기 (rate limit 방지)
       if (i + BATCH_SIZE < ids.length) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
 
+    console.log(`[BatchTranslate] 완료 - 번역: ${translatedCount}, 스킵: ${skippedCount}, 실패: ${failedCount}`);
+    
     revalidatePath("/admin");
-    return { success: true };
+    return { 
+      success: true, 
+      translatedCount, 
+      skippedCount, 
+      failedCount,
+      message: `번역: ${translatedCount}개, 스킵(이미완료): ${skippedCount}개, 실패: ${failedCount}개`
+    };
   } catch (error) {
     console.error("Batch translate failed:", error);
     return { success: false, error: error.message };

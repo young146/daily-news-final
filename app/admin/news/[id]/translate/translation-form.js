@@ -222,7 +222,12 @@ export default function TranslationForm({ newsItem, nextId }) {
 
                                 <div
                                     className="prose prose-lg max-w-none text-gray-800"
-                                    dangerouslySetInnerHTML={{ __html: formData.translatedContent }}
+                                    dangerouslySetInnerHTML={{ 
+                                        __html: formData.imageUrl 
+                                            // Featured Image가 있으면, 본문의 첫 번째 img 태그만 제거
+                                            ? formData.translatedContent.replace(/^\s*(<p[^>]*>)?\s*<img[^>]*>\s*(<\/p>)?/i, '')
+                                            : formData.translatedContent
+                                    }}
                                 />
 
                                 <div className="mt-8 pt-8 border-t text-sm text-gray-500">
