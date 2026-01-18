@@ -1648,19 +1648,9 @@ function jenny_app_banner_script() {
             return /iPhone|iPad|iPod/i.test(navigator.userAgent);
         }
         
-        // SNS에서 왔는지 체크 (referrer 또는 utm 파라미터)
-        function isFromSNS() {
-            var ref = document.referrer.toLowerCase();
-            var snsPatterns = ['facebook', 'instagram', 'twitter', 't.co', 'telegram', 'kakaotalk', 'line.me', 'naver'];
-            
-            for (var i = 0; i < snsPatterns.length; i++) {
-                if (ref.indexOf(snsPatterns[i]) !== -1) return true;
-            }
-            
-            // UTM 파라미터 체크
-            if (window.location.search.indexOf('utm_') !== -1) return true;
-            
-            return false;
+        // 앱 선호 여부 확인 (영구 저장)
+        function prefersApp() {
+            return localStorage.getItem('jenny_prefer_app') === 'true';
         }
         
         // 배너 표시 여부 결정
@@ -1668,13 +1658,9 @@ function jenny_app_banner_script() {
             // 모바일만
             if (!isMobile()) return false;
             
-            // 이미 닫았으면 표시 안함 (24시간)
-            var dismissed = localStorage.getItem('jenny_app_banner_dismissed');
-            if (dismissed) {
-                var dismissedTime = parseInt(dismissed, 10);
-                if (Date.now() - dismissedTime < 24 * 60 * 60 * 1000) {
-                    return false;
-                }
+            // "다시 보지 않기" 선택했으면 영구적으로 표시 안함
+            if (localStorage.getItem('jenny_app_banner_dismissed') === 'true') {
+                return false;
             }
             
             // 세션에서 이미 닫았으면 표시 안함
@@ -1685,34 +1671,45 @@ function jenny_app_banner_script() {
             return true;
         }
         
-        // 앱 열기
-        window.jennyOpenApp = function() {
-            var storeUrl = isIOS() ? IOS_STORE : ANDROID_STORE;
+        // 앱 열기 시도 (배너 없이)
+        function tryOpenAppSilently() {
             var appUrl = APP_SCHEME + 'daily-news';
+            var storeUrl = isIOS() ? IOS_STORE : ANDROID_STORE;
             
             // 앱 열기 시도
-            var start = Date.now();
-            
-            // hidden iframe으로 앱 스킴 호출
             var iframe = document.createElement('iframe');
             iframe.style.display = 'none';
             iframe.src = appUrl;
             document.body.appendChild(iframe);
             
-            // 앱이 안 열리면 스토어로 이동
+            // 2.5초 후에도 페이지가 보이면 앱이 없는 것 → 배너 표시
             setTimeout(function() {
-                document.body.removeChild(iframe);
-                // 앱이 열렸으면 페이지가 백그라운드로 갔다가 돌아옴
-                // 2.5초 이상 지났는데 아직 여기면 앱이 없는 것
-                if (Date.now() - start < 2500) {
-                    // 아직 시간이 안 지났으면 조금 더 대기
-                } else {
-                    window.location.href = storeUrl;
+                try { document.body.removeChild(iframe); } catch(e) {}
+                if (!document.hidden) {
+                    // 앱이 안 열렸으므로 선호도 초기화하고 배너 표시
+                    localStorage.removeItem('jenny_prefer_app');
+                    document.getElementById('jennyAppBanner').classList.add('show');
                 }
-            }, 100);
+            }, 2500);
+        }
+        
+        // 앱 열기 (배너에서 클릭)
+        window.jennyOpenApp = function() {
+            var storeUrl = isIOS() ? IOS_STORE : ANDROID_STORE;
+            var appUrl = APP_SCHEME + 'daily-news';
             
-            // 추가 안전장치: 2.5초 후에도 앱이 안 열렸으면 스토어로
+            // 앱 선호 설정 저장 (영구)
+            localStorage.setItem('jenny_prefer_app', 'true');
+            
+            // 앱 열기 시도
+            var iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = appUrl;
+            document.body.appendChild(iframe);
+            
+            // 2.5초 후에도 앱이 안 열렸으면 스토어로
             setTimeout(function() {
+                try { document.body.removeChild(iframe); } catch(e) {}
                 if (!document.hidden) {
                     window.location.href = storeUrl;
                 }
@@ -1727,16 +1724,31 @@ function jenny_app_banner_script() {
             sessionStorage.setItem('jenny_app_banner_closed', 'true');
         };
         
-        // 배너 다시 보지 않기 (24시간)
+        // 배너 다시 보지 않기 (영구)
         window.jennyDismissBanner = function() {
             document.getElementById('jennyAppBanner').classList.remove('show');
-            localStorage.setItem('jenny_app_banner_dismissed', Date.now().toString());
+            localStorage.setItem('jenny_app_banner_dismissed', 'true');
         };
         
-        // 페이지 로드 시 배너 표시
+        // 페이지 로드 시
         document.addEventListener('DOMContentLoaded', function() {
+            if (!isMobile()) return;
+            
+            // "다시 보지 않기" 했으면 아무것도 안함
+            if (localStorage.getItem('jenny_app_banner_dismissed') === 'true') {
+                return;
+            }
+            
+            // 앱 선호 설정이 있으면 배너 없이 바로 앱 열기 시도
+            if (prefersApp()) {
+                setTimeout(function() {
+                    tryOpenAppSilently();
+                }, 500);
+                return;
+            }
+            
+            // 첫 방문이면 배너 표시
             if (shouldShowBanner()) {
-                // 1초 후 배너 표시 (페이지 로딩 후)
                 setTimeout(function() {
                     document.getElementById('jennyAppBanner').classList.add('show');
                 }, 1000);
