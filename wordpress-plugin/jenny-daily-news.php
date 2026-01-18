@@ -1507,3 +1507,243 @@ function jenny_get_styles()
 
     </style>';
 }
+
+// ============================================================================
+// 앱 딥링크 배너 (App Deep Link Banner)
+// ============================================================================
+
+/**
+ * 앱 설치 유도 배너 출력
+ * SNS에서 유입된 모바일 사용자에게 앱 설치/열기 안내
+ */
+function jenny_app_banner_script() {
+    // daily-news 페이지에서만 실행
+    if (!is_page() || strpos($_SERVER['REQUEST_URI'], 'daily-news') === false) {
+        return;
+    }
+    ?>
+    <style>
+        /* 앱 배너 스타일 */
+        .jenny-app-banner-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 99999;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+        .jenny-app-banner-overlay.show {
+            display: flex;
+        }
+        .jenny-app-banner {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 32px 24px;
+            max-width: 340px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: jennyBannerSlideUp 0.3s ease-out;
+        }
+        @keyframes jennyBannerSlideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .jenny-app-banner-icon {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, #ea580c, #f97316);
+            border-radius: 16px;
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+        }
+        .jenny-app-banner-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+        .jenny-app-banner-desc {
+            font-size: 14px;
+            color: #6b7280;
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+        .jenny-app-banner-btn {
+            display: block;
+            width: 100%;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            margin-bottom: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .jenny-app-banner-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .jenny-app-banner-btn-primary {
+            background: linear-gradient(135deg, #ea580c, #f97316);
+            color: #ffffff;
+        }
+        .jenny-app-banner-btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        .jenny-app-banner-dismiss {
+            font-size: 12px;
+            color: #9ca3af;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .jenny-app-banner-dismiss:hover {
+            color: #6b7280;
+        }
+    </style>
+
+    <div id="jennyAppBanner" class="jenny-app-banner-overlay">
+        <div class="jenny-app-banner">
+            <div class="jenny-app-banner-icon">📱</div>
+            <div class="jenny-app-banner-title">씬짜오베트남 앱</div>
+            <div class="jenny-app-banner-desc">
+                앱으로 보시면 훨씬 빠르고<br>편리하게 이용하실 수 있습니다!
+            </div>
+            <button class="jenny-app-banner-btn jenny-app-banner-btn-primary" onclick="jennyOpenApp()">
+                📲 앱으로 보기
+            </button>
+            <button class="jenny-app-banner-btn jenny-app-banner-btn-secondary" onclick="jennyCloseBanner()">
+                웹에서 계속 보기
+            </button>
+            <div class="jenny-app-banner-dismiss" onclick="jennyDismissBanner()">
+                다시 보지 않기
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        // 설정값
+        var APP_SCHEME = 'xinchao://';
+        var IOS_STORE = 'https://apps.apple.com/app/id6754750793';
+        var ANDROID_STORE = 'https://play.google.com/store/apps/details?id=com.yourname.chaovnapp';
+        
+        // 모바일 체크
+        function isMobile() {
+            return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        }
+        
+        // iOS 체크
+        function isIOS() {
+            return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        }
+        
+        // SNS에서 왔는지 체크 (referrer 또는 utm 파라미터)
+        function isFromSNS() {
+            var ref = document.referrer.toLowerCase();
+            var snsPatterns = ['facebook', 'instagram', 'twitter', 't.co', 'telegram', 'kakaotalk', 'line.me', 'naver'];
+            
+            for (var i = 0; i < snsPatterns.length; i++) {
+                if (ref.indexOf(snsPatterns[i]) !== -1) return true;
+            }
+            
+            // UTM 파라미터 체크
+            if (window.location.search.indexOf('utm_') !== -1) return true;
+            
+            return false;
+        }
+        
+        // 배너 표시 여부 결정
+        function shouldShowBanner() {
+            // 모바일만
+            if (!isMobile()) return false;
+            
+            // 이미 닫았으면 표시 안함 (24시간)
+            var dismissed = localStorage.getItem('jenny_app_banner_dismissed');
+            if (dismissed) {
+                var dismissedTime = parseInt(dismissed, 10);
+                if (Date.now() - dismissedTime < 24 * 60 * 60 * 1000) {
+                    return false;
+                }
+            }
+            
+            // 세션에서 이미 닫았으면 표시 안함
+            if (sessionStorage.getItem('jenny_app_banner_closed')) {
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // 앱 열기
+        window.jennyOpenApp = function() {
+            var storeUrl = isIOS() ? IOS_STORE : ANDROID_STORE;
+            var appUrl = APP_SCHEME + 'daily-news';
+            
+            // 앱 열기 시도
+            var start = Date.now();
+            
+            // hidden iframe으로 앱 스킴 호출
+            var iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = appUrl;
+            document.body.appendChild(iframe);
+            
+            // 앱이 안 열리면 스토어로 이동
+            setTimeout(function() {
+                document.body.removeChild(iframe);
+                // 앱이 열렸으면 페이지가 백그라운드로 갔다가 돌아옴
+                // 2.5초 이상 지났는데 아직 여기면 앱이 없는 것
+                if (Date.now() - start < 2500) {
+                    // 아직 시간이 안 지났으면 조금 더 대기
+                } else {
+                    window.location.href = storeUrl;
+                }
+            }, 100);
+            
+            // 추가 안전장치: 2.5초 후에도 앱이 안 열렸으면 스토어로
+            setTimeout(function() {
+                if (!document.hidden) {
+                    window.location.href = storeUrl;
+                }
+            }, 2500);
+            
+            jennyCloseBanner();
+        };
+        
+        // 배너 닫기 (세션 동안)
+        window.jennyCloseBanner = function() {
+            document.getElementById('jennyAppBanner').classList.remove('show');
+            sessionStorage.setItem('jenny_app_banner_closed', 'true');
+        };
+        
+        // 배너 다시 보지 않기 (24시간)
+        window.jennyDismissBanner = function() {
+            document.getElementById('jennyAppBanner').classList.remove('show');
+            localStorage.setItem('jenny_app_banner_dismissed', Date.now().toString());
+        };
+        
+        // 페이지 로드 시 배너 표시
+        document.addEventListener('DOMContentLoaded', function() {
+            if (shouldShowBanner()) {
+                // 1초 후 배너 표시 (페이지 로딩 후)
+                setTimeout(function() {
+                    document.getElementById('jennyAppBanner').classList.add('show');
+                }, 1000);
+            }
+        });
+    })();
+    </script>
+    <?php
+}
+add_action('wp_footer', 'jenny_app_banner_script');
