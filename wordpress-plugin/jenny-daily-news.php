@@ -1,8 +1,8 @@
-<?php
+﻿<?php
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 1.9
+ * Version: 1.9.1
  * Author: Jenny (Antigravity)
  */
 
@@ -1188,11 +1188,8 @@ function jenny_get_styles()
         .jenny-archive-wrapper.active .jenny-date-list { 
             display: block !important; 
         }
-        /* PC에서도 호버로 열기 */
+        /* PC에서는 클릭으로만 열기 (호버 제거로 흔들림 방지) */
         @media (min-width: 769px) {
-            .jenny-archive-wrapper:hover .jenny-date-list { 
-                display: block !important; 
-            }
             .jenny-date-list {
                 max-height: 60vh; /* PC에서는 조금 더 작게 */
             }

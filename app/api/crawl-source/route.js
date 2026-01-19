@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { translateTitle } from '@/lib/translator';
 
+// Vercel Pro Plan: 60초 타임아웃 설정
+export const maxDuration = 60;
+
 // 정적 import (Vercel 호환)
 import crawlVnExpress from '@/scripts/crawlers/vnexpress';
 import crawlVnExpressVN from '@/scripts/crawlers/vnexpress-vn';

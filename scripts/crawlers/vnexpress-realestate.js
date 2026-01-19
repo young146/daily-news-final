@@ -46,9 +46,9 @@ async function crawlVnExpressRealEstate() {
 
         console.log(`[VnExpress Real Estate] Found ${listItems.length} RSS items`);
         
-        // 병렬 처리로 최적화 (5개씩 배치 처리)
+        // 병렬 처리로 최적화 (10개씩 배치 처리)
         const detailedItems = [];
-        const BATCH_SIZE = 5;
+        const BATCH_SIZE = 10; // 동시에 10개씩 처리 (속도 향상)
         
         const fetchDetail = async (item) => {
             try {
@@ -95,12 +95,15 @@ async function crawlVnExpressRealEstate() {
             
             console.log(`[VnExpress Real Estate] Batch ${batchNum}/${totalBatches} (${batch.length} items)...`);
             
-            const results = await Promise.all(batch.map(item => fetchDetail(item)));
-            detailedItems.push(...results);
+            // 병렬 실행 (Promise.allSettled: 일부 실패해도 나머지 계속)
+            const results = await Promise.allSettled(batch.map(item => fetchDetail(item)));
+            results.forEach(result => {
+                if (result.status === 'fulfilled') {
+                    detailedItems.push(result.value);
+                }
+            });
             
-            if (i + BATCH_SIZE < listItems.length) {
-                await new Promise(resolve => setTimeout(resolve, 200));
-            }
+            // 배치 간 딜레이 제거 (속도 향상)
         }
 
         console.log(`[VnExpress Real Estate] Successfully crawled ${detailedItems.length} items`);

@@ -46,9 +46,9 @@ async function crawlVnExpressEconomy() {
 
         console.log(`[VnExpress Economy] Found ${listItems.length} RSS items`);
         
-        // 병렬 처리로 최적화 (5개씩 배치 처리)
+        // 병렬 처리로 최적화 (10개씩 배치 처리)
         const detailedItems = [];
-        const BATCH_SIZE = 5; // 동시에 5개씩 처리
+        const BATCH_SIZE = 10; // 동시에 10개씩 처리 (속도 향상)
         
         // 상세 페이지 가져오기 함수
         const fetchDetail = async (item) => {
@@ -99,14 +99,15 @@ async function crawlVnExpressEconomy() {
             
             console.log(`[VnExpress Economy] Processing batch ${batchNum}/${totalBatches} (${batch.length} items)...`);
             
-            // 병렬 실행
-            const results = await Promise.all(batch.map(item => fetchDetail(item)));
-            detailedItems.push(...results);
+            // 병렬 실행 (Promise.allSettled: 일부 실패해도 나머지 계속)
+            const results = await Promise.allSettled(batch.map(item => fetchDetail(item)));
+            results.forEach(result => {
+                if (result.status === 'fulfilled') {
+                    detailedItems.push(result.value);
+                }
+            });
             
-            // 배치 간 짧은 대기 (서버 부하 방지)
-            if (i + BATCH_SIZE < listItems.length) {
-                await new Promise(resolve => setTimeout(resolve, 200));
-            }
+            // 배치 간 딜레이 제거 (속도 향상)
         }
 
         console.log(`[VnExpress Economy] Successfully crawled ${detailedItems.length} items`);
