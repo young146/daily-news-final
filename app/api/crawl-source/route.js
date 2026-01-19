@@ -22,6 +22,8 @@ import crawlThedodo from '@/scripts/crawlers/thedodo';
 import crawlPetmd from '@/scripts/crawlers/petmd';
 import crawlBonappetit from '@/scripts/crawlers/bonappetit';
 import crawlHealthSource from '@/scripts/crawlers/health';
+import crawlVnExpressTravel from '@/scripts/crawlers/vnexpress-travel';
+import crawlVnExpressHealth from '@/scripts/crawlers/vnexpress-health';
 
 const koreanSources = ['Yonhap', 'Saigoneer'];
 

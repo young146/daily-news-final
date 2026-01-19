@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
 import { translateTitle } from '@/lib/translator';
+import crawlVnExpressTravel from '@/scripts/crawlers/vnexpress-travel';
+import crawlVnExpressHealth from '@/scripts/crawlers/vnexpress-health';
 
 // Vercel Pro Plan: 60초 타임아웃 설정
 export const maxDuration = 60;
@@ -414,75 +416,6 @@ async function crawlThanhNien() {
     return items;
 }
 
-async function crawlPublicSecurity() {
-    const cheerio = await import('cheerio');
-    const items = [];
-    try {
-        console.log('Crawling Public Security News (en.cand.com.vn)...');
-        
-        const { data } = await fetchWithRetry('https://en.cand.com.vn/');
-        const $ = cheerio.load(data);
-        
-        const listItems = [];
-        const seen = new Set();
-        
-        $('a[href]').each((i, el) => {
-            if (listItems.length >= 10) return;
-            
-            const title = $(el).text().trim();
-            const link = $(el).attr('href');
-            
-            if (!title || title.length < 20 || title.length > 200) return;
-            if (!link || link === '/' || link.startsWith('#')) return;
-            
-            const isArticle = link.includes('-i') || link.match(/[a-z]-[0-9]+\/?$/);
-            const isCategory = link.match(/^\/(politics|public-security-forces|culture-travel|economy)\/?$/);
-            if (isCategory || !isArticle) return;
-            
-            const fullUrl = link.startsWith('http') ? link : `https://en.cand.com.vn${link}`;
-            
-            if (seen.has(fullUrl)) return;
-            seen.add(fullUrl);
-            
-            let category = 'Policy';
-            if (link.includes('/public-security')) category = 'Society';
-            if (link.includes('/culture')) category = 'Culture';
-            if (link.includes('/economy')) category = 'Economy';
-            
-            listItems.push({ title, url: fullUrl, category });
-        });
-
-        console.log(`Public Security list items found: ${listItems.length}`);
-        
-        for (let i = 0; i < listItems.length; i++) {
-            const item = listItems[i];
-            const detail = await fetchDetailPage(item.url, ['.entry-content', '.post-content', '.article-content', '.detail-content']);
-            
-            const summary = detail.content ? 
-                cheerio.load(detail.content).text().trim().substring(0, 300) : 
-                item.title;
-            
-            items.push({
-                title: item.title,
-                summary: summary,
-                content: detail.content,
-                originalUrl: item.url,
-                imageUrl: detail.imageUrl,
-                source: 'PublicSecurity',
-                category: item.category,
-                viewCount: i + 1, // 메인 페이지 순서
-                publishedAt: new Date(),
-                status: 'DRAFT'
-            });
-            await new Promise(r => setTimeout(r, 500));
-        }
-        console.log(`Public Security: ${items.length} items`);
-    } catch (e) {
-        console.error('Public Security crawl error:', e.message);
-    }
-    return items;
-}
-
 async function crawlSaigoneer() {
     const cheerio = await import('cheerio');
     const items = [];
@@ -707,32 +640,45 @@ async function crawlCafef() {
     return await crawlFn();
 }
 
+async function crawlVnExpressRealEstate() {
+    const crawlVnExpressRealEstateModule = await import('@/scripts/crawlers/vnexpress-realestate');
+    const crawlFn = crawlVnExpressRealEstateModule.default || crawlVnExpressRealEstateModule;
+    return await crawlFn();
+}
+
+async function crawlCafefRealEstate() {
+    const crawlCafefRealEstateModule = await import('@/scripts/crawlers/cafef-realestate');
+    const crawlFn = crawlCafefRealEstateModule.default || crawlCafefRealEstateModule;
+    return await crawlFn();
+}
+
 export async function POST(request) {
     try {
-        console.log('🚀 Starting News Crawl (17 Sources with Detail Pages)...');
+        console.log('🚀 Starting News Crawl (18 Sources)...');
         
         const results = await Promise.all([
             crawlVnExpress(),
             crawlVnExpressVN(),
             crawlVnExpressEconomy(),
+            crawlVnExpressRealEstate(),
+            crawlVnExpressTravel(),
+            crawlVnExpressHealth(),
             crawlCafef(),
+            crawlCafefRealEstate(),
             crawlYonhap(),
             crawlInsideVina(),
             crawlTuoitre(),
             crawlThanhNien(),
-            crawlPublicSecurity(),
             crawlSaigoneer(),
             crawlSoraNews24(),
             crawlTheDodo(),
             crawlPetMD(),
-            crawlVnExpressTravel(),
-            crawlVnExpressHealth(),
             crawlBonAppetit(),
             crawlHealth()
         ]);
         
-        const [vnItems, vnvnItems, vneItems, cafefItems, yhItems, ivItems, ttItems, tnItems, psItems, sgItems, soraItems, thedodoItems, petmdItems, travelItems, healthItems, bonappetitItems, healthMagItems] = results;
-        const allItems = [...vnItems, ...vnvnItems, ...vneItems, ...cafefItems, ...yhItems, ...ivItems, ...ttItems, ...tnItems, ...psItems, ...sgItems, ...soraItems, ...thedodoItems, ...petmdItems, ...travelItems, ...healthItems, ...bonappetitItems, ...healthMagItems];
+        const [vnItems, vnvnItems, vneItems, vnreItems, travelItems, vnhealthItems, cafefItems, cafefREItems, yhItems, ivItems, ttItems, tnItems, sgItems, soraItems, thedodoItems, petmdItems, bonappetitItems, healthMagItems] = results;
+        const allItems = [...vnItems, ...vnvnItems, ...vneItems, ...vnreItems, ...travelItems, ...vnhealthItems, ...cafefItems, ...cafefREItems, ...yhItems, ...ivItems, ...ttItems, ...tnItems, ...sgItems, ...soraItems, ...thedodoItems, ...petmdItems, ...bonappetitItems, ...healthMagItems];
         
         console.log(`Total items found: ${allItems.length}`);
         
@@ -741,18 +687,19 @@ export async function POST(request) {
             'VnExpress': vnItems.length,
             'VnExpress VN': vnvnItems.length,
             'VnExpress Economy': vneItems.length,
+            'VnExpress Real Estate': vnreItems.length,
+            'VnExpress Travel': travelItems.length,
+            'VnExpress Health': vnhealthItems.length,
             'Cafef': cafefItems.length,
+            'Cafef Real Estate': cafefREItems.length,
             'Yonhap News': yhItems.length,
             'InsideVina': ivItems.length,
             'TuoiTre': ttItems.length,
             'ThanhNien': tnItems.length,
-            'PublicSecurity': psItems.length,
             'Saigoneer': sgItems.length,
             'SoraNews24': soraItems.length,
             'The Dodo': thedodoItems.length,
             'PetMD': petmdItems.length,
-            'VnExpress Travel': travelItems.length,
-            'VnExpress Health': healthItems.length,
             'Bon Appétit': bonappetitItems.length,
             'Health': healthMagItems.length
         };

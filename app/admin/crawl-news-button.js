@@ -27,15 +27,15 @@ export default function CrawlNewsButton() {
     }, [isCrawling]);
 
     const handleCrawl = async () => {
-        alert('⚠️ 전체 크롤링은 Vercel 타임아웃(60초) 제한으로 인해 비활성화되었습니다.\n\n대신 사용 방법:\n\n1. 우측 상단 "설정" 버튼 클릭\n2. "소스별 크롤링" 섹션에서 원하는 소스만 개별적으로 크롤링\n3. 자동 크롤링은 매일 밤 11시(베트남 시간)에 실행됩니다\n\n소스별 크롤링은 각각 10-20초 내에 완료됩니다.');
-        return;
-        
         setIsCrawling(true);
         setResult(null);
         setShowResult(false);
         
         try {
-            const response = await fetch('/api/crawl-news', { method: 'POST' });
+            const response = await fetch('/api/crawl-news', { 
+                method: 'POST',
+                keepalive: true // 백그라운드 실행
+            });
             const data = await response.json();
 
             if (!response.ok) throw new Error(data.error || 'Server error');
@@ -46,8 +46,9 @@ export default function CrawlNewsButton() {
         } catch (error) {
             console.error('Crawl failed:', error);
             alert(`뉴스 수집 실패: ${error.message}`);
+        } finally {
+            setIsCrawling(false);
         }
-        setIsCrawling(false);
     };
 
     const handleClose = () => {
@@ -58,20 +59,45 @@ export default function CrawlNewsButton() {
     const sourceLabels = {
         'VnExpress': 'VnExpress (영문)',
         'VnExpress VN': 'VnExpress (베트남어)',
-        'Yonhap News': '연합뉴스',
-        'InsideVina': '인사이드비나',
-        'TuoiTre': 'Tuổi Trẻ',
-        'ThanhNien': 'Thanh Niên'
+        'VnExpress Economy': 'VnExpress Economy (경제)',
+        'VnExpress Real Estate': 'VnExpress Real Estate (부동산)',
+        'VnExpress Travel': 'VnExpress Travel (여행)',
+        'VnExpress Health': 'VnExpress Health (건강)',
+        'Cafef': 'Cafef (경제 전문)',
+        'Cafef Real Estate': 'Cafef Real Estate (부동산)',
+        'Yonhap News': 'Yonhap (연합뉴스)',
+        'InsideVina': 'InsideVina',
+        'TuoiTre': 'TuoiTre (Tuổi Trẻ)',
+        'ThanhNien': 'ThanhNien (Thanh Niên)',
+        'Saigoneer': 'Saigoneer (음식/여행)',
+        'SoraNews24': 'SoraNews24 (펫/여행)',
+        'The Dodo': 'The Dodo (펫)',
+        'PetMD': 'PetMD (펫)',
+        'Bon Appétit': 'Bon Appétit (음식/레시피)',
+        'Health': 'Health (건강/웰니스)'
     };
 
     return (
         <>
             <button
                 onClick={handleCrawl}
-                className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 transition flex items-center gap-2"
-                title="전체 크롤링은 타임아웃 제한으로 비활성화됨 - 소스별 크롤링을 사용하세요"
+                disabled={isCrawling}
+                className={`${
+                    isCrawling 
+                        ? 'bg-gray-400 cursor-not-allowed' 
+                        : 'bg-blue-600 hover:bg-blue-700'
+                } text-white px-4 py-2 rounded transition flex items-center gap-2`}
             >
-                ⚠️ 전체 크롤링 (비활성화)
+                {isCrawling ? (
+                    <>
+                        <span className="animate-spin">⏳</span>
+                        뉴스 수집 중...
+                    </>
+                ) : (
+                    <>
+                        📰 전체 뉴스 수집
+                    </>
+                )}
             </button>
 
             {showResult && result && (
