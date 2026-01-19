@@ -2,9 +2,11 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 
 async function crawlCafef() {
-    console.log('Starting crawl of Cafef.vn (Vietnam Economy News)...');
+    console.log('[Cafef] Starting crawl of Cafef.vn (Vietnam Economy News)...');
     try {
+        console.log('[Cafef] Fetching main page...');
         const { data } = await axios.get('https://cafef.vn/', {
+            timeout: 10000,
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -14,12 +16,13 @@ async function crawlCafef() {
         const $ = cheerio.load(data);
         const listItems = [];
 
+        console.log('[Cafef] Parsing list items...');
         // Cafef.vn 메인 페이지 선택자 (실제 사이트 구조에 맞게 수정)
         // .news-item과 .item이 작동함을 확인
         
         // 방법 1: .news-item 선택자 사용
         $('.news-item').each((index, element) => {
-            if (listItems.length >= 20) return false;
+            if (listItems.length >= 20) return false; // 최대 20개
 
             const titleEl = $(element).find('a').first();
             const title = titleEl.text().trim();
@@ -63,8 +66,9 @@ async function crawlCafef() {
 
         // 방법 2: .item 선택자 사용
         if (listItems.length < 15) {
+            console.log('[Cafef] Using secondary selector...');
             $('.item').each((index, element) => {
-                if (listItems.length >= 20) return false;
+                if (listItems.length >= 20) return false; // 최대 20개
 
                 const titleEl = $(element).find('a').first();
                 const title = titleEl.text().trim();
@@ -108,9 +112,10 @@ async function crawlCafef() {
         }
 
         // 방법 3: h3 a, h2 a 직접 링크 수집
-        if (listItems.length < 10) {
+        if (listItems.length < 15) {
+            console.log('[Cafef] Using tertiary selector...');
             $('h3 a, h2 a').each((index, element) => {
-                if (listItems.length >= 20) return false;
+                if (listItems.length >= 20) return false; // 최대 20개
                 
                 const url = $(element).attr('href');
                 const title = $(element).text().trim();
@@ -149,10 +154,15 @@ async function crawlCafef() {
             });
         }
 
+        console.log(`[Cafef] Found ${listItems.length} list items`);
+        
+        // 병렬 처리로 최적화
         const detailedItems = [];
-        for (const item of listItems) {
+        const BATCH_SIZE = 5;
+        
+        const fetchDetail = async (item) => {
             try {
-                console.log(`Fetching details for: ${item.title.substring(0, 50)}...`);
+                console.log(`[Cafef] Fetching: ${item.title.substring(0, 40)}...`);
                 const { data: detailData } = await axios.get(item.originalUrl, {
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -163,15 +173,12 @@ async function crawlCafef() {
                 });
                 const $detail = cheerio.load(detailData);
 
-                // Cafef 본문 선택자 (다양한 패턴 시도)
                 let content = $detail('.detail-content, .article-content, .content-detail, .fck_detail, article .content, .post-content, #article-body').html();
                 
-                // 본문이 없으면 다른 선택자 시도
                 if (!content) {
                     content = $detail('article, .main-content, .entry-content').html();
                 }
 
-                // 이미지 추출 (og:image 우선)
                 let imageUrl = $detail('meta[property="og:image"]').attr('content');
                 if (imageUrl) {
                     item.imageUrl = imageUrl;
@@ -182,7 +189,6 @@ async function crawlCafef() {
                     }
                 }
 
-                // 요약이 없으면 본문에서 추출
                 if (!item.summary && content) {
                     const $content = cheerio.load(content);
                     item.summary = $content('p').first().text().trim().substring(0, 200);
@@ -191,24 +197,39 @@ async function crawlCafef() {
                 if (content) {
                     item.content = content.trim();
                 } else {
-                    console.warn(`No content found for ${item.originalUrl}`);
+                    console.warn(`[Cafef] No content for ${item.originalUrl}`);
                     item.content = item.summary || item.title;
                 }
-
-                detailedItems.push(item);
-                await new Promise(resolve => setTimeout(resolve, 1000)); // 서버 부하 방지
-
+                
+                return item;
             } catch (err) {
-                console.error(`Failed to fetch details for ${item.originalUrl}:`, err.message);
+                console.error(`[Cafef] Failed: ${item.title.substring(0, 30)}...`, err.message);
                 item.content = item.summary || item.title;
-                detailedItems.push(item);
+                return item;
+            }
+        };
+        
+        for (let i = 0; i < listItems.length; i += BATCH_SIZE) {
+            const batch = listItems.slice(i, i + BATCH_SIZE);
+            const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+            const totalBatches = Math.ceil(listItems.length / BATCH_SIZE);
+            
+            console.log(`[Cafef] Batch ${batchNum}/${totalBatches} (${batch.length} items)...`);
+            
+            const results = await Promise.all(batch.map(item => fetchDetail(item)));
+            detailedItems.push(...results);
+            
+            if (i + BATCH_SIZE < listItems.length) {
+                await new Promise(resolve => setTimeout(resolve, 200));
             }
         }
 
-        console.log(`Cafef: ${detailedItems.length} items collected`);
+        console.log(`[Cafef] Successfully crawled ${detailedItems.length} items`);
         return detailedItems;
     } catch (error) {
-        console.error('Cafef crawl failed:', error.message);
+        console.error('[Cafef] Crawl failed:', error.message);
+        console.error('[Cafef] Error stack:', error.stack);
+        // 에러가 발생해도 빈 배열 리턴하여 다른 크롤러는 계속 진행
         return [];
     }
 }

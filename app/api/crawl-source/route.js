@@ -2,6 +2,24 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { translateTitle } from '@/lib/translator';
 
+// 정적 import (Vercel 호환)
+import crawlVnExpress from '@/scripts/crawlers/vnexpress';
+import crawlVnExpressVN from '@/scripts/crawlers/vnexpress-vn';
+import crawlVnExpressEconomy from '@/scripts/crawlers/vnexpress-economy';
+import crawlVnExpressRealestate from '@/scripts/crawlers/vnexpress-realestate';
+import crawlCafef from '@/scripts/crawlers/cafef';
+import crawlCafefRealestate from '@/scripts/crawlers/cafef-realestate';
+import crawlYonhap from '@/scripts/crawlers/yonhap';
+import crawlInsidevina from '@/scripts/crawlers/insidevina';
+import crawlTuoitre from '@/scripts/crawlers/tuoitre';
+import crawlThanhnien from '@/scripts/crawlers/thanhnien';
+import crawlSaigoneer from '@/scripts/crawlers/saigoneer';
+import crawlSoranews24 from '@/scripts/crawlers/soranews24';
+import crawlThedodo from '@/scripts/crawlers/thedodo';
+import crawlPetmd from '@/scripts/crawlers/petmd';
+import crawlBonappetit from '@/scripts/crawlers/bonappetit';
+import crawlHealthSource from '@/scripts/crawlers/health';
+
 const koreanSources = ['Yonhap', 'Saigoneer'];
 
 const sourceNames = {
@@ -223,24 +241,24 @@ async function crawlVnExpressHealth() {
 }
 
 const crawlers = {
-  'vnexpress': () => require('@/scripts/crawlers/vnexpress')(),
-  'vnexpress-vn': () => require('@/scripts/crawlers/vnexpress-vn')(),
-  'vnexpress-economy': () => require('@/scripts/crawlers/vnexpress-economy')(),
-  'vnexpress-realestate': () => require('@/scripts/crawlers/vnexpress-realestate')(),
-  'cafef': () => require('@/scripts/crawlers/cafef')(),
-  'cafef-realestate': () => require('@/scripts/crawlers/cafef-realestate')(),
-  'yonhap': () => require('@/scripts/crawlers/yonhap')(),
-  'insidevina': () => require('@/scripts/crawlers/insidevina')(),
-  'tuoitre': () => require('@/scripts/crawlers/tuoitre')(),
-  'thanhnien': () => require('@/scripts/crawlers/thanhnien')(),
-  'saigoneer': () => require('@/scripts/crawlers/saigoneer')(),
-  'soranews24': () => require('@/scripts/crawlers/soranews24')(),
-  'thedodo': () => require('@/scripts/crawlers/thedodo')(),
-  'petmd': () => require('@/scripts/crawlers/petmd')(),
-  'vnexpress-travel': () => crawlVnExpressTravel(),
-  'vnexpress-health': () => crawlVnExpressHealth(),
-  'bonappetit': () => require('@/scripts/crawlers/bonappetit')(),
-  'health': () => require('@/scripts/crawlers/health')(),
+  'vnexpress': crawlVnExpress,
+  'vnexpress-vn': crawlVnExpressVN,
+  'vnexpress-economy': crawlVnExpressEconomy,
+  'vnexpress-realestate': crawlVnExpressRealestate,
+  'cafef': crawlCafef,
+  'cafef-realestate': crawlCafefRealestate,
+  'yonhap': crawlYonhap,
+  'insidevina': crawlInsidevina,
+  'tuoitre': crawlTuoitre,
+  'thanhnien': crawlThanhnien,
+  'saigoneer': crawlSaigoneer,
+  'soranews24': crawlSoranews24,
+  'thedodo': crawlThedodo,
+  'petmd': crawlPetmd,
+  'vnexpress-travel': crawlVnExpressTravel,
+  'vnexpress-health': crawlVnExpressHealth,
+  'bonappetit': crawlBonappetit,
+  'health': crawlHealthSource,
 };
 
 export async function POST(request) {
