@@ -18,28 +18,6 @@ export default function SettingsPage() {
     fetchCrawlerLogs();
   }, []);
 
-  // 크롤링 중 페이지 이탈 방지 경고
-  useEffect(() => {
-    const isCrawling = Object.values(crawlStatus).some(
-      (status) => status === "crawling"
-    );
-
-    const handleBeforeUnload = (e) => {
-      if (isCrawling) {
-        e.preventDefault();
-        e.returnValue = "크롤링이 진행 중입니다. 페이지를 떠나도 작업은 백그라운드에서 계속됩니다.";
-        return e.returnValue;
-      }
-    };
-
-    if (isCrawling) {
-      window.addEventListener("beforeunload", handleBeforeUnload);
-    }
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [crawlStatus]);
 
   const resetCardNews = async () => {
     // ... (기존 코드)
@@ -99,7 +77,6 @@ export default function SettingsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ source }),
-        keepalive: true, // ⭐ 페이지를 떠나도 요청 유지
       });
       const data = await res.json();
       if (data.success) {
@@ -509,11 +486,6 @@ export default function SettingsPage() {
                 </div>
                 <div style={{ fontSize: "12px", color: "#9ca3af" }}>
                   {source.file}.js
-                  {crawlStatus[source.id] === "crawling" && (
-                    <span style={{ color: "#10b981", marginLeft: "8px" }}>
-                      • 백그라운드 실행 중 (페이지를 떠나도 계속됩니다)
-                    </span>
-                  )}
                 </div>
               </div>
               <div

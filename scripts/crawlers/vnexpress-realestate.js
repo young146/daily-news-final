@@ -7,7 +7,7 @@ async function crawlVnExpressRealEstate() {
         console.log('[VnExpress Real Estate] Fetching RSS feed...');
         // RSS 피드로 아이템 리스트 가져오기 (페이지가 동적 로딩이라 RSS 사용)
         const { data: rssData } = await axios.get('https://vnexpress.net/rss/bat-dong-san.rss', {
-            timeout: 10000,
+            timeout: 5000, // 5초로 단축 (Vercel 타임아웃 방지)
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }
@@ -20,7 +20,7 @@ async function crawlVnExpressRealEstate() {
 
         // RSS 피드에서 아이템 추출 (리스트만 가져옴, 상세는 나중에)
         $rss('item').each((index, element) => {
-            if (index >= 20) return false; // 최대 20개
+            if (index >= 5) return false; // 최대 5개 (타임아웃 방지)
 
             const title = $rss(element).find('title').text().trim();
             const link = $rss(element).find('link').text().trim();
@@ -48,13 +48,13 @@ async function crawlVnExpressRealEstate() {
         
         // 병렬 처리로 최적화 (10개씩 배치 처리)
         const detailedItems = [];
-        const BATCH_SIZE = 10; // 동시에 10개씩 처리 (속도 향상)
+        const BATCH_SIZE = 5; // 동시에 5개씩 처리 (타임아웃 방지)
         
         const fetchDetail = async (item) => {
             try {
                 console.log(`[VnExpress Real Estate] Fetching: ${item.title.substring(0, 40)}...`);
                 const { data: detailData } = await axios.get(item.originalUrl, {
-                    timeout: 10000,
+                    timeout: 5000, // 5초로 단축
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
                     }

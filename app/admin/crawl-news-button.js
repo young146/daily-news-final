@@ -1,14 +1,34 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function CrawlNewsButton() {
     const [isCrawling, setIsCrawling] = useState(false);
     const [result, setResult] = useState(null);
     const [showResult, setShowResult] = useState(false);
 
+    // 크롤링 중 페이지 이탈 방지 경고
+    useEffect(() => {
+        const handleBeforeUnload = (e) => {
+            if (isCrawling) {
+                e.preventDefault();
+                e.returnValue = "뉴스 수집이 진행 중입니다. 페이지를 떠나도 작업은 백그라운드에서 계속됩니다.";
+                return e.returnValue;
+            }
+        };
+
+        if (isCrawling) {
+            window.addEventListener("beforeunload", handleBeforeUnload);
+        }
+
+        return () => {
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+        };
+    }, [isCrawling]);
+
     const handleCrawl = async () => {
-        if (!confirm('7개 소스에서 뉴스를 수집합니다. 1-2분 정도 소요됩니다. 진행하시겠습니까?')) return;
+        alert('⚠️ 전체 크롤링은 Vercel 타임아웃(60초) 제한으로 인해 비활성화되었습니다.\n\n대신 사용 방법:\n\n1. 우측 상단 "설정" 버튼 클릭\n2. "소스별 크롤링" 섹션에서 원하는 소스만 개별적으로 크롤링\n3. 자동 크롤링은 매일 밤 11시(베트남 시간)에 실행됩니다\n\n소스별 크롤링은 각각 10-20초 내에 완료됩니다.');
+        return;
         
         setIsCrawling(true);
         setResult(null);
@@ -48,19 +68,10 @@ export default function CrawlNewsButton() {
         <>
             <button
                 onClick={handleCrawl}
-                disabled={isCrawling}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-50"
-                title="7개 소스에서 뉴스 수집"
+                className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 transition flex items-center gap-2"
+                title="전체 크롤링은 타임아웃 제한으로 비활성화됨 - 소스별 크롤링을 사용하세요"
             >
-                {isCrawling ? (
-                    <>
-                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                        </svg>
-                        수집 중... (1-2분 소요)
-                    </>
-                ) : '뉴스 수집'}
+                ⚠️ 전체 크롤링 (비활성화)
             </button>
 
             {showResult && result && (

@@ -6,7 +6,7 @@ async function crawlVnExpress() {
     try {
         console.log('[VnExpress] Fetching main page...');
         const { data } = await axios.get('https://e.vnexpress.net/', {
-            timeout: 10000,
+            timeout: 5000, // 5초로 단축 (Vercel 타임아웃 방지)
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }
@@ -20,22 +20,26 @@ async function crawlVnExpress() {
         
         console.log('[VnExpress] Parsing list items...');
 
-        $('.item-news, .item-topstory').each((index, element) => {
-            if (index >= 20) return false; // 최대 20개
+        // 더 넓은 선택자 사용
+        $('.item-news, .item-topstory, article.item-news, .title-news').each((index, element) => {
+            if (listItems.length >= 5) return false; // 최대 5개 (타임아웃 방지)
 
-            const titleElement = $(element).find('.title_news_site a');
+            const titleElement = $(element).find('a').first();
             const title = titleElement.text().trim();
             const url = titleElement.attr('href');
-            const summary = $(element).find('.lead_news_site a').text().trim();
-            const imageElement = $(element).find('img');
-            let imageUrl = imageElement.attr('src') || imageElement.attr('data-original');
+            const summary = $(element).find('.description, .lead_news_site a, p').first().text().trim();
+            const imageElement = $(element).find('img').first();
+            let imageUrl = imageElement.attr('src') || imageElement.attr('data-src') || imageElement.attr('data-original');
 
-            if (title && url) {
+            if (title && url && title.length > 10) {
                 let category = 'Society';
                 if (url.includes('business')) category = 'Economy';
                 if (url.includes('life')) category = 'Culture';
 
-                listItems.push({
+                // 중복 체크
+                const isDuplicate = listItems.some(item => item.originalUrl === url);
+                if (!isDuplicate) {
+                    listItems.push({
                     title,
                     summary,
                     originalUrl: url,
@@ -44,20 +48,23 @@ async function crawlVnExpress() {
                     source: 'VnExpress',
                     publishedAt: new Date(),
                     status: 'DRAFT'
-                });
+                    });
+                }
             }
         });
+        
+        console.log(`[VnExpress] Found ${listItems.length} list items from selectors`);
 
         console.log(`[VnExpress] Found ${listItems.length} list items`);
         
         // 병렬 처리로 최적화
-        const BATCH_SIZE = 10; // 동시에 10개씩 처리 (속도 향상)
+        const BATCH_SIZE = 5; // 동시에 5개씩 처리 (타임아웃 방지)
         
         const fetchDetail = async (item) => {
             try {
                 console.log(`[VnExpress] Fetching: ${item.title.substring(0, 40)}...`);
                 const { data: detailData } = await axios.get(item.originalUrl, {
-                    timeout: 10000,
+                    timeout: 5000, // 5초로 단축
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
                     }

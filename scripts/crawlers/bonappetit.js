@@ -25,7 +25,7 @@ async function crawlBonAppetit() {
         
         // 링크 찾기: article, h2, h3 내 링크 확인
         $('a, article a, h2 a, h3 a, .story-list a, .post-list a').each((i, el) => {
-            if (listItems.length >= 30) return false;
+            if (listItems.length >= 5) return false; // 최대 5개 (타임아웃 방지)
             
             const href = $(el).attr('href') || '';
             const title = $(el).text().trim();
@@ -54,10 +54,10 @@ async function crawlBonAppetit() {
         
         // 날짜 필터링: 상세 페이지에서 날짜 확인 (최대 15개만 확인)
         const filteredItems = [];
-        for (const item of listItems.slice(0, 15)) {
+        for (const item of listItems.slice(0, 5)) { // 최대 5개 처리
             try {
                 const { data: checkData } = await axios.get(item.url, {
-                    timeout: 10000,
+                    timeout: 5000, // 5초로 단축 (Vercel 타임아웃 방지)
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -94,7 +94,7 @@ async function crawlBonAppetit() {
         console.log(`[Bon Appétit] List items found: ${listItems.length}`);
         
         const detailedItems = [];
-        for (const item of listItems.slice(0, 10)) {
+        for (const item of listItems.slice(0, 5)) { // 최대 5개 처리
             try {
                 console.log(`[Bon Appétit] Fetching details: ${item.title.substring(0, 50)}...`);
                 const { data: detailData } = await axios.get(item.url, {

@@ -6,7 +6,7 @@ async function crawlCafefRealEstate() {
     try {
         console.log('[Cafef Real Estate] Fetching main page...');
         const { data } = await axios.get('https://cafef.vn/bat-dong-san.chn', {
-            timeout: 10000,
+            timeout: 5000, // 5초로 단축 (Vercel 타임아웃 방지)
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -22,7 +22,7 @@ async function crawlCafefRealEstate() {
         
         // 방법 1: .news-item 선택자 사용
         $('.news-item').each((index, element) => {
-            if (listItems.length >= 20) return false; // 최대 20개
+            if (listItems.length >= 5) return false; // 최대 5개 (타임아웃 방지)
 
             const titleEl = $(element).find('a').first();
             const title = titleEl.text().trim();
@@ -68,7 +68,7 @@ async function crawlCafefRealEstate() {
         if (listItems.length < 15) {
             console.log('[Cafef Real Estate] Using secondary selector...');
             $('.item').each((index, element) => {
-                if (listItems.length >= 20) return false; // 최대 20개
+                if (listItems.length >= 5) return false; // 최대 5개 (타임아웃 방지)
 
                 const titleEl = $(element).find('a').first();
                 const title = titleEl.text().trim();
@@ -115,7 +115,7 @@ async function crawlCafefRealEstate() {
         if (listItems.length < 15) {
             console.log('[Cafef Real Estate] Using tertiary selector...');
             $('h3 a, h2 a').each((index, element) => {
-                if (listItems.length >= 20) return false; // 최대 20개
+                if (listItems.length >= 5) return false; // 최대 5개 (타임아웃 방지)
                 
                 const url = $(element).attr('href');
                 const title = $(element).text().trim();
@@ -158,7 +158,7 @@ async function crawlCafefRealEstate() {
         
         // 병렬 처리로 최적화
         const detailedItems = [];
-        const BATCH_SIZE = 10; // 동시에 10개씩 처리 (속도 향상)
+        const BATCH_SIZE = 5; // 동시에 5개씩 처리 (타임아웃 방지)
         
         const fetchDetail = async (item) => {
             try {

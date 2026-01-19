@@ -6,7 +6,7 @@ async function crawlSoraNews24() {
     try {
         console.log('[SoraNews24] Fetching homepage...');
         const { data } = await axios.get('https://soranews24.com/', {
-            timeout: 15000,
+            timeout: 5000, // 5초로 단축 (Vercel 타임아웃 방지)
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -24,7 +24,7 @@ async function crawlSoraNews24() {
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         
         $('a').each((i, el) => {
-            if (listItems.length >= 15) return false;
+            if (listItems.length >= 5) return false; // 최대 5개 (타임아웃 방지)
             
             const href = $(el).attr('href') || '';
             const title = $(el).text().trim();
@@ -54,11 +54,11 @@ async function crawlSoraNews24() {
         console.log(`[SoraNews24] Total list items found: ${listItems.length}`);
         
         const detailedItems = [];
-        for (const item of listItems.slice(0, 10)) { // 최대 10개만 상세 조회
+        for (const item of listItems.slice(0, 5)) { // 최대 5개만 상세 조회 (타임아웃 방지)
             try {
                 console.log(`[SoraNews24] Fetching details: ${item.title.substring(0, 50)}...`);
                 const { data: detailData } = await axios.get(item.url, {
-                    timeout: 15000,
+                    timeout: 5000, // 5초로 단축
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',

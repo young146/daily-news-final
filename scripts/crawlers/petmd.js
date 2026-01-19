@@ -8,7 +8,7 @@ async function crawlPetMD() {
         let data;
         try {
             const response = await axios.get('https://www.petmd.com/', {
-                timeout: 15000,
+                timeout: 5000, // 5초로 단축 (Vercel 타임아웃 방지)
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -28,7 +28,7 @@ async function crawlPetMD() {
                 // 403 에러 시 재시도 (간단한 헤더로)
                 try {
                     const retryResponse = await axios.get('https://www.petmd.com/', {
-                        timeout: 15000,
+                        timeout: 5000, // 5초로 단축
                         headers: {
                             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                         }
@@ -53,7 +53,7 @@ async function crawlPetMD() {
         
         // 더 많은 링크 찾기: article, h2, h3 내 링크도 확인
         $('a, article a, h2 a, h3 a, .article-list a, .post-list a').each((i, el) => {
-            if (listItems.length >= 30) return false; // 더 많은 링크 수집
+            if (listItems.length >= 5) return false; // 최대 5개 (타임아웃 방지)
             
             const href = $(el).attr('href') || '';
             const title = $(el).text().trim();
@@ -88,13 +88,13 @@ async function crawlPetMD() {
         console.log(`[PetMD] List items found: ${listItems.length}`);
         
         const detailedItems = [];
-        for (const item of listItems.slice(0, 10)) {
+        for (const item of listItems.slice(0, 5)) { // 최대 5개 처리 (타임아웃 방지)
             try {
                 console.log(`[PetMD] Fetching details: ${item.title.substring(0, 50)}...`);
                 let detailData;
                 try {
                     const detailResponse = await axios.get(item.url, {
-                        timeout: 15000,
+                        timeout: 5000, // 5초로 단축
                         headers: {
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -106,7 +106,7 @@ async function crawlPetMD() {
                     if (detailError.response && detailError.response.status === 403) {
                         // 403 에러 시 간단한 헤더로 재시도
                         const retryResponse = await axios.get(item.url, {
-                            timeout: 15000,
+                            timeout: 5000, // 5초로 단축
                             headers: {
                                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                             }

@@ -6,7 +6,7 @@ async function crawlVnExpressVN() {
     try {
         console.log('[VnExpress VN] Fetching main page...');
         const { data } = await axios.get('https://vnexpress.net/', {
-            timeout: 10000,
+            timeout: 5000, // 5초로 단축 (Vercel 타임아웃 방지)
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }
@@ -17,18 +17,21 @@ async function crawlVnExpressVN() {
         console.log('[VnExpress VN] Parsing list items...');
 
         // Selectors for VnExpress VN - Robust
-        $('.item-news, .list-news-subfolder .item-news').each((index, element) => {
-            if (index >= 20) return false; // 최대 20개
+        $('.item-news, .list-news-subfolder .item-news, article.item-news, .title-news').each((index, element) => {
+            if (listItems.length >= 5) return false; // 최대 5개 (타임아웃 방지)
 
-            const titleElement = $(element).find('.title-news a, .title_news a');
+            const titleElement = $(element).find('a').first();
             const title = titleElement.text().trim();
             const url = titleElement.attr('href');
-            const summary = $(element).find('.description a, .lead_news_site a').text().trim();
-            const imageElement = $(element).find('img');
-            let imageUrl = imageElement.attr('src') || imageElement.attr('data-src');
+            const summary = $(element).find('.description, .lead_news_site a, p').first().text().trim();
+            const imageElement = $(element).find('img').first();
+            let imageUrl = imageElement.attr('src') || imageElement.attr('data-src') || imageElement.attr('data-original');
 
-            if (title && url) {
-                listItems.push({
+            if (title && url && title.length > 10) {
+                // 중복 체크
+                const isDuplicate = listItems.some(item => item.originalUrl === url);
+                if (!isDuplicate) {
+                    listItems.push({
                     title,
                     summary,
                     originalUrl: url,
@@ -37,19 +40,24 @@ async function crawlVnExpressVN() {
                     source: 'VnExpress VN',
                     publishedAt: new Date(),
                     status: 'DRAFT'
-                });
+                    });
+                }
             }
         });
+        
+        console.log(`[VnExpress VN] Found ${listItems.length} items from main selectors`);
 
         // Fallback
-        if (listItems.length === 0) {
+        if (listItems.length < 3) {
             console.log('[VnExpress VN] Using fallback selector...');
-            $('h3 a, h2 a').each((index, element) => {
-                if (index >= 20) return false; // 최대 20개
+            $('h3 a, h2 a, .title-news a').each((index, element) => {
+                if (listItems.length >= 5) return false;
                 const title = $(element).text().trim();
                 const url = $(element).attr('href');
-                if (title && url) {
-                    listItems.push({
+                if (title && url && title.length > 10) {
+                    const isDuplicate = listItems.some(item => item.originalUrl === url);
+                    if (!isDuplicate) {
+                        listItems.push({
                         title,
                         summary: '',
                         originalUrl: url,
@@ -58,22 +66,24 @@ async function crawlVnExpressVN() {
                         source: 'VnExpress VN',
                         publishedAt: new Date(),
                         status: 'DRAFT'
-                    });
+                        });
+                    }
                 }
             });
+            console.log(`[VnExpress VN] After fallback: ${listItems.length} items`);
         }
 
         console.log(`[VnExpress VN] Found ${listItems.length} list items`);
         
         // 병렬 처리로 최적화
         const detailedItems = [];
-        const BATCH_SIZE = 10; // 동시에 10개씩 처리 (속도 향상)
+        const BATCH_SIZE = 5; // 동시에 5개씩 처리 (타임아웃 방지)
         
         const fetchDetail = async (item) => {
             try {
                 console.log(`[VnExpress VN] Fetching: ${item.title.substring(0, 40)}...`);
                 const { data: detailData } = await axios.get(item.originalUrl, {
-                    timeout: 10000,
+                    timeout: 5000, // 5초로 단축
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
                     }
