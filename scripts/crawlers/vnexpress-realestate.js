@@ -7,7 +7,7 @@ async function crawlVnExpressRealEstate() {
         console.log('[VnExpress Real Estate] Fetching RSS feed...');
         // RSS 피드로 아이템 리스트 가져오기 (페이지가 동적 로딩이라 RSS 사용)
         const { data: rssData } = await axios.get('https://vnexpress.net/rss/bat-dong-san.rss', {
-            timeout: 5000, // 5초로 단축 (Vercel 타임아웃 방지)
+            timeout: 20000, // 5초로 단축 (Vercel 타임아웃 방지)
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }
@@ -54,7 +54,7 @@ async function crawlVnExpressRealEstate() {
             try {
                 console.log(`[VnExpress Real Estate] Fetching: ${item.title.substring(0, 40)}...`);
                 const { data: detailData } = await axios.get(item.originalUrl, {
-                    timeout: 5000, // 5초로 단축
+                    timeout: 20000, // 5초로 단축
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
                     }

@@ -6,7 +6,7 @@ async function crawlCafefRealEstate() {
     try {
         console.log('[Cafef Real Estate] Fetching main page...');
         const { data } = await axios.get('https://cafef.vn/bat-dong-san.chn', {
-            timeout: 5000, // 5초로 단축 (Vercel 타임아웃 방지)
+            timeout: 20000, // 5초로 단축 (Vercel 타임아웃 방지)
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',

@@ -8,7 +8,7 @@ async function crawlPetMD() {
         let data;
         try {
             const response = await axios.get('https://www.petmd.com/', {
-                timeout: 5000, // 5초로 단축 (Vercel 타임아웃 방지)
+                timeout: 20000, // 5초로 단축 (Vercel 타임아웃 방지)
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -28,7 +28,7 @@ async function crawlPetMD() {
                 // 403 에러 시 재시도 (간단한 헤더로)
                 try {
                     const retryResponse = await axios.get('https://www.petmd.com/', {
-                        timeout: 5000, // 5초로 단축
+                        timeout: 20000, // 5초로 단축
                         headers: {
                             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                         }
@@ -94,7 +94,7 @@ async function crawlPetMD() {
                 let detailData;
                 try {
                     const detailResponse = await axios.get(item.url, {
-                        timeout: 5000, // 5초로 단축
+                        timeout: 20000, // 5초로 단축
                         headers: {
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -106,7 +106,7 @@ async function crawlPetMD() {
                     if (detailError.response && detailError.response.status === 403) {
                         // 403 에러 시 간단한 헤더로 재시도
                         const retryResponse = await axios.get(item.url, {
-                            timeout: 5000, // 5초로 단축
+                            timeout: 20000, // 5초로 단축
                             headers: {
                                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
                             }

@@ -19,7 +19,7 @@ async function crawlSaigoneer() {
             try {
                 console.log(`Fetching: ${cat.url}`);
                 const { data } = await axios.get(cat.url, {
-                    timeout: 5000, // 5초로 단축 (Vercel 타임아웃 방지)
+                    timeout: 20000, // 5초로 단축 (Vercel 타임아웃 방지)
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
                     }
@@ -74,7 +74,7 @@ async function crawlSaigoneer() {
             try {
                 console.log(`Fetching details for: ${item.title.substring(0, 50)}...`);
                 const { data: detailData } = await axios.get(item.originalUrl, {
-                    timeout: 5000, // 5초로 단축
+                    timeout: 20000, // 5초로 단축
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
                     }
