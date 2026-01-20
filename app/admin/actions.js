@@ -44,6 +44,13 @@ export async function publishItemAction(id, target) {
     const item = await prisma.newsItem.findUnique({ where: { id } });
     if (!item) throw new Error("Item not found");
 
+    // 🛡️ 중복 발행 방지: 이미 발행된 경우 스킵
+    if (item.wordpressUrl && (target === "main" || target === "daily")) {
+      console.log(`[Publish] ⚠️ Already published, skipping: ${item.translatedTitle || item.title}`);
+      console.log(`[Publish] Existing WordPress URL: ${item.wordpressUrl}`);
+      return { success: true, skipped: true, message: "Already published" };
+    }
+
     const data = {};
 
     if (target === "main") {
@@ -570,8 +577,16 @@ export async function batchPublishDailyAction(ids) {
   let failCount = 0;
   const errors = [];
 
+  // 🛡️ 중복 ID 제거
+  const uniqueIds = [...new Set(ids)];
+  if (uniqueIds.length < ids.length) {
+    console.warn(`[Publish] Duplicate IDs detected! ${ids.length} → ${uniqueIds.length} unique IDs`);
+  }
+
+  console.log(`[Publish] Processing ${uniqueIds.length} items sequentially...`);
+
   // Run sequentially to avoid overwhelming the WordPress server
-  for (const id of ids) {
+  for (const id of uniqueIds) {
     try {
       const result = await publishItemAction(id, "daily");
       if (result.success) {

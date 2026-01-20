@@ -170,6 +170,12 @@ export function WorkflowButton({ topNews }) {
 
     // 발행 핸들러
     const handlePublish = () => {
+        // 🛡️ 이미 발행 중이면 무시 (중복 발행 방지)
+        if (isPending) {
+            console.warn('[Publish] Already in progress, ignoring duplicate call');
+            return;
+        }
+        
         const topCount = completedItems.filter(n => n.isTopNews).length;
         const socCount = completedItems.filter(n => (n.category === 'Society' || n.category === '사회') && !n.isTopNews).length;
         const ecoCount = completedItems.filter(n => (n.category === 'Economy' || n.category === '경제') && !n.isTopNews).length;
@@ -215,8 +221,13 @@ Total Completed: ${completedItems.length} items
         message += `\n\nDo you want to PUBLISH these ${completedItems.length} items now?`;
 
         if (confirm(message.trim())) {
+            console.log(`[Publish] Starting batch publish for ${completedItems.length} items`);
+            console.log(`[Publish] IDs:`, completedItems.map(n => n.id));
+            
             startTransition(async () => {
                 const result = await batchPublishDailyAction(completedItems.map(n => n.id));
+                console.log(`[Publish] Batch publish completed - Success: ${result.successCount}, Failed: ${result.failCount}`);
+                
                 if (result.failCount > 0) {
                     alert(`⚠️ 일부 뉴스 발행 실패\n\n성공: ${result.successCount}개\n실패: ${result.failCount}개\n\n[에러 내용]\n${result.errors.join('\n')}`);
                 } else {
