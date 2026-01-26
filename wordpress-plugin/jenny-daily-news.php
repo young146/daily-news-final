@@ -1,8 +1,8 @@
-﻿<?php
+<?php
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 1.9.1
+ * Version: 2.0.0
  * Author: Jenny (Antigravity)
  */
 
@@ -611,7 +611,19 @@ function jenny_daily_news_shortcode($atts)
 
     $exchange = jenny_get_exchange_data();
 
-    $output = '<div class="jenny-date-filter">';
+    // 상단 전면 광고 (레이아웃 wrapper 바깥에 배치)
+    $output = '<div id="jenny-ad-top" class="jenny-ad-section jenny-ad-top-banner">';
+    $output .= '<div class="jenny-ad-placeholder jenny-ad-large">';
+    $output .= '<!-- Ad Inserter: #jenny-ad-top -->';
+    $output .= '</div></div>';
+    
+    // 레이아웃 wrapper 시작 (메인 + 사이드바)
+    $output .= '<div class="jenny-layout-wrapper">';
+    
+    // 메인 콘텐츠 영역 시작
+    $output .= '<div class="jenny-main-content">';
+    
+    $output .= '<div class="jenny-date-filter">';
 
     // ... (Filter Header Code remains mostly same, condensed for brevity) ...
     $output .= '<div class="jenny-info-bar">';
@@ -732,7 +744,9 @@ function jenny_daily_news_shortcode($atts)
         $output .= '</div>'; // Close jenny-top-news-row
 
         // Ad Slot after Top News
-        $output .= '<div class="jenny-ad-section"><div class="jenny-ad-placeholder"><span>Google Ads / Banner Area (Top News)</span></div></div>';
+        $output .= '<div id="jenny-ad-after-topnews" class="jenny-ad-section"><div class="jenny-ad-placeholder">';
+        $output .= '<!-- Ad Inserter: #jenny-ad-after-topnews -->';
+        $output .= '</div></div>';
     }
 
     // --- 2. Render Sections ---
@@ -744,18 +758,53 @@ function jenny_daily_news_shortcode($atts)
             $output .= '<h2 id="jenny-section-' . esc_attr($sec_key) . '" class="jenny-section-title">' . esc_html($sec_info['title']) . '</h2>';
             $output .= '<div class="jenny-news-grid">'; // 4-column grid
 
+            $card_count = 0;
+            $ad_index = 1; // 섹션 내 광고 번호
             foreach ($grouped_posts[$sec_key] as $post) {
+                // 4개마다 광고 삽입 (첫 4개 이후부터)
+                if ($card_count > 0 && $card_count % 4 === 0) {
+                    $ad_id = 'jenny-ad-' . esc_attr($sec_key) . '-' . $ad_index;
+                    $output .= '</div>'; // 기존 그리드 닫기
+                    $output .= '<div id="' . $ad_id . '" class="jenny-ad-section jenny-ad-inline">';
+                    $output .= '<div class="jenny-ad-placeholder">';
+                    $output .= '<!-- Ad Inserter: #' . $ad_id . ' -->';
+                    $output .= '</div></div>';
+                    $output .= '<div class="jenny-news-grid">'; // 새 그리드 시작
+                    $ad_index++;
+                }
                 $output .= jenny_render_news_card($post, $category_map);
+                $card_count++;
             }
 
             $output .= '</div>';
 
             // AD SLOT after each section
-            $output .= '<div class="jenny-ad-section"><div class="jenny-ad-placeholder"><span>Google Ads / Banner Area (' . esc_html($sec_info['title']) . ')</span></div></div>';
+            $ad_end_id = 'jenny-ad-' . esc_attr($sec_key) . '-end';
+            $output .= '<div id="' . $ad_end_id . '" class="jenny-ad-section"><div class="jenny-ad-placeholder">';
+            $output .= '<!-- Ad Inserter: #' . $ad_end_id . ' -->';
+            $output .= '</div></div>';
         }
     }
 
     wp_reset_postdata();
+    
+    // 메인 콘텐츠 영역 닫기
+    $output .= '</div>'; // Close jenny-main-content
+    
+    // 사이드바 광고 (PC에서만 표시, sticky)
+    $output .= '<div class="jenny-sidebar-ad">';
+    $output .= '<div class="jenny-sidebar-ad-inner">';
+    $output .= '<div id="jenny-ad-sidebar-1" class="jenny-ad-placeholder jenny-ad-sidebar">';
+    $output .= '<!-- Ad Inserter: #jenny-ad-sidebar-1 -->';
+    $output .= '</div>';
+    $output .= '<div id="jenny-ad-sidebar-2" class="jenny-ad-placeholder jenny-ad-sidebar" style="margin-top: 20px;">';
+    $output .= '<!-- Ad Inserter: #jenny-ad-sidebar-2 -->';
+    $output .= '</div>';
+    $output .= '</div></div>';
+    
+    // 레이아웃 wrapper 닫기
+    $output .= '</div>'; // Close jenny-layout-wrapper
+    
     $output .= jenny_get_styles();
     $output .= jenny_get_scripts();
 
@@ -1500,6 +1549,137 @@ function jenny_get_styles()
         .jenny-link:hover .jenny-link-text {
             background: #ea580c;
             color: #ffffff;
+        }
+
+        /* ============================================
+           광고 레이아웃 스타일
+           ============================================ */
+        
+        /* 전체 레이아웃 wrapper (메인 + 사이드바) */
+        .jenny-layout-wrapper {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 100%;
+            position: relative;
+        }
+        
+        /* 메인 콘텐츠 영역 */
+        .jenny-main-content {
+            flex: 1;
+            min-width: 0;
+            width: 100%;
+        }
+        
+        /* PC에서 사이드바 공간 확보 */
+        @media (min-width: 1400px) {
+            .jenny-layout-wrapper {
+                flex-direction: row;
+            }
+            .jenny-main-content {
+                flex: 1;
+                margin-right: 200px; /* 사이드바 공간 확보 */
+            }
+        }
+        
+        /* 광고 섹션 공통 스타일 */
+        .jenny-ad-section {
+            margin: 24px 0;
+            text-align: center;
+            width: 100%;
+        }
+        
+        .jenny-ad-placeholder {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 30px 20px;
+            color: #6c757d;
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100px;
+        }
+        
+        /* 상단 전면 광고 (더 크고 눈에 띔) */
+        .jenny-ad-top-banner {
+            margin: 0 0 24px 0;
+        }
+        .jenny-ad-top-banner .jenny-ad-large {
+            background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+            border-color: #ffc107;
+            min-height: 180px; /* 모바일: 더 높은 광고 */
+            padding: 40px 20px;
+            font-size: 14px;
+        }
+        @media (min-width: 768px) {
+            .jenny-ad-top-banner .jenny-ad-large {
+                min-height: 200px; /* PC: 더 높음 */
+            }
+        }
+        
+        /* 뉴스 4개당 중간 광고 */
+        .jenny-ad-inline {
+            margin: 20px 0;
+        }
+        .jenny-ad-inline .jenny-ad-placeholder {
+            min-height: 150px; /* 100px에서 50% 증가 */
+            padding: 35px 20px;
+        }
+        
+        /* 섹션 끝 광고 */
+        .jenny-ad-section:not(.jenny-ad-top-banner):not(.jenny-ad-inline) .jenny-ad-placeholder {
+            min-height: 150px; /* 100px에서 50% 증가 */
+        }
+        
+        /* 사이드바 광고 (PC에서만 표시) */
+        .jenny-sidebar-ad {
+            display: none; /* 기본: 숨김 (모바일) */
+        }
+        
+        @media (min-width: 1400px) {
+            .jenny-sidebar-ad {
+                display: block;
+                position: absolute;
+                top: 0;
+                right: 0;
+                width: 180px;
+                height: 100%;
+            }
+            .jenny-sidebar-ad-inner {
+                position: sticky;
+                top: 100px; /* 상단에서 100px 떨어진 위치에 고정 */
+                padding: 10px;
+            }
+            .jenny-ad-sidebar {
+                width: 160px;
+                min-height: 300px;
+                padding: 20px 10px;
+                font-size: 12px;
+                flex-direction: column;
+            }
+        }
+        
+        /* 모바일 광고 최적화 */
+        @media (max-width: 768px) {
+            .jenny-ad-section {
+                margin: 16px 0;
+            }
+            .jenny-ad-placeholder {
+                padding: 20px 15px;
+                font-size: 12px;
+                min-height: 120px; /* 80px에서 50% 증가 */
+            }
+            .jenny-ad-top-banner .jenny-ad-large {
+                min-height: 150px;
+                padding: 30px 15px;
+            }
+            .jenny-ad-inline .jenny-ad-placeholder {
+                min-height: 120px; /* 80px에서 50% 증가 */
+                padding: 25px 15px;
+            }
         }
 
     </style>';
