@@ -278,7 +278,27 @@ function jenny_render_news_card($post_data, $category_map) {
 
 function jenny_get_weather_html()
 {
-    $cities = array(
+    // ⚡ NEW: functions.php 캐시 먼저 확인
+    if (function_exists('get_cached_weather_data')) {
+        $weather_data = get_cached_weather_data();
+        
+        if (!empty($weather_data) && is_array($weather_data)) {
+            // 캐시 데이터를 원본 shortcode와 동일한 형식으로 출력
+            $output = '';
+            foreach ($weather_data as $city => $temp) {
+                // 원본 shortcode가 반환하는 형식과 동일하게
+                $output .= '<div class="jenny-city-weather">';
+                $output .= '<div class="jenny-weather-chip">';
+                $output .= '<span class="jenny-chip-city">' . esc_html($city) . '</span>';
+                $output .= '<span class="jenny-chip-temp">' . esc_html($temp) . '</span>';
+                $output .= '</div>';
+                $output .= '</div>';
+            }
+            return $output;
+        }
+    }
+
+ $cities = array(
         array('name' => '하노이', 'id' => 'hanoi'),
         array('name' => '호치민', 'id' => 'hochiminh'),
         array('name' => '서울', 'id' => 'seoul'),
@@ -341,7 +361,17 @@ function jenny_get_weather_fallback()
 
 function jenny_get_exchange_data()
 {
-    $cache_key = 'jenny_exchange_v3';
+   // ⚡ NEW: functions.php 캐시 먼저 확인
+    if (function_exists('get_cached_exchange_rates')) {
+        $cached_rates = get_cached_exchange_rates();
+        
+        if (!empty($cached_rates) && is_array($cached_rates) && isset($cached_rates['usd'])) {
+            return $cached_rates;
+        }
+    }
+    
+
+ $cache_key = 'jenny_exchange_v3';
     $cached = get_transient($cache_key);
     if ($cached !== false && is_array($cached) && isset($cached['krw_100'])) {
         return $cached;
@@ -563,50 +593,7 @@ function jenny_daily_news_shortcode($atts)
     usort($top_news_posts, $sort_func);
     usort($regular_posts, $sort_func);
 
-    // UI용 날짜 계산 (지난 뉴스 보기 드롭다운용)
-    $board_date = $now->format('Y-m-d');
-    $latest_post_args = array(
-        'post_type' => 'post',
-        'posts_per_page' => 1,
-        'cat' => intval($atts['category']),
-        'post_status' => 'publish',
-        'orderby' => 'date',
-        'order' => 'DESC',
-    );
-    $latest_post_query = new WP_Query($latest_post_args);
-    if ($latest_post_query->have_posts()) {
-        $latest_post_query->the_post();
-        $board_date = get_the_date('Y-m-d');
-        wp_reset_postdata();
-    }
-    
-    // 가능한 많은 날짜 가져오기 (지난 뉴스 보기 드롭다운용)
-    $date_args = array(
-        'post_type' => 'post',
-        'posts_per_page' => -1,
-        'cat' => intval($atts['category']),
-        'post_status' => 'publish',
-        'orderby' => 'date',
-        'order' => 'DESC',
-        'date_query' => array(
-            array(
-                'before' => $board_date,
-                'inclusive' => false,
-            ),
-        ),
-    );
-    $date_query = new WP_Query($date_args);
-    $available_dates = array();
-    while ($date_query->have_posts()) {
-        $date_query->the_post();
-        $post_date = get_the_date('Y-m-d');
-        // 기준 날짜는 제외
-        if ($post_date !== $board_date && !in_array($post_date, $available_dates)) {
-            $available_dates[] = $post_date;
-        }
-    }
-    wp_reset_postdata();
-
+    // 지난 뉴스 날짜 목록은 AJAX로 로드 (첫 로딩 속도 최적화)
     $page_url = get_permalink();
 
     $exchange = jenny_get_exchange_data();
@@ -637,22 +624,13 @@ function jenny_daily_news_shortcode($atts)
     $output .= '<div class="jenny-filter-buttons">';
     $output .= $is_filtered ? '<a href="' . esc_url($page_url) . '" class="jenny-filter-btn">오늘의 뉴스</a>' : '<span class="jenny-filter-btn active">오늘의 뉴스</span>';
 
-    // 인라인 확장 방식으로 변경
-    $output .= '<div class="jenny-archive-wrapper">';
+    // 인라인 확장 방식으로 변경 - AJAX로 날짜 목록 로드 (첫 로딩 속도 최적화)
+    $output .= '<div class="jenny-archive-wrapper" data-category="' . esc_attr($atts['category']) . '" data-page-url="' . esc_url($page_url) . '" data-selected="' . esc_attr($selected_date) . '">';
     $output .= '<button type="button" class="jenny-filter-btn jenny-archive-btn' . ($is_filtered ? ' active' : '') . '" aria-expanded="false">';
     $output .= '지난 뉴스 보기 <span class="jenny-arrow">▼</span>';
     $output .= '</button>';
-    $output .= '<div class="jenny-date-list">'; // 인라인으로 펼쳐지는 리스트
-    if (!empty($available_dates)) {
-        foreach ($available_dates as $date) {
-            $date_obj = new DateTime($date);
-            $date_display = $date_obj->format('Y') . '년 ' . $date_obj->format('m') . '월 ' . $date_obj->format('d') . '일';
-            $date_class = ($selected_date === $date) ? ' selected' : '';
-            $output .= '<a href="' . esc_url(add_query_arg('news_date', $date, $page_url)) . '" class="jenny-date-option' . $date_class . '">' . esc_html($date_display) . '</a>';
-        }
-    } else {
-        $output .= '<div class="jenny-date-option jenny-no-dates">지난 뉴스가 없습니다.</div>';
-    }
+    $output .= '<div class="jenny-date-list">'; // AJAX로 채워짐
+    $output .= '<div class="jenny-date-loading">날짜 목록 불러오는 중...</div>';
     $output .= '</div></div></div>'; // Close filter-buttons
     
     // 섹션 네비게이션 메뉴 추가
@@ -951,14 +929,60 @@ function jenny_get_scripts()
 {
     return '<script>
     (function() {
-        // 아코디언 토글 기능 (모바일 + PC 모두)
+        // 아코디언 토글 기능 (모바일 + PC 모두) + AJAX 날짜 로드
         document.addEventListener("DOMContentLoaded", function() {
             var archiveWrappers = document.querySelectorAll(".jenny-archive-wrapper");
             archiveWrappers.forEach(function(wrapper) {
                 var btn = wrapper.querySelector(".jenny-archive-btn");
                 var dateList = wrapper.querySelector(".jenny-date-list");
+                var datesLoaded = false; // 날짜 목록 로드 여부
                 
                 if (!btn || !dateList) return;
+                
+                // AJAX로 날짜 목록 로드 함수
+                function loadArchiveDates() {
+                    if (datesLoaded) return; // 이미 로드됨
+                    
+                    var category = wrapper.getAttribute("data-category") || "31";
+                    var pageUrl = wrapper.getAttribute("data-page-url") || window.location.href;
+                    var selected = wrapper.getAttribute("data-selected") || "";
+                    
+                    // AJAX 요청
+                    var xhr = new XMLHttpRequest();
+                    xhr.open("POST", (typeof jennyAjax !== "undefined" ? jennyAjax.ajaxurl : "/wp-admin/admin-ajax.php"), true);
+                    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState === 4) {
+                            if (xhr.status === 200) {
+                                try {
+                                    var response = JSON.parse(xhr.responseText);
+                                    if (response.success && response.data.html) {
+                                        dateList.innerHTML = response.data.html;
+                                        datesLoaded = true;
+                                        // 새로 로드된 날짜 옵션에 이벤트 리스너 추가
+                                        bindDateOptionEvents();
+                                    }
+                                } catch(e) {
+                                    dateList.innerHTML = "<div class=\"jenny-date-option jenny-no-dates\">날짜 목록을 불러올 수 없습니다.</div>";
+                                }
+                            } else {
+                                dateList.innerHTML = "<div class=\"jenny-date-option jenny-no-dates\">날짜 목록을 불러올 수 없습니다.</div>";
+                            }
+                        }
+                    };
+                    xhr.send("action=jenny_get_archive_dates&category=" + encodeURIComponent(category) + "&page_url=" + encodeURIComponent(pageUrl) + "&selected=" + encodeURIComponent(selected));
+                }
+                
+                // 날짜 옵션 이벤트 바인딩 함수
+                function bindDateOptionEvents() {
+                    var dateOptions = dateList.querySelectorAll(".jenny-date-option");
+                    dateOptions.forEach(function(option) {
+                        option.addEventListener("click", function() {
+                            wrapper.classList.remove("active");
+                            btn.setAttribute("aria-expanded", "false");
+                        });
+                    });
+                }
                 
                 // 클릭 이벤트 처리 (모바일 + PC)
                 btn.addEventListener("click", function(e) {
@@ -980,6 +1004,11 @@ function jenny_get_scripts()
                     var isActive = wrapper.classList.contains("active");
                     wrapper.classList.toggle("active");
                     btn.setAttribute("aria-expanded", !isActive ? "true" : "false");
+                    
+                    // 열릴 때 AJAX로 날짜 목록 로드
+                    if (!isActive && !datesLoaded) {
+                        loadArchiveDates();
+                    }
                 });
                 
                 // 아코디언 외부 클릭 시 닫기
@@ -988,15 +1017,6 @@ function jenny_get_scripts()
                         wrapper.classList.remove("active");
                         btn.setAttribute("aria-expanded", "false");
                     }
-                });
-                
-                // 날짜 옵션 클릭 시 리스트 닫기
-                var dateOptions = dateList.querySelectorAll(".jenny-date-option");
-                dateOptions.forEach(function(option) {
-                    option.addEventListener("click", function() {
-                        wrapper.classList.remove("active");
-                        btn.setAttribute("aria-expanded", "false");
-                    });
                 });
             });
             
@@ -1279,6 +1299,27 @@ function jenny_get_styles()
         }
         .jenny-no-dates:hover {
             background: transparent;
+        }
+        .jenny-date-loading {
+            padding: 20px 16px;
+            color: #6b7280;
+            font-size: 14px;
+            text-align: center;
+        }
+        .jenny-date-loading::after {
+            content: "";
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #e5e7eb;
+            border-top-color: #ea580c;
+            border-radius: 50%;
+            animation: jenny-spin 0.8s linear infinite;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+        @keyframes jenny-spin {
+            to { transform: rotate(360deg); }
         }
         .jenny-filter-info { margin-top: 12px; padding: 10px 16px; background: #fef3c7; color: #92400e; font-size: 14px; border-left: 3px solid #ea580c; }
         .jenny-filter-info a { color: #ea580c; font-weight: 600; }
@@ -1936,3 +1977,102 @@ function jenny_app_banner_script() {
     <?php
 }
 add_action('wp_footer', 'jenny_app_banner_script');
+
+// ============================================================================
+// AJAX 핸들러: 지난 뉴스 날짜 목록 (첫 로딩 속도 최적화)
+// ============================================================================
+
+/**
+ * 지난 뉴스 날짜 목록을 AJAX로 가져오기
+ */
+function jenny_get_archive_dates_ajax() {
+    // Nonce 체크 (선택적 - 공개 데이터이므로)
+    $category_id = isset($_POST['category']) ? intval($_POST['category']) : 31;
+    $page_url = isset($_POST['page_url']) ? esc_url($_POST['page_url']) : '';
+    $selected_date = isset($_POST['selected']) ? sanitize_text_field($_POST['selected']) : '';
+    
+    // 베트남 시간대
+    $tz = new DateTimeZone('Asia/Ho_Chi_Minh');
+    $now = new DateTime('now', $tz);
+    $today = $now->format('Y-m-d');
+    
+    // 최근 발행일 가져오기 (오늘 뉴스의 날짜)
+    $latest_args = array(
+        'post_type' => 'post',
+        'posts_per_page' => 1,
+        'cat' => $category_id,
+        'post_status' => 'publish',
+        'orderby' => 'date',
+        'order' => 'DESC',
+        'no_found_rows' => true,
+    );
+    $latest_query = new WP_Query($latest_args);
+    $board_date = $today;
+    if ($latest_query->have_posts()) {
+        $latest_query->the_post();
+        $board_date = get_the_date('Y-m-d');
+        wp_reset_postdata();
+    }
+    
+    // 지난 날짜 목록 가져오기 (최근 60일치만 - 성능 최적화)
+    $date_args = array(
+        'post_type' => 'post',
+        'posts_per_page' => 200, // 최대 200개 포스트만 (약 60일치)
+        'cat' => $category_id,
+        'post_status' => 'publish',
+        'orderby' => 'date',
+        'order' => 'DESC',
+        'no_found_rows' => true,
+        'date_query' => array(
+            array(
+                'before' => $board_date,
+                'inclusive' => false,
+            ),
+        ),
+    );
+    $date_query = new WP_Query($date_args);
+    $available_dates = array();
+    while ($date_query->have_posts()) {
+        $date_query->the_post();
+        $post_date = get_the_date('Y-m-d');
+        if ($post_date !== $board_date && !in_array($post_date, $available_dates)) {
+            $available_dates[] = $post_date;
+        }
+    }
+    wp_reset_postdata();
+    
+    // HTML 생성
+    $html = '';
+    if (!empty($available_dates)) {
+        foreach ($available_dates as $date) {
+            $date_obj = new DateTime($date);
+            $date_display = $date_obj->format('Y') . '년 ' . $date_obj->format('m') . '월 ' . $date_obj->format('d') . '일';
+            $date_class = ($selected_date === $date) ? ' selected' : '';
+            $html .= '<a href="' . esc_url(add_query_arg('news_date', $date, $page_url)) . '" class="jenny-date-option' . $date_class . '">' . esc_html($date_display) . '</a>';
+        }
+    } else {
+        $html = '<div class="jenny-date-option jenny-no-dates">지난 뉴스가 없습니다.</div>';
+    }
+    
+    wp_send_json_success(array('html' => $html));
+}
+add_action('wp_ajax_jenny_get_archive_dates', 'jenny_get_archive_dates_ajax');
+add_action('wp_ajax_nopriv_jenny_get_archive_dates', 'jenny_get_archive_dates_ajax');
+
+/**
+ * AJAX URL을 프론트엔드에 전달
+ */
+function jenny_enqueue_ajax_script() {
+    // daily-news 페이지에서만 로드
+    if (!is_page() || strpos($_SERVER['REQUEST_URI'], 'daily-news') === false) {
+        return;
+    }
+    ?>
+    <script>
+    var jennyAjax = {
+        ajaxurl: '<?php echo admin_url('admin-ajax.php'); ?>'
+    };
+    </script>
+    <?php
+}
+add_action('wp_head', 'jenny_enqueue_ajax_script');
