@@ -17,27 +17,45 @@ if (!defined('ABSPATH')) {
 /**
  * 카테고리 순서 정의
  */
-function jenny_get_category_order() {
+function jenny_get_category_order()
+{
     return array(
-        '사회' => 1, 'Society' => 1,
-        '경제' => 2, 'Economy' => 2,
-        '문화' => 3, 'Culture' => 3,
-        '부동산' => 4, 'Real Estate' => 4,
-        '정치' => 5, '정책' => 5, 'Politics' => 5, 'Policy' => 5,
-        '국제' => 6, 'International' => 6,
-        '한베' => 7, '한-베' => 7, 'Korea-Vietnam' => 7,
-        '교민' => 8, '교민소식' => 8, 'Community' => 8,
-        '여행' => 9, 'Travel' => 9,
-        '건강' => 10, 'Health' => 10,
-        '음식' => 11, 'Food' => 11,
-        '기타' => 12, 'Other' => 12,
+        '사회' => 1,
+        'Society' => 1,
+        '경제' => 2,
+        'Economy' => 2,
+        '문화' => 3,
+        'Culture' => 3,
+        '부동산' => 4,
+        'Real Estate' => 4,
+        '정치' => 5,
+        '정책' => 5,
+        'Politics' => 5,
+        'Policy' => 5,
+        '국제' => 6,
+        'International' => 6,
+        '한베' => 7,
+        '한-베' => 7,
+        'Korea-Vietnam' => 7,
+        '교민' => 8,
+        '교민소식' => 8,
+        'Community' => 8,
+        '여행' => 9,
+        'Travel' => 9,
+        '건강' => 10,
+        'Health' => 10,
+        '음식' => 11,
+        'Food' => 11,
+        '기타' => 12,
+        'Other' => 12,
     );
 }
 
 /**
  * 섹션 키 정의
  */
-function jenny_get_sections_keys() {
+function jenny_get_sections_keys()
+{
     return array(
         'economy' => array('Economy', '경제'),
         'society' => array('Society', '사회'),
@@ -57,28 +75,45 @@ function jenny_get_sections_keys() {
 /**
  * 카테고리 표시 이름 매핑
  */
-function jenny_get_category_map() {
+function jenny_get_category_map()
+{
     return array(
-        'Society' => '사회', '사회' => '사회',
-        'Economy' => '경제', '경제' => '경제',
-        'Culture' => '문화/스포츠', '문화' => '문화/스포츠',
-        'Real Estate' => '부동산', '부동산' => '부동산',
-        'Politics' => '정치/정책', 'Policy' => '정치/정책',
-        '정치' => '정치/정책', '정책' => '정치/정책',
-        'International' => '국제', '국제' => '국제',
-        'Korea-Vietnam' => '한-베', '한-베' => '한-베', '한베' => '한-베',
-        'Community' => '교민소식', '교민' => '교민소식', '교민소식' => '교민소식',
-        'Travel' => '여행', '여행' => '여행',
-        'Health' => '건강', '건강' => '건강',
-        'Food' => '음식', '음식' => '음식',
-        'Other' => '기타', '기타' => '기타',
+        'Society' => '사회',
+        '사회' => '사회',
+        'Economy' => '경제',
+        '경제' => '경제',
+        'Culture' => '문화/스포츠',
+        '문화' => '문화/스포츠',
+        'Real Estate' => '부동산',
+        '부동산' => '부동산',
+        'Politics' => '정치/정책',
+        'Policy' => '정치/정책',
+        '정치' => '정치/정책',
+        '정책' => '정치/정책',
+        'International' => '국제',
+        '국제' => '국제',
+        'Korea-Vietnam' => '한-베',
+        '한-베' => '한-베',
+        '한베' => '한-베',
+        'Community' => '교민소식',
+        '교민' => '교민소식',
+        '교민소식' => '교민소식',
+        'Travel' => '여행',
+        '여행' => '여행',
+        'Health' => '건강',
+        '건강' => '건강',
+        'Food' => '음식',
+        '음식' => '음식',
+        'Other' => '기타',
+        '기타' => '기타',
     );
 }
 
 /**
  * 섹션 정의
  */
-function jenny_get_sections() {
+function jenny_get_sections()
+{
     return array(
         'economy' => array('title' => '📈 경제 (Economy)', 'keys' => array('Economy', '경제')),
         'society' => array('title' => '👥 사회 (Society)', 'keys' => array('Society', '사회')),
@@ -98,7 +133,8 @@ function jenny_get_sections() {
 /**
  * 섹션 네비게이션 항목 정의
  */
-function jenny_get_section_nav_items() {
+function jenny_get_section_nav_items()
+{
     return array(
         'economy' => array('label' => '경제', 'icon' => '📈'),
         'society' => array('label' => '사회', 'icon' => '👥'),
@@ -122,12 +158,13 @@ function jenny_get_section_nav_items() {
 /**
  * 본문에서 출처/날짜/원문 정보 제거
  */
-function jenny_clean_content($content) {
+function jenny_clean_content($content)
+{
     // 1. <style> 태그와 내용을 먼저 제거
     $content = preg_replace('/<style[^>]*>.*?<\/style>/is', '', $content);
     // 2. 나머지 HTML 태그 제거
     $content = strip_tags($content);
-    
+
     // 3. 출처/날짜/원문 정보 제거 패턴들
     $patterns = array(
         '/출처\s*:\s*[^날]+날짜\s*:\s*[0-9.\s]+\.{0,2}\s*/i',  // 패턴 1: "출처: [소스명] 날짜: [날짜]"
@@ -138,18 +175,19 @@ function jenny_clean_content($content) {
         '/\s*[|]\s*/',                                          // 패턴 5: 구분선 제거
         '/\s{2,}/',                                            // 패턴 6: 연속된 공백 정리
     );
-    
+
     foreach ($patterns as $pattern) {
         $content = preg_replace($pattern, ' ', $content);
     }
-    
+
     return trim($content);
 }
 
 /**
  * 포스트에서 카테고리 추출
  */
-function jenny_get_post_category($post_id) {
+function jenny_get_post_category($post_id)
+{
     $news_category = get_post_meta($post_id, 'news_category', true);
     if (empty($news_category) || trim($news_category) === '') {
         $categories = get_the_category($post_id);
@@ -161,12 +199,15 @@ function jenny_get_post_category($post_id) {
 /**
  * 카테고리를 섹션 키로 변환
  */
-function jenny_get_section_key($category, $sections_keys) {
+function jenny_get_section_key($category, $sections_keys)
+{
     $cat = trim($category);
     foreach ($sections_keys as $sec_key => $keys) {
-        if (in_array($cat, $keys, true)) return $sec_key;
+        if (in_array($cat, $keys, true))
+            return $sec_key;
         foreach ($keys as $key) {
-            if (strcasecmp($cat, $key) === 0) return $sec_key;
+            if (strcasecmp($cat, $key) === 0)
+                return $sec_key;
         }
     }
     return 'other';
@@ -175,31 +216,33 @@ function jenny_get_section_key($category, $sections_keys) {
 /**
  * 카테고리 표시 이름 가져오기
  */
-function jenny_get_category_display_name($news_category, $category_map) {
+function jenny_get_category_display_name($news_category, $category_map)
+{
     $news_category = trim($news_category);
     if (empty($news_category)) {
         return '뉴스';
     }
-    
+
     // 정확한 매칭 시도
     if (isset($category_map[$news_category])) {
         return $category_map[$news_category];
     }
-    
+
     // 대소문자 무시 매칭 시도
     foreach ($category_map as $key => $value) {
         if (strcasecmp($news_category, $key) === 0) {
             return $value;
         }
     }
-    
+
     return $news_category; // 기본값
 }
 
 /**
  * 뉴스 카드 렌더링
  */
-function jenny_render_news_card($post_data, $category_map) {
+function jenny_render_news_card($post_data, $category_map)
+{
     $post_obj = get_post($post_data['post_id']);
     setup_postdata($post_obj);
 
@@ -213,12 +256,12 @@ function jenny_render_news_card($post_data, $category_map) {
     // 요약문 가져오기 (우선순위: 커스텀 필드 > excerpt 필드 > 본문에서 생성)
     // 1. 커스텀 필드에서 요약문 확인 (가장 확실한 방법)
     $excerpt = get_post_meta($post_data['post_id'], 'news_summary', true);
-    
+
     // 2. 커스텀 필드가 없으면 excerpt 필드 확인
     if (empty($excerpt)) {
         $excerpt = trim($post_obj->post_excerpt);
     }
-    
+
     // 3. excerpt도 없으면 본문에서 생성
     if (empty($excerpt)) {
         $content = jenny_clean_content($post_obj->post_content);
@@ -281,7 +324,7 @@ function jenny_get_weather_html()
     // ⚡ NEW: functions.php 캐시 먼저 확인
     if (function_exists('get_cached_weather_data')) {
         $weather_data = get_cached_weather_data();
-        
+
         if (!empty($weather_data) && is_array($weather_data)) {
             // 캐시 데이터를 원본 shortcode와 동일한 형식으로 출력
             $output = '';
@@ -298,7 +341,7 @@ function jenny_get_weather_html()
         }
     }
 
- $cities = array(
+    $cities = array(
         array('name' => '하노이', 'id' => 'hanoi'),
         array('name' => '호치민', 'id' => 'hochiminh'),
         array('name' => '서울', 'id' => 'seoul'),
@@ -361,17 +404,17 @@ function jenny_get_weather_fallback()
 
 function jenny_get_exchange_data()
 {
-   // ⚡ NEW: functions.php 캐시 먼저 확인
+    // ⚡ NEW: functions.php 캐시 먼저 확인
     if (function_exists('get_cached_exchange_rates')) {
         $cached_rates = get_cached_exchange_rates();
-        
+
         if (!empty($cached_rates) && is_array($cached_rates) && isset($cached_rates['usd'])) {
             return $cached_rates;
         }
     }
-    
 
- $cache_key = 'jenny_exchange_v3';
+
+    $cache_key = 'jenny_exchange_v3';
     $cached = get_transient($cache_key);
     if ($cached !== false && is_array($cached) && isset($cached['krw_100'])) {
         return $cached;
@@ -411,9 +454,10 @@ function jenny_get_exchange_data()
 /**
  * 특정 날짜의 포스트를 가져와서 top_news와 regular_posts로 분류
  */
-function jenny_get_posts_by_date($date, $category_id, $category_order) {
+function jenny_get_posts_by_date($date, $category_id, $category_order)
+{
     $date_parts = explode('-', $date);
-    
+
     $args = array(
         'post_type' => 'post',
         'posts_per_page' => -1,
@@ -431,30 +475,30 @@ function jenny_get_posts_by_date($date, $category_id, $category_order) {
         'suppress_filters' => false, // 필터 활성화 (중복 방지)
         'no_found_rows' => true, // 성능 최적화
     );
-    
+
     $query = new WP_Query($args);
     $top_news_posts = array();
     $top_news_ids = array();
     $regular_posts = array();
     $processed_post_ids = array(); // 중복 방지용 (안전장치)
-    
+
     if ($query->have_posts()) {
         while ($query->have_posts()) {
             $query->the_post();
             $post_id = get_the_ID();
-            
+
             // 중복 체크: 이미 처리된 포스트는 건너뛰기 (안전장치)
             if (in_array($post_id, $processed_post_ids)) {
                 continue;
             }
             $processed_post_ids[] = $post_id;
-            
+
             $news_category = jenny_get_post_category($post_id);
             $order = isset($category_order[$news_category]) ? $category_order[$news_category] : 99;
-            
+
             $is_top_raw = get_post_meta($post_id, 'is_top_news', true);
             $is_top = ($is_top_raw === '1' || $is_top_raw === 1 || $is_top_raw === true);
-            
+
             $item = array(
                 'post_id' => $post_id,
                 'order' => $order,
@@ -462,7 +506,7 @@ function jenny_get_posts_by_date($date, $category_id, $category_order) {
                 'category' => $news_category,
                 'is_top' => $is_top
             );
-            
+
             if ($is_top) {
                 // 탑뉴스도 중복 체크
                 if (!in_array($post_id, $top_news_ids)) {
@@ -485,7 +529,7 @@ function jenny_get_posts_by_date($date, $category_id, $category_order) {
         }
         wp_reset_postdata();
     }
-    
+
     return array(
         'top_news' => $top_news_posts,
         'top_news_ids' => $top_news_ids,
@@ -496,9 +540,10 @@ function jenny_get_posts_by_date($date, $category_id, $category_order) {
 /**
  * 오늘 날짜 또는 최근 발행일 가져오기
  */
-function jenny_get_target_date($now, $category_id) {
+function jenny_get_target_date($now, $category_id)
+{
     $today_vn = $now->format('Y-m-d');
-    
+
     // 오늘 날짜의 뉴스 확인
     $today_args = array(
         'post_type' => 'post',
@@ -515,14 +560,14 @@ function jenny_get_target_date($now, $category_id) {
             ),
         ),
     );
-    
+
     $today_query = new WP_Query($today_args);
     if ($today_query->have_posts()) {
         wp_reset_postdata();
         return $today_vn;
     }
     wp_reset_postdata();
-    
+
     // 오늘 뉴스가 없으면 가장 최근 발행일 가져오기
     $latest_args = array(
         'post_type' => 'post',
@@ -540,7 +585,7 @@ function jenny_get_target_date($now, $category_id) {
         return $target_date;
     }
     wp_reset_postdata();
-    
+
     return $today_vn;
 }
 
@@ -577,7 +622,7 @@ function jenny_daily_news_shortcode($atts)
         $target_date = jenny_get_target_date($now, $atts['category']);
         $result = jenny_get_posts_by_date($target_date, $atts['category'], $category_order);
     }
-    
+
     $top_news_posts = $result['top_news'];
     $top_news_ids = $result['top_news_ids'];
     $regular_posts = $result['regular'];
@@ -603,13 +648,13 @@ function jenny_daily_news_shortcode($atts)
     $output .= '<div class="jenny-ad-placeholder jenny-ad-large">';
     $output .= '<!-- Ad Inserter: #jenny-ad-top -->';
     $output .= '</div></div>';
-    
+
     // 레이아웃 wrapper 시작 (메인 + 사이드바)
     $output .= '<div class="jenny-layout-wrapper">';
-    
+
     // 메인 콘텐츠 영역 시작
     $output .= '<div class="jenny-main-content">';
-    
+
     $output .= '<div class="jenny-date-filter">';
 
     // ... (Filter Header Code remains mostly same, condensed for brevity) ...
@@ -632,25 +677,36 @@ function jenny_daily_news_shortcode($atts)
     $output .= '<div class="jenny-date-list">'; // AJAX로 채워짐
     $output .= '<div class="jenny-date-loading">날짜 목록 불러오는 중...</div>';
     $output .= '</div></div></div>'; // Close filter-buttons
-    
+
     // 섹션 네비게이션 메뉴 추가
     $output .= '<div class="jenny-section-nav">';
-    $output .= '<div class="jenny-section-nav-header">';
+    $output .= '<div class="jenny-section-nav-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">';
+    $output .= '<div style="display: flex; align-items: center;">';
     $output .= '<span class="jenny-section-nav-icon">📍</span>';
-    $output .= '<span class="jenny-section-nav-title">뉴스 섹션 바로가기</span>';
+    $output .= '<span class="jenny-section-nav-title" style="margin: 0;">뉴스 항목별 기사 보기</span>';
+    $output .= '</div>';
+
+    // Add Search Box
+    $output .= '<div class="jenny-search-box">';
+    $output .= '<form role="search" method="get" class="jenny-search-form" action="' . esc_url(home_url('/')) . '">';
+    $output .= '<input type="search" class="jenny-search-field" placeholder="뉴스 검색..." value="' . get_search_query() . '" name="s" title="Search for:" />';
+    $output .= '<button type="submit" class="jenny-search-submit"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>';
+    $output .= '</form>';
+    $output .= '</div>';
+
     $output .= '</div>';
     $output .= '<div class="jenny-section-nav-list">';
-    
+
     // 섹션 네비게이션 항목 (탑뉴스 제외)
     $section_nav_items = jenny_get_section_nav_items();
-    
+
     foreach ($section_nav_items as $sec_key => $nav_info) {
-        $output .= '<a href="#jenny-section-' . esc_attr($sec_key) . '" class="jenny-section-nav-item" data-section="' . esc_attr($sec_key) . '">';
+        $output .= '<button type="button" class="jenny-section-nav-item" data-section="' . esc_attr($sec_key) . '">';
         $output .= '<span class="jenny-nav-icon">' . esc_html($nav_info['icon']) . '</span>';
         $output .= '<span class="jenny-nav-label">' . esc_html($nav_info['label']) . '</span>';
-        $output .= '</a>';
+        $output .= '</button>';
     }
-    
+
     $output .= '</div>'; // Close jenny-section-nav-list
     $output .= '</div>'; // Close jenny-section-nav
     $output .= '</div>'; // Close jenny-info-bar
@@ -672,18 +728,18 @@ function jenny_daily_news_shortcode($atts)
     // regular_posts를 섹션별로 그룹화 (중복 방지)
     $grouped_posts = array();
     $grouped_post_ids = array(); // 그룹화된 포스트 ID 추적
-    
+
     foreach ($regular_posts as $post) {
         $post_id = $post['post_id'];
-        
+
         // 이미 다른 섹션에 추가된 포스트는 건너뛰기
         if (in_array($post_id, $grouped_post_ids)) {
             continue;
         }
-        
+
         $cat = trim($post['category']);
         $sec_key = jenny_get_section_key($cat, $sections_keys);
-        
+
         if (!isset($grouped_posts[$sec_key])) {
             $grouped_posts[$sec_key] = array();
         }
@@ -765,10 +821,10 @@ function jenny_daily_news_shortcode($atts)
     }
 
     wp_reset_postdata();
-    
+
     // 메인 콘텐츠 영역 닫기
     $output .= '</div>'; // Close jenny-main-content
-    
+
     // 사이드바 광고 (PC에서만 표시, sticky)
     $output .= '<div class="jenny-sidebar-ad">';
     $output .= '<div class="jenny-sidebar-ad-inner">';
@@ -779,12 +835,24 @@ function jenny_daily_news_shortcode($atts)
     $output .= '<!-- Ad Inserter: #jenny-ad-sidebar-2 -->';
     $output .= '</div>';
     $output .= '</div></div>';
-    
+
     // 레이아웃 wrapper 닫기
     $output .= '</div>'; // Close jenny-layout-wrapper
-    
+
+    // 섹션 뉴스 모달
+    $output .= '<div id="jennySectionModal" class="jenny-section-modal">';
+    $output .= '<div class="jenny-section-modal-content">';
+    $output .= '<div class="jenny-section-modal-header">';
+    $output .= '<h3 id="jennySectionModalTitle" class="jenny-section-modal-title">섹션 뉴스</h3>';
+    $output .= '<button id="jennySectionModalClose" class="jenny-section-modal-close">&times;</button>';
+    $output .= '</div>';
+    $output .= '<div id="jennySectionNewsContainer" class="jenny-section-news-container"></div>';
+    $output .= '<button id="jennySectionLoadMore" class="jenny-section-load-more" style="display:none;">더 보기</button>';
+    $output .= '</div>';
+    $output .= '</div>';
+
     $output .= jenny_get_styles();
-    $output .= jenny_get_scripts();
+    $output .= jenny_get_scripts($atts['category']);
 
     return $output;
 }
@@ -795,9 +863,9 @@ function jenny_register_meta_fields()
     if (function_exists('register_post_meta')) {
         $meta_args = array(
             'show_in_rest' => true,
-            'single'       => true,
-            'type'         => 'string',
-            'auth_callback' => function() {
+            'single' => true,
+            'type' => 'string',
+            'auth_callback' => function () {
                 return current_user_can('edit_posts');
             }
         );
@@ -813,7 +881,8 @@ add_action('init', 'jenny_register_meta_fields');
  * WordPress 본문 페이지에 모바일 스타일 추가 (전역 적용)
  * shortcode 밖의 WordPress 본문 페이지에도 적용되도록 wp_head에 추가
  */
-function jenny_add_global_mobile_styles() {
+function jenny_add_global_mobile_styles()
+{
     // 단일 포스트 페이지에서만 적용
     if (is_single() || is_page()) {
         echo '<style>
@@ -925,7 +994,7 @@ function jenny_add_global_mobile_styles() {
 }
 add_action('wp_head', 'jenny_add_global_mobile_styles');
 
-function jenny_get_scripts()
+function jenny_get_scripts($category_id = 31)
 {
     return '<script>
     (function() {
@@ -1020,38 +1089,121 @@ function jenny_get_scripts()
                 });
             });
             
-            // 섹션 네비게이션 스크롤 기능
+            // 섹션 네비게이션 클릭 - AJAX로 섹션 뉴스 로드
             var sectionNavItems = document.querySelectorAll(".jenny-section-nav-item");
+            var sectionModal = document.getElementById("jennySectionModal");
+            var sectionModalClose = document.getElementById("jennySectionModalClose");
+            var sectionModalTitle = document.getElementById("jennySectionModalTitle");
+            var sectionNewsContainer = document.getElementById("jennySectionNewsContainer");
+            var sectionLoadMore = document.getElementById("jennySectionLoadMore");
+            var currentSectionKey = "";
+            var currentPage = 1;
+            var categoryId = ' . intval($category_id) . ';
+            
+            // 모달 요소가 존재하는지 확인
+            if (!sectionModal || !sectionNewsContainer) {
+                console.error("Jenny: 섹션 모달 요소를 찾을 수 없습니다.");
+                return;
+            }
+            
             sectionNavItems.forEach(function(item) {
                 item.addEventListener("click", function(e) {
                     e.preventDefault();
-                    var targetId = this.getAttribute("href");
-                    var targetElement = document.querySelector(targetId);
+                    e.stopPropagation();
+                    var sectionKey = this.getAttribute("data-section");
                     
-                    if (targetElement) {
-                        // 부드러운 스크롤
-                        var headerOffset = 80; // 상단 고정 요소 높이 고려
-                        var elementPosition = targetElement.getBoundingClientRect().top;
-                        var offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-                        
-                        window.scrollTo({
-                            top: offsetPosition,
-                            behavior: "smooth"
-                        });
-                        
-                        // 활성 상태 표시 (선택사항)
+                    console.log("Jenny: 섹션 클릭됨 - " + sectionKey);
+                    
+                    // 활성 상태 표시
+                    sectionNavItems.forEach(function(nav) {
+                        nav.classList.remove("active");
+                    });
+                    this.classList.add("active");
+                    
+                    // 모달 열기 및 뉴스 로드
+                    currentSectionKey = sectionKey;
+                    currentPage = 1;
+                    sectionNewsContainer.innerHTML = "<div class=\"jenny-section-loading\">뉴스를 불러오는 중...</div>";
+                    sectionModal.classList.add("show");
+                    document.body.style.overflow = "hidden";
+                    
+                    loadSectionNews(sectionKey, 1, true);
+                });
+            });
+            
+            // 모달 닫기
+            if (sectionModalClose) {
+                sectionModalClose.addEventListener("click", function() {
+                    sectionModal.classList.remove("show");
+                    document.body.style.overflow = "";
+                    sectionNavItems.forEach(function(nav) {
+                        nav.classList.remove("active");
+                    });
+                });
+            }
+            
+            // 모달 외부 클릭시 닫기
+            if (sectionModal) {
+                sectionModal.addEventListener("click", function(e) {
+                    if (e.target === sectionModal) {
+                        sectionModal.classList.remove("show");
+                        document.body.style.overflow = "";
                         sectionNavItems.forEach(function(nav) {
                             nav.classList.remove("active");
                         });
-                        this.classList.add("active");
-                        
-                        // 1초 후 활성 상태 제거
-                        setTimeout(function() {
-                            item.classList.remove("active");
-                        }, 1000);
                     }
                 });
-            });
+            }
+            
+            // 더 보기 버튼
+            if (sectionLoadMore) {
+                sectionLoadMore.addEventListener("click", function() {
+                    currentPage++;
+                    loadSectionNews(currentSectionKey, currentPage, false);
+                });
+            }
+            
+            // 섹션 뉴스 로드 함수
+            function loadSectionNews(sectionKey, page, isNew) {
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", jennyAjax.ajaxurl, true);
+                xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+                
+                xhr.onload = function() {
+                    if (xhr.status >= 200 && xhr.status < 400) {
+                        try {
+                            var resp = JSON.parse(xhr.responseText);
+                            if (resp.success) {
+                                if (isNew) {
+                                    sectionNewsContainer.innerHTML = resp.data.html;
+                                    sectionModalTitle.textContent = resp.data.section_title;
+                                } else {
+                                    sectionNewsContainer.insertAdjacentHTML("beforeend", resp.data.html);
+                                }
+                                
+                                // 더 보기 버튼 표시/숨김
+                                if (resp.data.has_more) {
+                                    sectionLoadMore.style.display = "block";
+                                } else {
+                                    sectionLoadMore.style.display = "none";
+                                }
+                            } else {
+                                sectionNewsContainer.innerHTML = "<div class=\"jenny-section-error\">뉴스를 불러오지 못했습니다.</div>";
+                            }
+                        } catch (e) {
+                            sectionNewsContainer.innerHTML = "<div class=\"jenny-section-error\">응답 처리 중 오류가 발생했습니다.</div>";
+                        }
+                    } else {
+                        sectionNewsContainer.innerHTML = "<div class=\"jenny-section-error\">서버 오류가 발생했습니다.</div>";
+                    }
+                };
+                
+                xhr.onerror = function() {
+                    sectionNewsContainer.innerHTML = "<div class=\"jenny-section-error\">네트워크 오류가 발생했습니다.</div>";
+                };
+                
+                xhr.send("action=jenny_get_section_news&section=" + encodeURIComponent(sectionKey) + "&page=" + page + "&category_id=" + categoryId);
+            }
         });
     })();
     </script>';
@@ -1176,6 +1328,9 @@ function jenny_get_styles()
             color: #374151;
             transition: all 0.2s ease;
             white-space: nowrap;
+            cursor: pointer;
+            font-family: inherit;
+            outline: none;
         }
         .jenny-section-nav-item:hover {
             background: #f3f4f6;
@@ -1323,6 +1478,67 @@ function jenny_get_styles()
         }
         .jenny-filter-info { margin-top: 12px; padding: 10px 16px; background: #fef3c7; color: #92400e; font-size: 14px; border-left: 3px solid #ea580c; }
         .jenny-filter-info a { color: #ea580c; font-weight: 600; }
+        
+        /* SEARCH BOX */
+        .jenny-search-form {
+            display: flex;
+            align-items: center;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            overflow: hidden;
+            height: 36px;
+        }
+        .jenny-search-field {
+            border: none !important;
+            padding: 0 12px;
+            height: 100%;
+            font-size: 14px;
+            color: #374151;
+            width: 180px;
+            outline: none;
+            background: transparent;
+            box-shadow: none !important;
+        }
+        .jenny-search-field:focus {
+            box-shadow: none !important;
+            border: none !important;
+            outline: none !important;
+        }
+        .jenny-search-field::placeholder {
+            color: #9ca3af;
+        }
+        .jenny-search-submit {
+            background: #f9fafb;
+            border: none;
+            border-left: 1px solid #e5e7eb;
+            color: #6b7280;
+            padding: 0 12px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .jenny-search-submit:hover {
+            background: #f3f4f6;
+            color: #ea580c;
+        }
+        @media (max-width: 640px) {
+            .jenny-section-nav-header {
+                flex-direction: column !important;
+                align-items: stretch !important;
+            }
+            .jenny-search-form {
+                width: 100%;
+                margin-top: 8px;
+            }
+            .jenny-search-field {
+                flex-grow: 1;
+                width: 100%;
+            }
+        }
         
         /* SECTION TITLES - 섹션 제목은 항상 검정색 */
         .jenny-section-title {
@@ -1722,6 +1938,185 @@ function jenny_get_styles()
                 padding: 25px 15px;
             }
         }
+        
+        /* 섹션 뉴스 모달 스타일 */
+        .jenny-section-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 10000;
+            overflow-y: auto;
+        }
+        .jenny-section-modal.show {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+        }
+        .jenny-section-modal-content {
+            background: #ffffff;
+            border-radius: 16px;
+            max-width: 800px;
+            width: 100%;
+            margin-top: 40px;
+            margin-bottom: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: jennyModalSlideIn 0.3s ease;
+        }
+        @keyframes jennyModalSlideIn {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .jenny-section-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e7eb;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-radius: 16px 16px 0 0;
+        }
+        .jenny-section-modal-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: #92400e;
+        }
+        .jenny-section-modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #6b7280;
+            padding: 0;
+            line-height: 1;
+        }
+        .jenny-section-modal-close:hover {
+            color: #111827;
+        }
+        .jenny-section-news-container {
+            padding: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        .jenny-section-loading,
+        .jenny-section-error {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6b7280;
+        }
+        .jenny-section-error {
+            color: #dc2626;
+        }
+        .jenny-section-news-card {
+            display: flex;
+            gap: 16px;
+            padding: 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            transition: box-shadow 0.2s ease;
+        }
+        .jenny-section-news-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .jenny-section-card-image {
+            flex-shrink: 0;
+            width: 120px;
+            height: 80px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .jenny-section-card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .jenny-section-card-content {
+            flex: 1;
+            min-width: 0;
+        }
+        .jenny-section-card-title {
+            margin: 0 0 8px 0;
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+        .jenny-section-card-title a {
+            color: #111827;
+            text-decoration: none;
+        }
+        .jenny-section-card-title a:hover {
+            color: #ea580c;
+        }
+        .jenny-section-card-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 8px;
+        }
+        .jenny-section-sep {
+            color: #d1d5db;
+        }
+        .jenny-section-original {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+        .jenny-section-original:hover {
+            text-decoration: underline;
+        }
+        .jenny-section-card-excerpt {
+            margin: 0;
+            font-size: 13px;
+            color: #4b5563;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .jenny-section-load-more {
+            display: block;
+            width: calc(100% - 40px);
+            margin: 0 20px 20px 20px;
+            padding: 12px;
+            background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .jenny-section-load-more:hover {
+            transform: scale(1.02);
+        }
+        
+        /* 모바일 반응형 */
+        @media (max-width: 768px) {
+            .jenny-section-modal.show {
+                padding: 10px;
+            }
+            .jenny-section-modal-content {
+                margin-top: 20px;
+                margin-bottom: 20px;
+            }
+            .jenny-section-news-card {
+                flex-direction: column;
+                gap: 12px;
+            }
+            .jenny-section-card-image {
+                width: 100%;
+                height: 160px;
+            }
+        }
 
     </style>';
 }
@@ -1734,7 +2129,8 @@ function jenny_get_styles()
  * 앱 설치 유도 배너 출력
  * SNS에서 유입된 모바일 사용자에게 앱 설치/열기 안내
  */
-function jenny_app_banner_script() {
+function jenny_app_banner_script()
+{
     // daily-news 페이지에서만 실행
     if (!is_page() || strpos($_SERVER['REQUEST_URI'], 'daily-news') === false) {
         return;
@@ -1755,9 +2151,11 @@ function jenny_app_banner_script() {
             align-items: center;
             backdrop-filter: blur(4px);
         }
+
         .jenny-app-banner-overlay.show {
             display: flex;
         }
+
         .jenny-app-banner {
             background: #ffffff;
             border-radius: 20px;
@@ -1768,10 +2166,19 @@ function jenny_app_banner_script() {
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             animation: jennyBannerSlideUp 0.3s ease-out;
         }
+
         @keyframes jennyBannerSlideUp {
-            from { transform: translateY(30px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
+
         .jenny-app-banner-icon {
             width: 72px;
             height: 72px;
@@ -1783,18 +2190,21 @@ function jenny_app_banner_script() {
             justify-content: center;
             font-size: 32px;
         }
+
         .jenny-app-banner-title {
             font-size: 20px;
             font-weight: 700;
             color: #111827;
             margin-bottom: 8px;
         }
+
         .jenny-app-banner-desc {
             font-size: 14px;
             color: #6b7280;
             line-height: 1.5;
             margin-bottom: 24px;
         }
+
         .jenny-app-banner-btn {
             display: block;
             width: 100%;
@@ -1807,24 +2217,29 @@ function jenny_app_banner_script() {
             margin-bottom: 12px;
             transition: transform 0.2s, box-shadow 0.2s;
         }
+
         .jenny-app-banner-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
+
         .jenny-app-banner-btn-primary {
             background: linear-gradient(135deg, #ea580c, #f97316);
             color: #ffffff;
         }
+
         .jenny-app-banner-btn-secondary {
             background: #f3f4f6;
             color: #374151;
         }
+
         .jenny-app-banner-dismiss {
             font-size: 12px;
             color: #9ca3af;
             cursor: pointer;
             margin-top: 8px;
         }
+
         .jenny-app-banner-dismiss:hover {
             color: #6b7280;
         }
@@ -1850,129 +2265,129 @@ function jenny_app_banner_script() {
     </div>
 
     <script>
-    (function() {
-        // 설정값
-        var APP_SCHEME = 'xinchao://';
-        var IOS_STORE = 'https://apps.apple.com/app/id6754750793';
-        var ANDROID_STORE = 'https://play.google.com/store/apps/details?id=com.yourname.chaovnapp';
-        
-        // 모바일 체크
-        function isMobile() {
-            return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        }
-        
-        // iOS 체크
-        function isIOS() {
-            return /iPhone|iPad|iPod/i.test(navigator.userAgent);
-        }
-        
-        // 앱 선호 여부 확인 (영구 저장)
-        function prefersApp() {
-            return localStorage.getItem('jenny_prefer_app') === 'true';
-        }
-        
-        // 배너 표시 여부 결정
-        function shouldShowBanner() {
-            // 모바일만
-            if (!isMobile()) return false;
-            
-            // "다시 보지 않기" 선택했으면 영구적으로 표시 안함
-            if (localStorage.getItem('jenny_app_banner_dismissed') === 'true') {
-                return false;
+        (function () {
+            // 설정값
+            var APP_SCHEME = 'xinchao://';
+            var IOS_STORE = 'https://apps.apple.com/app/id6754750793';
+            var ANDROID_STORE = 'https://play.google.com/store/apps/details?id=com.yourname.chaovnapp';
+
+            // 모바일 체크
+            function isMobile() {
+                return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
             }
-            
-            // 세션에서 이미 닫았으면 표시 안함
-            if (sessionStorage.getItem('jenny_app_banner_closed')) {
-                return false;
+
+            // iOS 체크
+            function isIOS() {
+                return /iPhone|iPad|iPod/i.test(navigator.userAgent);
             }
-            
-            return true;
-        }
-        
-        // 앱 열기 시도 (배너 없이)
-        function tryOpenAppSilently() {
-            var appUrl = APP_SCHEME + 'daily-news';
-            var storeUrl = isIOS() ? IOS_STORE : ANDROID_STORE;
-            
-            // 앱 열기 시도
-            var iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = appUrl;
-            document.body.appendChild(iframe);
-            
-            // 2.5초 후에도 페이지가 보이면 앱이 없는 것 → 배너 표시
-            setTimeout(function() {
-                try { document.body.removeChild(iframe); } catch(e) {}
-                if (!document.hidden) {
-                    // 앱이 안 열렸으므로 선호도 초기화하고 배너 표시
-                    localStorage.removeItem('jenny_prefer_app');
-                    document.getElementById('jennyAppBanner').classList.add('show');
+
+            // 앱 선호 여부 확인 (영구 저장)
+            function prefersApp() {
+                return localStorage.getItem('jenny_prefer_app') === 'true';
+            }
+
+            // 배너 표시 여부 결정
+            function shouldShowBanner() {
+                // 모바일만
+                if (!isMobile()) return false;
+
+                // "다시 보지 않기" 선택했으면 영구적으로 표시 안함
+                if (localStorage.getItem('jenny_app_banner_dismissed') === 'true') {
+                    return false;
                 }
-            }, 2500);
-        }
-        
-        // 앱 열기 (배너에서 클릭)
-        window.jennyOpenApp = function() {
-            var storeUrl = isIOS() ? IOS_STORE : ANDROID_STORE;
-            var appUrl = APP_SCHEME + 'daily-news';
-            
-            // 앱 선호 설정 저장 (영구)
-            localStorage.setItem('jenny_prefer_app', 'true');
-            
-            // 앱 열기 시도
-            var iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = appUrl;
-            document.body.appendChild(iframe);
-            
-            // 2.5초 후에도 앱이 안 열렸으면 스토어로
-            setTimeout(function() {
-                try { document.body.removeChild(iframe); } catch(e) {}
-                if (!document.hidden) {
-                    window.location.href = storeUrl;
+
+                // 세션에서 이미 닫았으면 표시 안함
+                if (sessionStorage.getItem('jenny_app_banner_closed')) {
+                    return false;
                 }
-            }, 2500);
-            
-            jennyCloseBanner();
-        };
-        
-        // 배너 닫기 (세션 동안)
-        window.jennyCloseBanner = function() {
-            document.getElementById('jennyAppBanner').classList.remove('show');
-            sessionStorage.setItem('jenny_app_banner_closed', 'true');
-        };
-        
-        // 배너 다시 보지 않기 (영구)
-        window.jennyDismissBanner = function() {
-            document.getElementById('jennyAppBanner').classList.remove('show');
-            localStorage.setItem('jenny_app_banner_dismissed', 'true');
-        };
-        
-        // 페이지 로드 시
-        document.addEventListener('DOMContentLoaded', function() {
-            if (!isMobile()) return;
-            
-            // "다시 보지 않기" 했으면 아무것도 안함
-            if (localStorage.getItem('jenny_app_banner_dismissed') === 'true') {
-                return;
+
+                return true;
             }
-            
-            // 앱 선호 설정이 있으면 배너 없이 바로 앱 열기 시도
-            if (prefersApp()) {
-                setTimeout(function() {
-                    tryOpenAppSilently();
-                }, 500);
-                return;
+
+            // 앱 열기 시도 (배너 없이)
+            function tryOpenAppSilently() {
+                var appUrl = APP_SCHEME + 'daily-news';
+                var storeUrl = isIOS() ? IOS_STORE : ANDROID_STORE;
+
+                // 앱 열기 시도
+                var iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = appUrl;
+                document.body.appendChild(iframe);
+
+                // 2.5초 후에도 페이지가 보이면 앱이 없는 것 → 배너 표시
+                setTimeout(function () {
+                    try { document.body.removeChild(iframe); } catch (e) { }
+                    if (!document.hidden) {
+                        // 앱이 안 열렸으므로 선호도 초기화하고 배너 표시
+                        localStorage.removeItem('jenny_prefer_app');
+                        document.getElementById('jennyAppBanner').classList.add('show');
+                    }
+                }, 2500);
             }
-            
-            // 첫 방문이면 배너 표시
-            if (shouldShowBanner()) {
-                setTimeout(function() {
-                    document.getElementById('jennyAppBanner').classList.add('show');
-                }, 1000);
-            }
-        });
-    })();
+
+            // 앱 열기 (배너에서 클릭)
+            window.jennyOpenApp = function () {
+                var storeUrl = isIOS() ? IOS_STORE : ANDROID_STORE;
+                var appUrl = APP_SCHEME + 'daily-news';
+
+                // 앱 선호 설정 저장 (영구)
+                localStorage.setItem('jenny_prefer_app', 'true');
+
+                // 앱 열기 시도
+                var iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = appUrl;
+                document.body.appendChild(iframe);
+
+                // 2.5초 후에도 앱이 안 열렸으면 스토어로
+                setTimeout(function () {
+                    try { document.body.removeChild(iframe); } catch (e) { }
+                    if (!document.hidden) {
+                        window.location.href = storeUrl;
+                    }
+                }, 2500);
+
+                jennyCloseBanner();
+            };
+
+            // 배너 닫기 (세션 동안)
+            window.jennyCloseBanner = function () {
+                document.getElementById('jennyAppBanner').classList.remove('show');
+                sessionStorage.setItem('jenny_app_banner_closed', 'true');
+            };
+
+            // 배너 다시 보지 않기 (영구)
+            window.jennyDismissBanner = function () {
+                document.getElementById('jennyAppBanner').classList.remove('show');
+                localStorage.setItem('jenny_app_banner_dismissed', 'true');
+            };
+
+            // 페이지 로드 시
+            document.addEventListener('DOMContentLoaded', function () {
+                if (!isMobile()) return;
+
+                // "다시 보지 않기" 했으면 아무것도 안함
+                if (localStorage.getItem('jenny_app_banner_dismissed') === 'true') {
+                    return;
+                }
+
+                // 앱 선호 설정이 있으면 배너 없이 바로 앱 열기 시도
+                if (prefersApp()) {
+                    setTimeout(function () {
+                        tryOpenAppSilently();
+                    }, 500);
+                    return;
+                }
+
+                // 첫 방문이면 배너 표시
+                if (shouldShowBanner()) {
+                    setTimeout(function () {
+                        document.getElementById('jennyAppBanner').classList.add('show');
+                    }, 1000);
+                }
+            });
+        })();
     </script>
     <?php
 }
@@ -1985,17 +2400,18 @@ add_action('wp_footer', 'jenny_app_banner_script');
 /**
  * 지난 뉴스 날짜 목록을 AJAX로 가져오기
  */
-function jenny_get_archive_dates_ajax() {
+function jenny_get_archive_dates_ajax()
+{
     // Nonce 체크 (선택적 - 공개 데이터이므로)
     $category_id = isset($_POST['category']) ? intval($_POST['category']) : 31;
     $page_url = isset($_POST['page_url']) ? esc_url($_POST['page_url']) : '';
     $selected_date = isset($_POST['selected']) ? sanitize_text_field($_POST['selected']) : '';
-    
+
     // 베트남 시간대
     $tz = new DateTimeZone('Asia/Ho_Chi_Minh');
     $now = new DateTime('now', $tz);
     $today = $now->format('Y-m-d');
-    
+
     // 최근 발행일 가져오기 (오늘 뉴스의 날짜)
     $latest_args = array(
         'post_type' => 'post',
@@ -2013,7 +2429,7 @@ function jenny_get_archive_dates_ajax() {
         $board_date = get_the_date('Y-m-d');
         wp_reset_postdata();
     }
-    
+
     // 지난 날짜 목록 가져오기 (최근 60일치만 - 성능 최적화)
     $date_args = array(
         'post_type' => 'post',
@@ -2040,7 +2456,7 @@ function jenny_get_archive_dates_ajax() {
         }
     }
     wp_reset_postdata();
-    
+
     // HTML 생성
     $html = '';
     if (!empty($available_dates)) {
@@ -2053,7 +2469,7 @@ function jenny_get_archive_dates_ajax() {
     } else {
         $html = '<div class="jenny-date-option jenny-no-dates">지난 뉴스가 없습니다.</div>';
     }
-    
+
     wp_send_json_success(array('html' => $html));
 }
 add_action('wp_ajax_jenny_get_archive_dates', 'jenny_get_archive_dates_ajax');
@@ -2062,17 +2478,348 @@ add_action('wp_ajax_nopriv_jenny_get_archive_dates', 'jenny_get_archive_dates_aj
 /**
  * AJAX URL을 프론트엔드에 전달
  */
-function jenny_enqueue_ajax_script() {
+function jenny_enqueue_ajax_script()
+{
     // daily-news 페이지에서만 로드
     if (!is_page() || strpos($_SERVER['REQUEST_URI'], 'daily-news') === false) {
         return;
     }
     ?>
     <script>
-    var jennyAjax = {
-        ajaxurl: '<?php echo admin_url('admin-ajax.php'); ?>'
-    };
+        var jennyAjax = {
+            ajaxurl: '<?php echo admin_url('admin-ajax.php'); ?>'
+        };
     </script>
     <?php
 }
 add_action('wp_head', 'jenny_enqueue_ajax_script');
+
+// ============================================================================
+// AJAX 핸들러: 섹션별 뉴스 로드 (카테고리별 최신 뉴스)
+// ============================================================================
+
+/**
+ * 섹션(카테고리)별 뉴스를 AJAX로 가져오기
+ * - 날짜 무관 최신순으로 로드
+ * - 페이지네이션 지원 (더 보기)
+ */
+function jenny_get_section_news_ajax()
+{
+    $section_key = isset($_POST['section']) ? sanitize_text_field($_POST['section']) : '';
+    $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
+    $per_page = 10;
+    $category_id = isset($_POST['category_id']) ? intval($_POST['category_id']) : 31;
+
+    if (empty($section_key)) {
+        wp_send_json_error(array('message' => 'Section key is required'));
+        return;
+    }
+
+    // 섹션 키에서 카테고리 이름들 가져오기
+    $sections_keys = jenny_get_sections_keys();
+    $sections = jenny_get_sections();
+    $category_map = jenny_get_category_map();
+
+    if (!isset($sections_keys[$section_key])) {
+        wp_send_json_error(array('message' => 'Invalid section key'));
+        return;
+    }
+
+    $category_names = $sections_keys[$section_key];
+    $section_title = isset($sections[$section_key]) ? $sections[$section_key]['title'] : $section_key;
+
+    // 해당 카테고리의 뉴스 가져오기
+    $args = array(
+        'post_type' => 'post',
+        'posts_per_page' => $per_page,
+        'paged' => $page,
+        'cat' => $category_id,
+        'post_status' => 'publish',
+        'orderby' => 'date',
+        'order' => 'DESC',
+        'meta_query' => array(
+            array(
+                'key' => 'news_category',
+                'value' => $category_names,
+                'compare' => 'IN'
+            )
+        )
+    );
+
+    $query = new WP_Query($args);
+    $posts_html = '';
+    $has_more = false;
+
+    if ($query->have_posts()) {
+        while ($query->have_posts()) {
+            $query->the_post();
+            $post_id = get_the_ID();
+
+            // 썸네일
+            $thumb_url = get_the_post_thumbnail_url($post_id, 'medium');
+            if (!$thumb_url) {
+                $thumb_url = 'https://via.placeholder.com/300x200?text=News';
+            }
+
+            // 카테고리
+            $news_category = get_post_meta($post_id, 'news_category', true);
+            $cat_display = isset($category_map[$news_category]) ? $category_map[$news_category] : $news_category;
+
+            // 날짜
+            $date_str = get_the_date('Y.m.d');
+
+            // 출처
+            $news_source = get_post_meta($post_id, 'news_source', true);
+            if (empty($news_source)) {
+                $categories = get_the_category($post_id);
+                $news_source = !empty($categories) ? $categories[0]->name : '';
+            }
+
+            // 원문 링크
+            $original_url = get_post_meta($post_id, 'news_original_url', true);
+
+            // 요약문
+            $excerpt = get_post_meta($post_id, 'news_summary', true);
+            if (empty($excerpt)) {
+                $excerpt = get_the_excerpt();
+            }
+            if (empty($excerpt)) {
+                $excerpt = wp_trim_words(strip_tags(get_the_content()), 30, '...');
+            }
+
+            $permalink = get_permalink();
+
+            // 카드 HTML
+            $posts_html .= '<div class="jenny-section-news-card">';
+            $posts_html .= '<div class="jenny-section-card-image">';
+            $posts_html .= '<a href="' . esc_url($permalink) . '">';
+            $posts_html .= '<img src="' . esc_url($thumb_url) . '" alt="' . esc_attr(get_the_title()) . '" loading="lazy">';
+            $posts_html .= '</a>';
+            $posts_html .= '</div>';
+            $posts_html .= '<div class="jenny-section-card-content">';
+            $posts_html .= '<h4 class="jenny-section-card-title"><a href="' . esc_url($permalink) . '">' . get_the_title() . '</a></h4>';
+            $posts_html .= '<div class="jenny-section-card-meta">';
+            if (!empty($news_source)) {
+                $posts_html .= '<span class="jenny-section-source">' . esc_html($news_source) . '</span>';
+                $posts_html .= '<span class="jenny-section-sep">|</span>';
+            }
+            $posts_html .= '<span class="jenny-section-date">' . $date_str . '</span>';
+            if (!empty($original_url)) {
+                $posts_html .= '<span class="jenny-section-sep">|</span>';
+                $posts_html .= '<a href="' . esc_url($original_url) . '" target="_blank" class="jenny-section-original">원문</a>';
+            }
+            $posts_html .= '</div>';
+            $posts_html .= '<p class="jenny-section-card-excerpt">' . esc_html($excerpt) . '</p>';
+            $posts_html .= '</div>';
+            $posts_html .= '</div>';
+        }
+
+        // 더 있는지 확인
+        $has_more = ($query->max_num_pages > $page);
+    }
+
+    wp_reset_postdata();
+
+    wp_send_json_success(array(
+        'html' => $posts_html,
+        'has_more' => $has_more,
+        'page' => $page,
+        'section_title' => $section_title
+    ));
+}
+add_action('wp_ajax_jenny_get_section_news', 'jenny_get_section_news_ajax');
+add_action('wp_ajax_nopriv_jenny_get_section_news', 'jenny_get_section_news_ajax');
+
+// ============================================================================
+// REST API 엔드포인트: 섹션별 뉴스 (앱용)
+// ============================================================================
+
+/**
+ * REST API 엔드포인트 등록
+ */
+add_action('rest_api_init', function () {
+    // 섹션별 뉴스 API
+    register_rest_route('jenny/v1', '/section-news', array(
+        'methods' => 'GET',
+        'callback' => 'jenny_get_section_news_rest',
+        'permission_callback' => '__return_true',
+    ));
+
+    // 섹션 목록 API (앱에서 동적으로 가져갈 수 있음)
+    register_rest_route('jenny/v1', '/sections', array(
+        'methods' => 'GET',
+        'callback' => 'jenny_get_sections_list_rest',
+        'permission_callback' => '__return_true',
+    ));
+});
+
+/**
+ * REST API 핸들러: 섹션 목록 반환 (앱에서 동적으로 가져감)
+ */
+function jenny_get_sections_list_rest($request)
+{
+    $nav_items = jenny_get_section_nav_items();
+    $sections = array();
+
+    foreach ($nav_items as $key => $info) {
+        $sections[] = array(
+            'key' => $key,
+            'label' => $info['label'],
+            'icon' => $info['icon'],
+        );
+    }
+
+    return new WP_REST_Response(array(
+        'success' => true,
+        'data' => $sections,
+        'total' => count($sections),
+    ), 200);
+}
+
+/**
+ * 섹션 키 매핑 (앱 categoryKey → WordPress 섹션 키)
+ */
+function jenny_map_section_key($key)
+{
+    $mapping = array(
+        'Economy' => 'economy',
+        'Society' => 'society',
+        'Culture' => 'culture',
+        'Politics' => 'politics',
+        'International' => 'international',
+        'Korea-Vietnam' => 'korea_vietnam',
+        'Travel' => 'travel',
+        'Health' => 'health',
+        'Food' => 'food',
+        'Real Estate' => 'real_estate',
+        'Community' => 'community',
+        'Other' => 'other',
+    );
+
+    // 이미 소문자 키면 그대로 반환
+    if (isset($mapping[$key])) {
+        return $mapping[$key];
+    }
+
+    // 소문자로 변환해서 확인
+    $lower_key = strtolower(str_replace('-', '_', $key));
+    $sections_keys = jenny_get_sections_keys();
+    if (isset($sections_keys[$lower_key])) {
+        return $lower_key;
+    }
+
+    return $key;
+}
+
+/**
+ * REST API 핸들러: 섹션별 뉴스 (JSON 반환)
+ */
+function jenny_get_section_news_rest($request)
+{
+    $section_key_raw = $request->get_param('section');
+    $page = intval($request->get_param('page')) ?: 1;
+    $per_page = intval($request->get_param('per_page')) ?: 10;
+    $category_id = intval($request->get_param('category_id')) ?: 31;
+
+    if (empty($section_key_raw)) {
+        return new WP_Error('missing_section', 'Section parameter is required', array('status' => 400));
+    }
+
+    // 섹션 키 매핑
+    $section_key = jenny_map_section_key($section_key_raw);
+
+    // 섹션 키에서 카테고리 이름들 가져오기
+    $sections_keys = jenny_get_sections_keys();
+    $sections = jenny_get_sections();
+    $category_map = jenny_get_category_map();
+
+    if (!isset($sections_keys[$section_key])) {
+        return new WP_Error('invalid_section', 'Invalid section key: ' . $section_key_raw, array('status' => 400));
+    }
+
+    $category_names = $sections_keys[$section_key];
+    $section_title = isset($sections[$section_key]) ? $sections[$section_key]['title'] : $section_key;
+
+    // 해당 카테고리의 뉴스 가져오기
+    $args = array(
+        'post_type' => 'post',
+        'posts_per_page' => $per_page,
+        'paged' => $page,
+        'cat' => $category_id,
+        'post_status' => 'publish',
+        'orderby' => 'date',
+        'order' => 'DESC',
+        'meta_query' => array(
+            array(
+                'key' => 'news_category',
+                'value' => $category_names,
+                'compare' => 'IN'
+            )
+        )
+    );
+
+    $query = new WP_Query($args);
+    $posts = array();
+
+    if ($query->have_posts()) {
+        while ($query->have_posts()) {
+            $query->the_post();
+            $post_id = get_the_ID();
+
+            // 썸네일
+            $thumb_url = get_the_post_thumbnail_url($post_id, 'medium');
+            if (!$thumb_url) {
+                $thumb_url = '';
+            }
+
+            // 메타 데이터
+            $news_category = get_post_meta($post_id, 'news_category', true);
+            $news_source = get_post_meta($post_id, 'news_source', true);
+            $original_url = get_post_meta($post_id, 'news_original_url', true);
+
+            // 요약문
+            $excerpt = get_post_meta($post_id, 'news_summary', true);
+            if (empty($excerpt)) {
+                $excerpt = get_the_excerpt();
+            }
+            if (empty($excerpt)) {
+                $excerpt = wp_trim_words(strip_tags(get_the_content()), 30, '...');
+            }
+
+            $posts[] = array(
+                'id' => $post_id,
+                'title' => get_the_title(),
+                'excerpt' => $excerpt,
+                'date' => get_the_date('Y-m-d'),
+                'dateFormatted' => get_the_date('Y.m.d'),
+                'link' => get_permalink(),
+                'thumbnail' => $thumb_url,
+                'meta' => array(
+                    'news_category' => $news_category,
+                    'news_source' => $news_source,
+                    'news_original_url' => $original_url,
+                ),
+                '_embedded' => array(
+                    'wp:featuredmedia' => $thumb_url ? array(array('source_url' => $thumb_url)) : array()
+                )
+            );
+        }
+    }
+
+    wp_reset_postdata();
+
+    $has_more = ($query->max_num_pages > $page);
+
+    return rest_ensure_response(array(
+        'success' => true,
+        'posts' => $posts,
+        'has_more' => $has_more,
+        'page' => $page,
+        'total_pages' => $query->max_num_pages,
+        'total_posts' => $query->found_posts,
+        'section_key' => $section_key,
+        'section_title' => $section_title,
+    ));
+}
+
+// Note: REST API 엔드포인트는 이미 2499번 줄에 등록되어 있음 (jenny/v1/section-news, jenny/v1/sections)
