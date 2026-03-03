@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { sendNewsletter } from '../lib/email-service.js';
+import { sendNewsletter } from '@/lib/email-service';
 import dotenv from 'dotenv';
 dotenv.config();
 
