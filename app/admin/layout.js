@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, FileText, Settings, LogOut, Users, Newspaper } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings, LogOut, Users, Newspaper, Mail } from 'lucide-react';
 
 export default function AdminLayout({ children }) {
     const [user, setUser] = useState(null);
@@ -47,6 +47,7 @@ export default function AdminLayout({ children }) {
         { href: '/admin', icon: LayoutDashboard, label: '대시보드' },
         { href: '/admin/published-news', icon: Newspaper, label: '발행된 뉴스 관리' },
         { href: '/admin/drafts', icon: FileText, label: '초안' },
+        { href: '/admin/subscribers', icon: Mail, label: '구독자 관리' },
         { href: '/admin/settings', icon: Settings, label: '설정' },
     ];
 
@@ -65,18 +66,17 @@ export default function AdminLayout({ children }) {
                 <nav className="flex-grow p-4 space-y-2">
                     {navItems.map((item) => {
                         const Icon = item.icon;
-                        const isActive = pathname === item.href || 
+                        const isActive = pathname === item.href ||
                             (item.href !== '/admin' && pathname.startsWith(item.href));
-                        
+
                         return (
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                                    isActive 
-                                        ? 'bg-slate-800 text-white' 
+                                className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                                        ? 'bg-slate-800 text-white'
                                         : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                                }`}
+                                    }`}
                             >
                                 <Icon size={20} />
                                 <span>{item.label}</span>
@@ -92,7 +92,7 @@ export default function AdminLayout({ children }) {
                             <div>{user.role === 'ADMIN' ? '관리자' : '편집자'}</div>
                         </div>
                     )}
-                    <button 
+                    <button
                         onClick={handleLogout}
                         className="flex items-center space-x-3 px-4 py-3 w-full rounded-lg text-red-400 hover:bg-slate-800 transition-colors"
                     >

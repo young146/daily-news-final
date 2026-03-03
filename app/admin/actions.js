@@ -69,7 +69,7 @@ export async function publishItemAction(id, target) {
       data.publishedAt = new Date();
       data.status = "PUBLISHED";
       // data.isCardNews = true; // ✅ 자동 지정 제거 (관리자가 수동 선택하도록)
-      
+
       console.log(`[Publish] ✅ News published to main site`);
     } else if (target === "daily") {
       // Publish to Main Site only (no separate summary post needed)
@@ -89,7 +89,7 @@ export async function publishItemAction(id, target) {
       data.publishedAt = new Date();
       data.status = "PUBLISHED";
       // data.isCardNews = true; // ✅ 자동 지정 제거 (관리자가 수동 선택하도록)
-      
+
       console.log(`[Publish] ✅ News published to daily summary`);
     } else if (target === "sns") {
       await postToSNS(item, "facebook");
@@ -119,12 +119,12 @@ export async function updateCategoryAction(id, category) {
       where: { id },
       data: { category },
     });
-    
+
     // ✅ 발행된 뉴스인 경우 WordPress 메타도 함께 업데이트
     if (item.wordpressUrl) {
       await updateWordPressPostMeta(item.wordpressUrl, { news_category: category });
     }
-    
+
     revalidatePath("/admin");
     revalidatePath("/admin/settings");
     revalidatePath("/admin/card-news");
@@ -139,24 +139,24 @@ export async function updateCategoryAction(id, category) {
 async function updateWordPressPostMeta(wordpressUrl, metaData) {
   try {
     console.log(`[WP Meta] 🔄 WordPress 업데이트 시작: ${wordpressUrl}`, metaData);
-    
+
     const WP_URL = process.env.WORDPRESS_URL || "https://chaovietnam.co.kr";
     const WP_USER = process.env.WORDPRESS_USERNAME || "chaovietnam";
     const WP_PASSWORD = process.env.WORDPRESS_APP_PASSWORD;
-    
+
     if (!WP_PASSWORD) {
       throw new Error("WordPress App Password is not configured");
     }
-    
+
     const auth = Buffer.from(`${WP_USER}:${WP_PASSWORD}`).toString("base64");
-    
+
     let postId = null;
     let slug = null;
-    
+
     try {
       const urlObj = new URL(wordpressUrl);
       console.log(`[WP Meta] 📍 URL 파싱: pathname=${urlObj.pathname}, search=${urlObj.search}`);
-      
+
       // 1. ?p=123 형식인 경우
       if (urlObj.searchParams.has('p')) {
         postId = parseInt(urlObj.searchParams.get('p'));
@@ -165,7 +165,7 @@ async function updateWordPressPostMeta(wordpressUrl, metaData) {
         // 2. URL 경로에서 추출
         const pathParts = urlObj.pathname.split('/').filter(p => p);
         const lastPart = pathParts[pathParts.length - 1];
-        
+
         // 중요: 경로 마지막 부분이 숫자라면 바로 Post ID로 간주 (현재 사이트 구조 대응)
         if (lastPart && /^\d+$/.test(lastPart)) {
           postId = parseInt(lastPart);
@@ -179,53 +179,53 @@ async function updateWordPressPostMeta(wordpressUrl, metaData) {
       console.error(`[WP Meta] ❌ WordPress URL 파싱 실패: ${wordpressUrl}`, e);
       return;
     }
-    
+
     if (!postId && !slug) {
       console.error(`[WP Meta] ❌ WordPress URL에서 post ID나 slug를 추출할 수 없습니다: ${wordpressUrl}`);
       return;
     }
-    
+
     // Post ID가 없으면 slug로 찾기
     if (!postId) {
       const searchUrl = `${WP_URL}/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&per_page=1`;
       console.log(`[WP Meta] 🔍 WordPress post 검색 중: ${searchUrl}`);
-      
+
       const searchResponse = await fetch(searchUrl, {
         headers: {
           Authorization: `Basic ${auth}`,
         },
       });
-      
+
       if (!searchResponse.ok) {
         const errorText = await searchResponse.text().catch(() => '');
         console.error(`[WP Meta] ❌ WordPress post 검색 실패: ${searchResponse.status}`, errorText);
         throw new Error(`WordPress post 검색 실패: ${searchResponse.status}`);
       }
-      
+
       const posts = await searchResponse.json();
       console.log(`[WP Meta] 📋 검색 결과: ${posts.length}개 post 발견`);
-      
+
       if (!posts || posts.length === 0) {
         console.error(`[WP Meta] ❌ WordPress에서 post를 찾을 수 없습니다 (slug: ${slug})`);
         return;
       }
-      
+
       postId = posts[0].id;
       console.log(`[WP Meta] ✅ Post ID 찾음: ${postId}`);
     }
-    
+
     // 메타 필드 업데이트 (WordPress REST API v2 표준 방식)
     const updateUrl = `${WP_URL}/wp-json/wp/v2/posts/${postId}`;
-    
+
     // 워드프레스가 가장 선호하는 표준 객체 구조로 전달
     const updateBody = {
       meta: {
         ...metaData
       }
     };
-    
+
     console.log(`[WP Meta] 📤 워드프레스 표준 통로로 배달 중: ${updateUrl}`, JSON.stringify(updateBody));
-    
+
     const updateResponse = await fetch(updateUrl, {
       method: 'POST',
       headers: {
@@ -234,7 +234,7 @@ async function updateWordPressPostMeta(wordpressUrl, metaData) {
       },
       body: JSON.stringify(updateBody),
     });
-    
+
     if (!updateResponse.ok) {
       const errorData = await updateResponse.json().catch(() => ({}));
       console.error(`[WP Meta] ❌ 배달 사고(업데이트 실패): ${updateResponse.status}`, errorData);
@@ -250,30 +250,30 @@ async function updateWordPressPostMeta(wordpressUrl, metaData) {
 export async function syncAllTopNewsAction() {
   try {
     console.log("[Sync] 🔄 최신 발행분 전체 동기화 시작...");
-    
+
     // 1. 최신 발행 날짜 찾기
     const latestItem = await prisma.newsItem.findFirst({
       where: { status: "PUBLISHED" },
       orderBy: { publishedAt: "desc" },
       select: { publishedAt: true }
     });
-    
+
     if (!latestItem || !latestItem.publishedAt) {
       return { success: false, error: "발행된 뉴스가 없습니다." };
     }
-    
+
     // 최신 발행일의 시작과 끝
     const latestDate = new Date(latestItem.publishedAt);
     const startOfDay = new Date(latestDate);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(latestDate);
     endOfDay.setHours(23, 59, 59, 999);
-    
+
     console.log(`[Sync] 📅 최신 발행일: ${latestDate.toISOString().split('T')[0]}`);
-    
+
     // 2. 최신 발행일의 뉴스만 가져오기
     const latestNews = await prisma.newsItem.findMany({
-      where: { 
+      where: {
         status: "PUBLISHED",
         publishedAt: {
           gte: startOfDay,
@@ -282,9 +282,9 @@ export async function syncAllTopNewsAction() {
       },
       orderBy: { publishedAt: "desc" }
     });
-    
+
     console.log(`[Sync] 📊 최신 발행분 뉴스: ${latestNews.length}개`);
-    
+
     // 3. 이전 발행분의 모든 탑뉴스 해제
     const olderTopNews = await prisma.newsItem.findMany({
       where: {
@@ -293,7 +293,7 @@ export async function syncAllTopNewsAction() {
         publishedAt: { lt: startOfDay }
       }
     });
-    
+
     for (const old of olderTopNews) {
       await prisma.newsItem.update({ where: { id: old.id }, data: { isTopNews: false } });
       if (old.wordpressUrl) {
@@ -301,44 +301,44 @@ export async function syncAllTopNewsAction() {
       }
       console.log(`[Sync] 🔻 이전 탑뉴스 해제: ${old.translatedTitle || old.title}`);
     }
-    
+
     // 4. 최신 발행분 동기화 (탑뉴스 + 카테고리)
     let syncedCount = 0;
     let topNewsCount = 0;
     const categoryCounts = {};
-    
+
     for (const item of latestNews) {
       if (!item.wordpressUrl) continue;
-      
+
       // 메타 데이터 준비
       const metaData = {
         is_top_news: item.isTopNews ? '1' : '0',
         news_category: item.category || 'Society'
       };
-      
+
       // WordPress 업데이트
       await updateWordPressPostMeta(item.wordpressUrl, metaData);
-      
+
       syncedCount++;
       if (item.isTopNews) {
         topNewsCount++;
         console.log(`[Sync] ⭐ 탑뉴스: ${item.translatedTitle || item.title}`);
       }
-      
+
       // 카테고리 카운트
       const cat = item.category || 'Society';
       categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
     }
-    
+
     console.log(`[Sync] ✅ 동기화 완료!`);
     console.log(`[Sync] 📊 총 ${syncedCount}개 뉴스 동기화, 탑뉴스 ${topNewsCount}개`);
     console.log(`[Sync] 📊 카테고리별:`, categoryCounts);
 
     revalidatePath("/admin");
     revalidatePath("/admin/settings");
-    return { 
-      success: true, 
-      message: `동기화 완료! ${syncedCount}개 뉴스 동기화됨 (탑뉴스 ${topNewsCount}개, 카테고리: ${JSON.stringify(categoryCounts)})` 
+    return {
+      success: true,
+      message: `동기화 완료! ${syncedCount}개 뉴스 동기화됨 (탑뉴스 ${topNewsCount}개, 카테고리: ${JSON.stringify(categoryCounts)})`
     };
   } catch (error) {
     console.error("[Sync] ❌ 동기화 실패:", error);
@@ -358,14 +358,14 @@ export async function toggleTopNewsForPublishedAction(id) {
     if (newTopNewsStatus && item.publishedAt) {
       // ✅ 탑뉴스 지정 시: 해당 뉴스보다 오래된 탑뉴스들 해제 (DB + WordPress)
       const olderTopNews = await prisma.newsItem.findMany({
-        where: { 
-          isTopNews: true, 
-          status: "PUBLISHED", 
+        where: {
+          isTopNews: true,
+          status: "PUBLISHED",
           id: { not: id },
           publishedAt: { lt: item.publishedAt } // 이 뉴스보다 오래된 것만
         }
       });
-      
+
       for (const old of olderTopNews) {
         await prisma.newsItem.update({ where: { id: old.id }, data: { isTopNews: false } });
         if (old.wordpressUrl) {
@@ -376,15 +376,15 @@ export async function toggleTopNewsForPublishedAction(id) {
     }
 
     // DB 업데이트
-    await prisma.newsItem.update({ 
-      where: { id }, 
-      data: { isTopNews: newTopNewsStatus } 
+    await prisma.newsItem.update({
+      where: { id },
+      data: { isTopNews: newTopNewsStatus }
     });
 
     // WordPress 메타 업데이트
     if (item.wordpressUrl) {
-      await updateWordPressPostMeta(item.wordpressUrl, { 
-        is_top_news: newTopNewsStatus ? '1' : '0' 
+      await updateWordPressPostMeta(item.wordpressUrl, {
+        is_top_news: newTopNewsStatus ? '1' : '0'
       });
     }
 
@@ -451,26 +451,26 @@ export async function batchTranslateAction(ids) {
     // Process in parallel with batch size limit to avoid rate limits
     // 배치 크기 제한으로 rate limit 방지 및 성능 최적화
     const BATCH_SIZE = 10; // 동시에 10개씩 처리 (gpt-4o-mini는 rate limit이 높음)
-    
+
     // 통계 추적
     let skippedCount = 0;
     let translatedCount = 0;
     let failedCount = 0;
-    
+
     for (let i = 0; i < ids.length; i += BATCH_SIZE) {
       const batch = ids.slice(i, i + BATCH_SIZE);
-      
+
       const results = await Promise.allSettled(
         batch.map(async (id) => {
           try {
             const item = await prisma.newsItem.findUnique({ where: { id } });
-            
+
             // COMPLETED 상태는 무조건 스킵 (이미 완료된 번역)
             if (item?.translationStatus === "COMPLETED") {
               console.log(`[Skip] Already COMPLETED: ${item.title?.substring(0, 30)}...`);
               return { status: 'skipped', reason: 'COMPLETED' };
             }
-            
+
             // DRAFT 상태이고 3개 필드가 모두 있으면 스킵 (이미 번역 완료)
             if (
               item?.translationStatus === "DRAFT" &&
@@ -481,7 +481,7 @@ export async function batchTranslateAction(ids) {
               console.log(`[Skip] Already DRAFT with all fields: ${item.title?.substring(0, 30)}...`);
               return { status: 'skipped', reason: 'DRAFT_COMPLETE' };
             }
-            
+
             // 번역 필요: PENDING 상태이거나, 필드 중 하나라도 비어있음
             if (item) {
               console.log(`[Translate] ${item.title?.substring(0, 30)}...`);
@@ -511,7 +511,7 @@ export async function batchTranslateAction(ids) {
           }
         })
       );
-      
+
       // 결과 집계
       results.forEach(r => {
         if (r.status === 'fulfilled') {
@@ -522,7 +522,7 @@ export async function batchTranslateAction(ids) {
           failedCount++;
         }
       });
-      
+
       // 배치 간 짧은 대기 (rate limit 방지)
       if (i + BATCH_SIZE < ids.length) {
         await new Promise(resolve => setTimeout(resolve, 200));
@@ -530,12 +530,12 @@ export async function batchTranslateAction(ids) {
     }
 
     console.log(`[BatchTranslate] 완료 - 번역: ${translatedCount}, 스킵: ${skippedCount}, 실패: ${failedCount}`);
-    
+
     revalidatePath("/admin");
-    return { 
-      success: true, 
-      translatedCount, 
-      skippedCount, 
+    return {
+      success: true,
+      translatedCount,
+      skippedCount,
       failedCount,
       message: `번역: ${translatedCount}개, 스킵(이미완료): ${skippedCount}개, 실패: ${failedCount}개`
     };
@@ -655,12 +655,12 @@ export async function deletePublishedNewsAction(id) {
 
     revalidatePath("/admin");
     revalidatePath("/admin/published-news");
-    
-    return { 
-      success: true, 
-      message: wpDeleted 
-        ? "WordPress 포스트와 데이터베이스에서 삭제되었습니다." 
-        : "데이터베이스에서 삭제되었습니다. (WordPress 삭제 실패)" 
+
+    return {
+      success: true,
+      message: wpDeleted
+        ? "WordPress 포스트와 데이터베이스에서 삭제되었습니다."
+        : "데이터베이스에서 삭제되었습니다. (WordPress 삭제 실패)"
     };
   } catch (error) {
     console.error("Delete published news failed:", error);
@@ -674,7 +674,7 @@ export async function deletePublishedNewsAction(id) {
 export async function batchDeletePublishedNewsAction(ids) {
   try {
     const results = [];
-    
+
     for (const id of ids) {
       const result = await deletePublishedNewsAction(id);
       results.push({ id, ...result });
@@ -693,6 +693,20 @@ export async function batchDeletePublishedNewsAction(ids) {
     };
   } catch (error) {
     console.error("Batch delete published news failed:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * 이메일 구독자들에게 당일 발행된 뉴스레터를 수동으로 즉시 발송합니다.
+ */
+export async function sendDailyEmailAction() {
+  try {
+    const { sendDailyDigest } = await import('@/scripts/send-daily-email.js');
+    await sendDailyDigest(false);
+    return { success: true, message: "구독자들에게 뉴스레터 발송이 완료되었습니다." };
+  } catch (error) {
+    console.error("Failed to send daily email action:", error);
     return { success: false, error: error.message };
   }
 }

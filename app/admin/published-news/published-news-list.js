@@ -2,8 +2,8 @@
 
 import { useState, useTransition, useMemo } from 'react';
 import Link from 'next/link';
-import { Trash2, ExternalLink, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import { deletePublishedNewsAction, batchDeletePublishedNewsAction } from '../actions';
+import { Trash2, ExternalLink, CheckCircle, XCircle, AlertCircle, Send } from 'lucide-react';
+import { deletePublishedNewsAction, batchDeletePublishedNewsAction, sendDailyEmailAction } from '../actions';
 
 const categoryLabels = {
   'Economy': '경제',
@@ -30,8 +30,8 @@ export default function PublishedNewsList({ groupedNews, categories }) {
   }, [newsData]);
 
   const toggleSelect = (id) => {
-    setSelectedIds(prev => 
-      prev.includes(id) 
+    setSelectedIds(prev =>
+      prev.includes(id)
         ? prev.filter(i => i !== id)
         : [...prev, id]
     );
@@ -49,7 +49,7 @@ export default function PublishedNewsList({ groupedNews, categories }) {
     const categoryNews = newsData[category] || [];
     const categoryIds = categoryNews.map(n => n.id);
     const allSelected = categoryIds.every(id => selectedIds.includes(id));
-    
+
     if (allSelected) {
       setSelectedIds(prev => prev.filter(id => !categoryIds.includes(id)));
     } else {
@@ -116,6 +116,21 @@ export default function PublishedNewsList({ groupedNews, categories }) {
     });
   };
 
+  const handleSendEmail = async () => {
+    if (!confirm('현재 발행된 뉴스를 모아 뉴스레터 구독자들에게 발송하시겠습니까? (이미 보낸 경우 중복될 수 있습니다)')) {
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await sendDailyEmailAction();
+      if (result.success) {
+        alert(result.message);
+      } else {
+        alert(`메일 발송 실패: ${result.error}`);
+      }
+    });
+  };
+
   const getTranslationStatus = (item) => {
     if (item.translationStatus === 'COMPLETED') {
       return { label: '완료', color: 'bg-green-100 text-green-700', icon: CheckCircle };
@@ -154,7 +169,16 @@ export default function PublishedNewsList({ groupedNews, categories }) {
               선택 삭제 ({selectedIds.length})
             </button>
           )}
-          <span className="text-sm text-gray-600">
+          <button
+            onClick={handleSendEmail}
+            disabled={isPending}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium ml-4"
+            title="이메일 구독자에게 오늘 뉴스레터 즉시 보내기"
+          >
+            <Send size={16} />
+            뉴스레터 발송
+          </button>
+          <span className="text-sm text-gray-600 ml-4">
             총 {allNews.length}개
           </span>
         </div>
@@ -206,9 +230,8 @@ export default function PublishedNewsList({ groupedNews, categories }) {
                     return (
                       <div
                         key={item.id}
-                        className={`p-4 hover:bg-gray-50 transition-colors ${
-                          selectedIds.includes(item.id) ? 'bg-red-50' : ''
-                        }`}
+                        className={`p-4 hover:bg-gray-50 transition-colors ${selectedIds.includes(item.id) ? 'bg-red-50' : ''
+                          }`}
                       >
                         <div className="flex items-start gap-4">
                           {/* 체크박스 */}
@@ -252,15 +275,15 @@ export default function PublishedNewsList({ groupedNews, categories }) {
 
                             <div className="flex items-center gap-4 text-xs text-gray-500">
                               <span>
-                                {item.publishedAt 
+                                {item.publishedAt
                                   ? new Date(item.publishedAt).toLocaleString('ko-KR', {
-                                      timeZone: 'Asia/Ho_Chi_Minh',
-                                      year: 'numeric',
-                                      month: '2-digit',
-                                      day: '2-digit',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })
+                                    timeZone: 'Asia/Ho_Chi_Minh',
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })
                                   : '날짜 없음'
                                 }
                               </span>
