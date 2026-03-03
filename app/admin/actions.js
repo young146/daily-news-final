@@ -702,11 +702,21 @@ export async function batchDeletePublishedNewsAction(ids) {
  */
 export async function sendDailyEmailAction() {
   try {
-    const { sendDailyDigest } = await import('@/scripts/send-daily-email.js');
-    await sendDailyDigest(false);
-    return { success: true, message: "구독자들에게 뉴스레터 발송이 완료되었습니다." };
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://daily-news-final.vercel.app';
+    const response = await fetch(`${baseUrl}/api/send-daily-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ test: false }),
+    });
+    const result = await response.json();
+    if (result.success) {
+      return { success: true, message: result.message || '구독자들에게 뉴스레터 발송이 완료되었습니다.' };
+    } else {
+      return { success: false, error: result.error };
+    }
   } catch (error) {
-    console.error("Failed to send daily email action:", error);
+    console.error('Failed to send daily email action:', error);
     return { success: false, error: error.message };
   }
 }
+
