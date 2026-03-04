@@ -1,8 +1,0 @@
---- Database Counts by Source ---
-Source: InsideVina           | Count: 6
-Source: Thanh Nien           | Count: 6
-Source: Tuoi Tre News        | Count: 6
-Source: VnExpress            | Count: 9
-Source: VnExpress VN         | Count: 9
-Source: Yonhap News          | Count: 5
----------------------------------

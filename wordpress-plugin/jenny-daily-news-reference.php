@@ -1,0 +1,192 @@
+<?php
+/**
+ * Plugin Name: Jenny Daily News Display
+ * Description: Displays daily news summaries in a beautiful card layout using the shortcode [daily_news_list].
+ * Version: 1.0
+ * Author: Jenny (Antigravity)
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit; // Exit if accessed directly
+}
+
+function jenny_daily_news_shortcode( $atts ) {
+    // Attributes
+    $atts = shortcode_atts( array(
+        'count' => 12,       // Number of items to show
+        'category' => 711,   // Default Category ID (Daily News Summary)
+    ), $atts );
+
+    // Query Arguments
+    $args = array(
+        'post_type' => 'post',
+        'posts_per_page' => $atts['count'],
+        'cat' => $atts['category'],
+        'post_status' => 'publish',
+        'orderby' => 'date',
+        'order' => 'DESC',
+    );
+
+    $query = new WP_Query( $args );
+
+    if ( ! $query->have_posts() ) {
+        return '<p style="text-align:center; padding: 20px;">아직 등록된 데일리 뉴스가 없습니다.</p>';
+    }
+
+    // Start Output
+    $output = '<div class="jenny-news-grid">';
+
+    while ( $query->have_posts() ) {
+        $query->the_post();
+        
+        // Get Thumbnail
+        $thumb_url = get_the_post_thumbnail_url( get_the_ID(), 'medium_large' );
+        if ( ! $thumb_url ) {
+            $thumb_url = 'https://via.placeholder.com/600x400?text=Xin+Chao'; // Fallback
+        }
+
+        // Get Category Name
+        $categories = get_the_category();
+        $cat_name = ! empty( $categories ) ? $categories[0]->name : 'News';
+        
+        // Get Excerpt
+        $excerpt = get_the_excerpt();
+        if ( empty( $excerpt ) ) {
+            $excerpt = wp_trim_words( get_the_content(), 20 );
+        }
+
+        // Link
+        $permalink = get_permalink();
+
+        // Card HTML
+        $output .= '
+        <div class="jenny-news-card">
+            <div class="jenny-card-image">
+                <a href="' . esc_url( $permalink ) . '">
+                    <img src="' . esc_url( $thumb_url ) . '" alt="' . esc_attr( get_the_title() ) . '">
+                </a>
+                <span class="jenny-badge">' . esc_html( $cat_name ) . '</span>
+            </div>
+            <div class="jenny-content">
+                <div class="jenny-date">' . get_the_date( 'Y.m.d' ) . '</div>
+                <h3 class="jenny-title"><a href="' . esc_url( $permalink ) . '">' . get_the_title() . '</a></h3>
+                <div class="jenny-excerpt">' . $excerpt . '</div>
+                <a href="' . esc_url( $permalink ) . '" class="jenny-link">자세히 보기 →</a>
+            </div>
+        </div>';
+    }
+
+    $output .= '</div>';
+
+    wp_reset_postdata();
+
+    // CSS Styles
+    $output .= '
+    <style>
+        .jenny-news-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+            padding: 20px 0;
+        }
+        .jenny-news-card {
+            background: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .jenny-news-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15);
+        }
+        .jenny-card-image {
+            position: relative;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+            overflow: hidden;
+        }
+        .jenny-card-image img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+        .jenny-news-card:hover .jenny-card-image img {
+            transform: scale(1.05);
+        }
+        .jenny-badge {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: #ffffff;
+            color: #ea580c;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 700;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        .jenny-content {
+            padding: 24px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+        .jenny-date {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 8px;
+        }
+        .jenny-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #111827;
+            margin: 0 0 12px 0;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .jenny-title a {
+            color: inherit;
+            text-decoration: none;
+        }
+        .jenny-excerpt {
+            font-size: 14px;
+            color: #4b5563;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            flex-grow: 1;
+        }
+        .jenny-link {
+            font-size: 14px;
+            font-weight: 600;
+            color: #4b5563;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            margin-top: auto;
+            transition: color 0.2s;
+        }
+        .jenny-link:hover {
+            color: #ea580c;
+        }
+    </style>
+    ';
+
+    return $output;
+}
+add_shortcode( 'daily_news_list', 'jenny_daily_news_shortcode' );
