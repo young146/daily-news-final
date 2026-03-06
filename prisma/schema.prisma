@@ -67,6 +67,9 @@ model User {
 model Subscriber {
   id        String   @id @default(uuid())
   email     String   @unique
+  company   String?
+  name      String?
+  phone     String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 }
