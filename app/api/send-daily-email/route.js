@@ -18,6 +18,11 @@ export async function POST(request) {
       return Response.json({ success: false, error: '활성 구독자가 없습니다.' });
     }
 
+    // Clean up spaces on fetched emails just in case
+    const validEmails = subscribers
+      .map(s => s.email ? s.email.trim() : '')
+      .filter(email => email.length > 0);
+
     // Set "today" to start of day in Vietnam timezone
     const now = new Date();
     const vnDateStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
@@ -78,7 +83,7 @@ export async function POST(request) {
 
     const recipientEmails = isTest
       ? [process.env.TEST_EMAIL || 'test@example.com']
-      : subscribers.map(s => s.email);
+      : validEmails;
 
     await sendNewsletter(recipientEmails, subject, htmlContent);
 

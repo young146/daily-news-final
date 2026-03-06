@@ -25,7 +25,8 @@ export async function POST(req) {
         if (body.subscribers) {
             let added = 0, skipped = 0;
             for (const item of body.subscribers) {
-                const { email, company, name, phone } = item;
+                const { company, name, phone } = item;
+                const email = item.email ? item.email.trim() : null;
                 if (!email || !email.includes("@")) { skipped++; continue; }
                 try {
                     const existing = await prisma.subscriber.findUnique({ where: { email } });
@@ -55,7 +56,9 @@ export async function POST(req) {
         }
 
         // Single add
-        const { email, company, name, phone } = body;
+        const { company, name, phone } = body;
+        const email = body.email ? body.email.trim() : null;
+
         if (!email || !email.includes("@")) {
             return NextResponse.json({ message: "유효한 이메일 주소를 입력해주세요." }, { status: 400 });
         }
