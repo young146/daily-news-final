@@ -701,17 +701,31 @@ export async function batchDeletePublishedNewsAction(ids) {
 /**
  * 이메일 구독자들에게 당일 발행된 뉴스레터를 수동으로 즉시 발송합니다.
  */
-export async function sendDailyEmailAction(isTest = false) {
+export async function sendDailyEmailAction(isTest = false, customEmail = null) {
   try {
-    // 구독자 조회
-    const subscribers = await prisma.subscriber.findMany({
-      where: { isActive: true },
-      select: { email: true }
-    });
-    const validEmails = subscribers.map(s => (s.email || '').trim()).filter(e => e.length > 0);
-
-    if (validEmails.length === 0 && !isTest) {
-      return { success: false, error: '활성 구독자가 없습니다.' };
+    // 수신자 결정
+    let targetEmails;
+    if (customEmail) {
+      // 특정 이메일로 직접 발송
+      const email = customEmail.trim();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return { success: false, error: '유효한 이메일 주소를 입력하세요.' };
+      }
+      targetEmails = [email];
+    } else if (isTest) {
+      // 테스트 발송 (고정 주소)
+      const testEmail = process.env.TEST_EMAIL || 'younghan146@gmail.com';
+      targetEmails = [testEmail];
+    } else {
+      // 전체 구독자 발송
+      const subscribers = await prisma.subscriber.findMany({
+        where: { isActive: true },
+        select: { email: true }
+      });
+      targetEmails = subscribers.map(s => (s.email || '').trim()).filter(e => e.length > 0);
+      if (targetEmails.length === 0) {
+        return { success: false, error: '활성 구독자가 없습니다.' };
+      }
     }
 
     // 오늘 날짜 (베트남 시간)
@@ -764,13 +778,9 @@ export async function sendDailyEmailAction(isTest = false) {
     const htmlContent = buildEmailHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards);
     const subject = `[씬짜오베트남] 데일리뉴스 | ${todayString}`;
 
-    const recipientEmails = isTest
-      ? [process.env.TEST_EMAIL || 'test@example.com']
-      : validEmails;
+    await sendNewsletter(targetEmails, subject, htmlContent);
 
-    await sendNewsletter(recipientEmails, subject, htmlContent);
-
-    return { success: true, message: `${recipientEmails.length}명에게 발송 완료` };
+    return { success: true, message: `${targetEmails.length}명에게 발송 완료` };
   } catch (error) {
     console.error('sendDailyEmailAction failed:', error);
     return { success: false, error: error.message };

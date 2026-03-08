@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, useMemo } from 'react';
 import Link from 'next/link';
 import { Trash2, ExternalLink, CheckCircle, XCircle, AlertCircle, Send } from 'lucide-react';
-import { deletePublishedNewsAction, batchDeletePublishedNewsAction, sendDailyEmailAction } from '../actions';
+import { deletePublishedNewsAction, batchDeletePublishedNewsAction } from '../actions';
 
 const categoryLabels = {
   'Economy': '경제',
@@ -25,14 +25,25 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
   const [isPending, startTransition] = useTransition();
   const [previewHtml, setPreviewHtml] = useState(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
-  const [isSending, setIsSending] = useState(false);
+  const [isTestSending, setIsTestSending] = useState(false);
+  const [isAllSending, setIsAllSending] = useState(false);
   const [activePromoCards, setActivePromoCards] = useState([]);
   const [toast, setToast] = useState(null);
-  const [confirmSend, setConfirmSend] = useState(null); // null | 'test' | 'all'
+  const [confirmSend, setConfirmSend] = useState(null);
+  const [customEmail, setCustomEmail] = useState('');
+  const [testEmails, setTestEmails] = useState([]);
+  const [newTestEmail, setNewTestEmail] = useState({ email: '', name: '' });
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  const fetchTestEmails = () => {
+    fetch('/api/test-emails')
+      .then(r => r.json())
+      .then(d => { if (d.success) setTestEmails(d.emails || []); })
+      .catch(() => { });
   };
 
   useEffect(() => {
@@ -40,7 +51,37 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
       .then(r => r.json())
       .then(d => { if (d.success) setActivePromoCards(d.cards || []); })
       .catch(() => { });
+    fetchTestEmails();
   }, []);
+
+  const handleAddTestEmail = async () => {
+    const email = newTestEmail.email.trim();
+    if (!email) return;
+    const res = await fetch('/api/test-emails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name: newTestEmail.name.trim() || null })
+    });
+    const data = await res.json();
+    if (data.success) {
+      setNewTestEmail({ email: '', name: '' });
+      fetchTestEmails();
+      showToast(`✅ ${email} 추가됨`);
+    } else {
+      showToast(`❌ ${data.error}`, 'error');
+    }
+  };
+
+  const handleDeleteTestEmail = async (id, email) => {
+    const res = await fetch(`/api/test-emails/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      fetchTestEmails();
+      showToast(`🗑️ ${email} 삭제됨`);
+    } else {
+      showToast(`❌ ${data.error}`, 'error');
+    }
+  };
 
   // 모든 뉴스를 평탄화하여 계산
   const allNews = useMemo(() => {
@@ -135,27 +176,68 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
   };
 
   const handleSendEmail = async () => {
-    setIsSending(true);
+    setIsAllSending(true);
     setConfirmSend(null);
-    const result = await sendDailyEmailAction();
-    setIsSending(false);
-    if (result.success) {
-      showToast(`✅ 전체 발송 완료! ${result.message}`);
-    } else {
-      showToast(`❌ 메일 발송 실패: ${result.error}`, 'error');
+    try {
+      const res = await fetch('/api/send-daily-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      const result = await res.json();
+      if (result.success) {
+        showToast(`✅ 전체 발송 완료! ${result.message}`);
+      } else {
+        showToast(`❌ 메일 발송 실패: ${result.error}`, 'error');
+      }
+    } catch (e) {
+      showToast(`❌ 오류: ${e.message}`, 'error');
     }
+    setIsAllSending(false);
   };
 
   const handleTestEmail = async () => {
-    setIsSending(true);
+    setIsTestSending(true);
     setConfirmSend(null);
-    const result = await sendDailyEmailAction(true);
-    setIsSending(false);
-    if (result.success) {
-      showToast('✅ 테스트 발송 완료! younghan146@gmail.com 을 확인하세요.');
-    } else {
-      showToast(`❌ 테스트 실패: ${result.error}`, 'error');
+    try {
+      const res = await fetch('/api/send-daily-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ test: true })
+      });
+      const result = await res.json();
+      if (result.success) {
+        showToast(`✅ 테스트 발송 완료! ${result.message}`);
+      } else {
+        showToast(`❌ 테스트 실패: ${result.error}`, 'error');
+      }
+    } catch (e) {
+      showToast(`❌ 오류: ${e.message}`, 'error');
     }
+    setIsTestSending(false);
+  };
+
+  const handleCustomEmail = async () => {
+    const email = customEmail.trim();
+    if (!email) return;
+    setIsSending(true);
+    try {
+      const res = await fetch('/api/send-daily-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customEmail: email })
+      });
+      const result = await res.json();
+      if (result.success) {
+        showToast(`✅ ${email} 으로 발송 완료!`);
+        setCustomEmail('');
+      } else {
+        showToast(`❌ 발송 실패: ${result.error}`, 'error');
+      }
+    } catch (e) {
+      showToast(`❌ 오류: ${e.message}`, 'error');
+    }
+    setIsSending(false);
   };
 
   const handlePreview = async () => {
@@ -220,7 +302,11 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
             /* 2단계: 인라인 확인 */
             <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
               <span className="text-sm font-bold text-red-700">
-                {confirmSend === 'test' ? '🧪 younghan146@gmail.com 으로 테스트 발송?' : `📧 구독자 ${subscriberCount.toLocaleString()}명 전체 발송?`}
+                {confirmSend === 'test'
+                  ? testEmails.length > 0
+                    ? `🧪 테스트 수신자 ${testEmails.length}명에게 발송?`
+                    : `🧪 테스트 발송 (수신자 목록에서 추가 필요)`
+                  : `📧 구독자 ${subscriberCount.toLocaleString()}명 전체 발송?`}
               </span>
               <button
                 onClick={confirmSend === 'test' ? handleTestEmail : handleSendEmail}
@@ -242,16 +328,58 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
                 className="px-3 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50 text-sm font-medium cursor-pointer disabled:cursor-not-allowed">
                 {isPreviewing ? '⏳' : '👁️'} 미리보기
               </button>
-              <button onClick={() => setConfirmSend('test')} disabled={isSending || isPending}
+              <button onClick={() => setConfirmSend('test')} disabled={isTestSending || isAllSending || isPending}
                 className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm font-medium cursor-pointer disabled:cursor-not-allowed">
-                {isSending ? '⏳ 발송 중...' : '🧪 테스트 발송'}
+                {isTestSending ? '⏳ 발송 중...' : '🧪 테스트 발송'}
               </button>
-              <button onClick={() => setConfirmSend('all')} disabled={isSending || isPending}
+              <button onClick={() => setConfirmSend('all')} disabled={isTestSending || isAllSending || isPending}
                 className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium cursor-pointer disabled:cursor-not-allowed">
-                {isSending ? <><Send size={14} /> 발송 중...</> : <><Send size={14} /> 전체 발송</>}
+                {isAllSending ? <><Send size={14} /> 발송 중...</> : <><Send size={14} /> 전체 발송</>}
               </button>
             </div>
           )}
+        </div>
+        {/* 🧪 테스트 발송 대상 이메일 관리 */}
+        <div className="px-4 py-3 border-t border-orange-100 bg-green-50">
+          <p className="text-xs font-bold text-green-700 mb-2">🧪 테스트 발송 수신자 목록 ({testEmails.length}명)</p>
+          {testEmails.length > 0 ? (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {testEmails.map(t => (
+                <span key={t.id} className="inline-flex items-center gap-1 bg-white border border-green-200 rounded-full px-3 py-1 text-xs text-gray-700">
+                  {t.name ? <strong>{t.name}</strong> : null}
+                  {t.name ? ' · ' : null}
+                  {t.email}
+                  <button onClick={() => handleDeleteTestEmail(t.id, t.email)} className="ml-1 text-red-400 hover:text-red-600 font-bold cursor-pointer">✕</button>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400 mb-2">등록된 테스트 이메일 없음 (아래에서 추가)</p>
+          )}
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              value={newTestEmail.name}
+              onChange={e => setNewTestEmail(p => ({ ...p, name: e.target.value }))}
+              placeholder="이름 (선택)"
+              className="w-24 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:border-green-400"
+            />
+            <input
+              type="email"
+              value={newTestEmail.email}
+              onChange={e => setNewTestEmail(p => ({ ...p, email: e.target.value }))}
+              onKeyDown={e => e.key === 'Enter' && handleAddTestEmail()}
+              placeholder="이메일 주소"
+              className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:border-green-400"
+            />
+            <button
+              onClick={handleAddTestEmail}
+              disabled={!newTestEmail.email.trim()}
+              className="px-3 py-1.5 bg-green-600 text-white rounded text-xs font-bold hover:bg-green-700 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              ➕ 추가
+            </button>
+          </div>
         </div>
         {/* 이메일에 포함되는 카드 미리보기 */}
         <div className="p-4 flex gap-4 flex-wrap">
@@ -262,7 +390,6 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
               <p className="text-xs font-bold text-blue-700">오늘의 뉴스 카드</p>
               <p className="text-xs text-gray-500">뉴스 터미널 ({allNews.length}개 기사)</p>
             </div>
-            <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">자동</span>
           </div>
           {/* 홍보 카드들 */}
           {activePromoCards.length === 0 ? (
@@ -474,18 +601,39 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl flex flex-col" style={{ maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between p-4 border-b">
                 <h2 className="font-bold text-lg">📧 이메일 미리보기 (뉴스 + 홍보카드)</h2>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap justify-end">
+                  {/* PDF 인쇄 */}
                   <button
                     onClick={() => {
-                      if (!confirm(`📧 이메일 구독자 ${subscriberCount.toLocaleString()}명 전체에게 발송하겠습니까?`)) return;
-                      setPreviewHtml(null);
-                      handleSendEmail();
+                      const iframe = document.querySelector('iframe[title="이메일 미리보기"]');
+                      if (iframe) iframe.contentWindow.print();
                     }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-bold text-sm flex items-center gap-2"
+                    className="px-3 py-2 bg-gray-700 text-white rounded hover:bg-gray-800 font-bold text-sm cursor-pointer"
+                  >
+                    🖨️ 인쇄 / PDF저장
+                  </button>
+                  {/* 뉴스 URL 복사 (SNS용) */}
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText('https://chaovietnam.co.kr/daily-news-terminal/');
+                      showToast('✅ 뉴스 URL 복사 완료! SNS에 붙여넣기 하세요.');
+                      setPreviewHtml(null);
+                    }}
+                    className="px-3 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 font-bold text-sm cursor-pointer"
+                  >
+                    📤 SNS용 URL 복사
+                  </button>
+                  {/* 전체 발송 */}
+                  <button
+                    onClick={() => {
+                      setPreviewHtml(null);
+                      setConfirmSend('all');
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-bold text-sm flex items-center gap-2 cursor-pointer"
                   >
                     <Send size={14} /> 이대로 발송
                   </button>
-                  <button onClick={() => setPreviewHtml(null)} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 font-bold text-sm">✕ 닫기</button>
+                  <button onClick={() => setPreviewHtml(null)} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 font-bold text-sm cursor-pointer">✕ 닫기</button>
                 </div>
               </div>
               <div className="flex-1 overflow-auto">

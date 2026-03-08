@@ -1,5 +1,33 @@
 # HANDOVER.md — 씬짜오 데일리뉴스 홍보카드 작업 현황
-_최종 업데이트: 2026-03-08_
+_최종 업데이트: 2026-03-08 (19:00 KST)_
+
+---
+
+## ✅ 2026-03-08 세션 작업 (최신)
+
+### 1. 카드뉴스 게시 팝업 단순화 (`app/admin/card-news/CardNewsSimple.js`)
+- 팝업에서 홍보카드 URL/미리보기 제거 → **"뉴스 URL 복사" 버튼 1개**만 남김
+- 이메일 발송 관리는 `published-news` 페이지로 이동 유도하는 링크 버튼 추가
+
+### 2. 이메일 뉴스레터 통합 허브 (`app/admin/published-news/published-news-list.js`)
+- 상단에 **이메일 발송 패널** 추가: 오늘의 뉴스카드 + 활성 홍보카드 한눈에 표시
+- 버튼 3개 통합: **👁️ 미리보기**, **🧪 테스트 발송**, **📧 전체 발송**
+- `window.confirm()` 제거 → **2단계 인라인 확인** (팝업 없이 화면 내에서 처리)
+- `alert()` 제거 → **화면 상단 토스트 알림** (초록/빨간, 4초 자동 소멸)
+
+### 3. 홍보카드 공유 방식 정리 (`app/admin/promo-cards/page.js`)
+- **"🔗 링크 복사"** (카카오톡 수동 공유용 URL)
+- **"📱 페이지 열기"** (고객 상담 시 보여주는 뷰)
+
+### 4. 이메일 발송 Server Action 버그 수정 (`app/admin/actions.js`)
+- **원인**: `'use server'` 파일 내 `await import()` 동적 import → 서버 액션 전체 무력화
+- **수정**: `sendNewsletter`를 파일 최상단 정적 `import`로 이동
+- 기존의 `localhost:3000` self-fetch 방식을 이미 직접 호출 방식으로 교체했으나, 동적 import 버그가 남아있었음 → 이번에 완전 수정
+
+### 5. 배포
+- `git commit` + `git push origin main` → Vercel 자동 배포 완료
+
+---
 
 ---
 

@@ -1,27 +1,47 @@
 import prisma from '@/lib/prisma';
-import { sendNewsletter } from '../../../lib/email-service.js';
+import { sendNewsletter, sendNewsletterBatched } from '../../../lib/email-service.js';
 
 export const runtime = 'nodejs';
+export const maxDuration = 300; // Vercel Pro: 최대 5분 (대량 발송용)
 
 export async function POST(request) {
   try {
     const body = await request.json().catch(() => ({}));
     const isTest = body.test === true;
+    const customEmail = body.customEmail ? body.customEmail.trim() : null;
 
-    // Fetch active subscribers
-    const subscribers = await prisma.subscriber.findMany({
-      where: { isActive: true },
-      select: { email: true }
-    });
-
-    if (subscribers.length === 0 && !isTest) {
-      return Response.json({ success: false, error: '활성 구독자가 없습니다.' });
+    // 수신자 결정
+    let recipientEmails;
+    if (customEmail) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customEmail)) {
+        return Response.json({ success: false, error: '유효하지 않은 이메일 주소입니다.' });
+      }
+      recipientEmails = [customEmail];
+    } else if (isTest) {
+      // 테스트 이메일 목록에서 가져옴
+      const testEmails = await prisma.testEmail.findMany({ orderBy: { createdAt: 'asc' } });
+      recipientEmails = testEmails.map(t => t.email);
+      if (recipientEmails.length === 0) {
+        // fallback: TEST_EMAIL 환경변수
+        const fallback = process.env.TEST_EMAIL;
+        if (!fallback) {
+          return Response.json({ success: false, error: '테스트 이메일 목록이 비어있습니다. 수신자를 먼저 추가해주세요.' });
+        }
+        recipientEmails = [fallback];
+      }
+    } else {
+      // 전체 구독자
+      const subscribers = await prisma.subscriber.findMany({
+        where: { isActive: true },
+        select: { email: true }
+      });
+      recipientEmails = subscribers
+        .map(s => s.email ? s.email.trim() : '')
+        .filter(email => email.length > 0);
+      if (recipientEmails.length === 0) {
+        return Response.json({ success: false, error: '활성 구독자가 없습니다.' });
+      }
     }
-
-    // Clean up spaces on fetched emails just in case
-    const validEmails = subscribers
-      .map(s => s.email ? s.email.trim() : '')
-      .filter(email => email.length > 0);
 
     // Set "today" to start of day in Vietnam timezone
     const now = new Date();
@@ -94,13 +114,15 @@ export async function POST(request) {
       });
     }
 
-    const recipientEmails = isTest
-      ? [process.env.TEST_EMAIL || 'test@example.com']
-      : validEmails;
+    // 전체 발송: 500명씩 BCC 배치
+    const { batchTotal, succeeded, failed } = await sendNewsletterBatched(recipientEmails, subject, htmlContent);
 
-    await sendNewsletter(recipientEmails, subject, htmlContent);
-
-    return Response.json({ success: true, message: `${recipientEmails.length}명에게 발송 완료` });
+    return Response.json({
+      success: true,
+      message: `${batchTotal}배치 발송 완료 | 성공 ${succeeded}명 / 실패 ${failed}명`,
+      succeeded,
+      failed,
+    });
   } catch (error) {
     console.error('[SendEmail API] Error:', error);
     return Response.json({ success: false, error: error.message }, { status: 500 });
@@ -141,6 +163,18 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
       `;
     });
   }
+
+  // 섹션 안내 문구
+  html += `
+    <div style="margin: 30px 0; padding: 16px 20px; background: #f8f9fa; border-left: 4px solid #d1121d; border-radius: 0 6px 6px 0;">
+      <p style="font-size: 15px; font-weight: bold; color: #1a1a1a; margin: 0 0 6px 0; line-height: 1.6;">
+        베트남의 흐름을 관망할 수 있는 뉴스가 섹션별로 다양하게 게재되어 있습니다.
+      </p>
+      <a href="${terminalUrl}" target="_blank" style="font-size: 13px; color: #d1121d; text-decoration: underline;">
+        👉 뉴스 터미널에서 전체 뉴스 확인하기
+      </a>
+    </div>
+  `;
 
   // Promo Cards Section
   if (promoCards && promoCards.length > 0) {
