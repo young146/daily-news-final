@@ -1,36 +1,32 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 
-// URL을 자동으로 클릭 가능한 링크로 변환
+// URL을 클릭 가능한 링크로 변환
 const linkify = (text) => {
   if (!text) return null;
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
   return parts.map((part, i) =>
     urlRegex.test(part)
-      ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb", textDecoration: "underline", wordBreak: "break-all" }}>{part}</a>
+      ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline', wordBreak: 'break-all' }}>{part}</a>
       : part
   );
 };
-
 
 export default function CardNewsSimple({ data, mode = "preview" }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [publishResult, setPublishResult] = useState(null);
   const [selectedNews, setSelectedNews] = useState(null); // 선택된 뉴스 (탑뉴스 또는 최신 뉴스)
   const [useGradient, setUseGradient] = useState(false); // 그라디언트 사용 여부 (기본값: false)
-  const [promoCards, setPromoCards] = useState([]); // DB에서 로드된 홍보카드
-  const [currentPromoSlide, setCurrentPromoSlide] = useState(0); // 슬라이더 현재 인덱스
+  const [promoCards, setPromoCards] = useState([]); // 활성 홍보카드
 
-  // 활성 홍보카드 DB에서 로드
+  // 활성 홍보카드 로드
   useEffect(() => {
-    fetch("/api/promo-cards/active")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) setPromoCards(data.cards || []);
-      })
-      .catch((e) => console.warn("[PromoCards] 로드 실패:", e));
+    fetch('/api/promo-cards/active')
+      .then(r => r.json())
+      .then(d => { if (d.success) setPromoCards(d.cards || []); })
+      .catch(e => console.warn('[PromoCards] 로드 실패:', e));
   }, []);
 
   const {
@@ -502,8 +498,8 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
         </button>
 
         {publishResult && publishResult.success && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto py-4">
-            <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-lg mx-4 my-auto">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-lg mx-4">
               <div className="flex flex-col gap-5">
                 <div className="text-center">
                   <span className="text-4xl">🎉</span>
@@ -515,118 +511,51 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                   </p>
                 </div>
 
-                <div className="bg-blue-50 p-5 rounded-xl border-2 border-blue-300">
-                  <p className="text-center text-gray-800 font-bold mb-4 text-lg">
-                    📮 SNS 공유용 URL
-                  </p>
-
-                  <div
-                    onClick={() => {
-                      const dateParam = `${String(
-                        new Date().getMonth() + 1
-                      ).padStart(2, "0")}${String(
-                        new Date().getDate()
-                      ).padStart(2, "0")}`;
-                      const shareUrl = `https://chaovietnam.co.kr/daily-news-terminal/?v=${dateParam}`;
-                      const textArea = document.createElement("textarea");
-                      textArea.value = shareUrl;
-                      textArea.style.position = "fixed";
-                      textArea.style.left = "-9999px";
-                      document.body.appendChild(textArea);
-                      textArea.select();
-                      document.execCommand("copy");
-                      document.body.removeChild(textArea);
-                      const btn = document.getElementById("copy-success-msg");
-                      if (btn) {
-                        btn.textContent = "✅ 복사됨!";
-                        setTimeout(() => {
-                          btn.textContent = "📋 클릭하여 복사";
-                        }, 2000);
-                      }
-                    }}
-                    className="flex items-center gap-3 p-4 bg-white rounded-lg cursor-pointer hover:bg-gray-50 transition-colors border-2 border-blue-400"
-                  >
-                    <span className="text-blue-700 font-mono text-sm flex-1 break-all font-bold">
-                      https://chaovietnam.co.kr/daily-news-terminal/?v=
-                      {`${String(new Date().getMonth() + 1).padStart(
-                        2,
-                        "0"
-                      )}${String(new Date().getDate()).padStart(2, "0")}`}
-                    </span>
-                    <span
-                      id="copy-success-msg"
-                      className="text-sm bg-blue-600 text-white px-3 py-2 rounded-lg font-bold whitespace-nowrap"
-                    >
-                      📋 클릭하여 복사
+                {/* ─── 카드 게시 완료 팝업 ─── */}
+                <div className="bg-blue-50 p-4 rounded-xl border-2 border-blue-200">
+                  {/* 뉴스 URL 표시 */}
+                  <p className="text-xs font-semibold text-blue-500 uppercase mb-2">📰 오늘 뉴스 터미널 URL</p>
+                  <div className="flex items-center gap-2 p-3 bg-white rounded-lg border border-blue-200 mb-3">
+                    <span className="text-blue-700 font-mono text-xs flex-1 break-all">
+                      https://chaovietnam.co.kr/daily-news-terminal/?v={`${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}`}
                     </span>
                   </div>
+
+                  {/* 뉴스 URL 복사 */}
+                  <button
+                    type="button"
+                    id="news-copy-btn"
+                    onClick={() => {
+                      const dateParam = `${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}`;
+                      const newsUrl = `https://chaovietnam.co.kr/daily-news-terminal/?v=${dateParam}`;
+                      navigator.clipboard.writeText(newsUrl).then(() => {
+                        const btn = document.getElementById('news-copy-btn');
+                        if (btn) {
+                          btn.textContent = '✅ 복사됨!';
+                          setTimeout(() => { btn.textContent = '📋 뉴스 URL 복사'; }, 2000);
+                        }
+                      });
+                    }}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
+                  >
+                    📋 뉴스 URL 복사
+                  </button>
                 </div>
 
-                {/* ─── 홍보카드 섹션 (전체 표시) ─── */}
-                {promoCards.length > 0 && (() => {
-                  const dateParam = `${String(new Date().getMonth() + 1).padStart(2, "0")}${String(new Date().getDate()).padStart(2, "0")}`;
-                  const newsShareUrl = `https://chaovietnam.co.kr/daily-news-terminal/?v=${dateParam}`;
-                  return (
-                    <div className="bg-orange-50 p-4 rounded-xl border-2 border-orange-300">
-                      <p className="text-orange-800 font-bold text-sm mb-3">📣 함께 홍보하기 ({promoCards.length}개)</p>
-                      <div className="flex flex-col gap-3">
-                        {promoCards.map((card) => {
-                          const ytMatch = card.videoUrl?.match(/(?:youtube\.com.*v=|youtu\.be\/)([^&\n?#]+)/);
-                          const ytId = ytMatch ? ytMatch[1] : null;
-                          const thumbSrc = card.imageUrl || (ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null);
-                          return (
-                            <div key={card.id} className="bg-white rounded-lg border border-orange-200 overflow-hidden">
-                              {/* 이미지 */}
-                              {thumbSrc && (
-                                <img
-                                  src={thumbSrc}
-                                  alt={card.title}
-                                  className="w-full object-contain bg-gray-50"
-                                  style={{ maxHeight: "150px" }}
-                                  onError={(e) => { e.target.style.display = "none"; }}
-                                />
-                              )}
-                              <div className="p-3">
-                                <p className="font-bold text-gray-800 text-sm mb-1">{card.title}</p>
-                                {card.description && (
-                                  <div className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed mb-2">
-                                    {linkify(card.description)}
-                                  </div>
-                                )}
-                                {/* 통합 복사 버튼 — 뉴스URL + 홍보카드 페이지 URL */}
-                                <button
-                                  type="button"
-                                  id={`copy-combined-${card.id}`}
-                                  onClick={() => {
-                                    const promoPageUrl = `https://chaovietnam.co.kr/promo/${card.id}`;
-                                    // 카카오톡에서 URL 두 개를 한 줄씩 보내면 각각 이미지 카드 미리보기가 생성됨
-                                    const combined = `📰 오늘의 씬짜오 뉴스\n${newsShareUrl}\n\n📣 함께 홍보해요! (${card.title})\n${promoPageUrl}`;
-                                    const ta = document.createElement("textarea");
-                                    ta.value = combined;
-                                    ta.style.position = "fixed";
-                                    ta.style.left = "-9999px";
-                                    document.body.appendChild(ta);
-                                    ta.select();
-                                    document.execCommand("copy");
-                                    document.body.removeChild(ta);
-                                    const btn = document.getElementById(`copy-combined-${card.id}`);
-                                    if (btn) {
-                                      btn.textContent = "✅ 복사됨! 카카오톡에 붙여넣기 → 2개 카드 미리보기 생성";
-                                      setTimeout(() => { btn.textContent = "📋 뉴스 + 이 카드 함께 공유"; }, 3000);
-                                    }
-                                  }}
-                                  className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded font-bold text-xs transition-colors"
-                                >
-                                  📋 뉴스 + 이 카드 함께 공유
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
+                {/* 이메일 발송 안내 */}
+                <div className="bg-orange-50 p-4 rounded-xl border-2 border-orange-200">
+                  <p className="text-xs font-semibold text-orange-500 uppercase mb-2">💌 이메일 뉴스레터</p>
+                  <p className="text-sm text-gray-600 mb-3">
+                    뉴스카드 + 홍보카드를 함께 보냅니다.<br />
+                    <span className="text-orange-600 font-medium">발행 뉴스 페이지</span>에서 미리보기 후 발송하세요.
+                  </p>
+                  <a
+                    href="/admin/published-news"
+                    className="block w-full text-center bg-orange-500 hover:bg-orange-600 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
+                  >
+                    💌 발행 뉴스 페이지 → 이메일 발송
+                  </a>
+                </div>
 
 
                 <div className="flex gap-3">

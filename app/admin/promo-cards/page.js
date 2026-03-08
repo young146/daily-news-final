@@ -256,7 +256,11 @@ export default function PromoCardsPage() {
                                             순서: {card.sortOrder} | {new Date(card.createdAt).toLocaleDateString("ko-KR")} 등록
                                         </div>
                                         {/* 액션 버튼 4개 */}
-                                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "5px" }}>
+                                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px" }}>
+                                            <button onClick={() => {
+                                                navigator.clipboard.writeText(`https://chaovietnam.co.kr/promo/${card.id}`).then(() => showMsg(`📋 링크 복사됨! 카카오톡에 붙여넣기`));
+                                            }} style={btn("#fef9c3", "#92400e")}>🔗 링크 복사</button>
+                                            <a href={`/promo/${card.id}`} target="_blank" rel="noopener noreferrer" style={{ ...btn("#f0fdf4", "#15803d"), textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>📱 페이지 열기</a>
                                             <button onClick={() => setPreviewCard(card)} style={btn("#eff6ff", "#1d4ed8")}>👁️ 미리보기</button>
                                             <button onClick={() => handleToggleActive(card)} style={btn(card.isActive ? "#dcfce7" : "#fee2e2", card.isActive ? "#16a34a" : "#dc2626")}>{card.isActive ? "⏸ OFF" : "▶ ON"}</button>
                                             <button onClick={() => openEditForm(card)} style={btn("#f3f4f6", "#374151")}>✏️ 수정</button>

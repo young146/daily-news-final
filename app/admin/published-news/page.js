@@ -10,7 +10,7 @@ async function getPublishedNews() {
   const vnDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // "YYYY-MM-DD"
   const todayStart = new Date(`${vnDateStr}T00:00:00+07:00`);
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
-  
+
   const publishedNews = await prisma.newsItem.findMany({
     where: {
       isPublishedMain: true,
@@ -40,7 +40,7 @@ async function getPublishedNews() {
   // 카테고리별로 그룹화
   const categoryOrder = ['Economy', 'Society', 'Politics', 'Culture', 'International', 'Korea-Vietnam', 'Community', 'Travel', 'Health', 'Food'];
   const groupedNews = {};
-  
+
   publishedNews.forEach(news => {
     const category = news.category || 'Other';
     if (!groupedNews[category]) {
@@ -59,6 +59,7 @@ async function getPublishedNews() {
 
 export default async function PublishedNewsPage() {
   const { groupedNews, categories, totalCount } = await getPublishedNews();
+  const subscriberCount = await prisma.subscriber.count({ where: { isActive: true } });
 
   return (
     <div className="container mx-auto p-6">
@@ -69,7 +70,7 @@ export default async function PublishedNewsPage() {
         </p>
       </div>
 
-      <PublishedNewsList groupedNews={groupedNews} categories={categories} />
+      <PublishedNewsList groupedNews={groupedNews} categories={categories} subscriberCount={subscriberCount} />
     </div>
   );
 }

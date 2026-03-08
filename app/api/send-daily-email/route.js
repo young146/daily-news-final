@@ -69,6 +69,12 @@ export async function POST(request) {
     const otherNewsItems = recentNews.filter(n => !n.isTopNews);
     const orderedItems = [...topNewsItems, ...otherNewsItems];
 
+    // Fetch active promo cards
+    const promoCards = await prisma.promoCard.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: 'asc' }
+    });
+
     // Build date string
     const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
     const dateObj = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
@@ -78,8 +84,15 @@ export async function POST(request) {
     const weekday = weekdays[dateObj.getDay()];
     const todayString = `${year}년 ${month}월 ${day}일 (${weekday})`;
 
-    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems);
+    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards);
     const subject = `[씬짜오베트남] 데일리뉴스 | ${todayString}`;
+
+    // Preview mode: return HTML only, don't send
+    if (body.preview === true) {
+      return new Response(htmlContent, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      });
+    }
 
     const recipientEmails = isTest
       ? [process.env.TEST_EMAIL || 'test@example.com']
@@ -94,7 +107,7 @@ export async function POST(request) {
   }
 }
 
-function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems) {
+function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = []) {
   let html = `
     <div style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; max-width: 700px; margin: 0 auto; color: #333; padding: 20px; background-color: #fff;">
       <h2 style="font-size: 16px; color: #666; margin-bottom: 20px;">씬짜오베트남 데일리뉴스 | ${dateString}</h2>
@@ -127,6 +140,26 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems) 
         </div>
       `;
     });
+  }
+
+  // Promo Cards Section
+  if (promoCards && promoCards.length > 0) {
+    html += `<div style="margin-top: 40px; border-top: 3px solid #f97316; padding-top: 24px;">
+      <p style="font-size: 13px; font-weight: bold; color: #f97316; letter-spacing: 1px; margin: 0 0 20px 0;">📣 함께 홍보해요</p>`;
+    promoCards.forEach(card => {
+      const ytMatch = card.videoUrl?.match(/(?:youtube\.com.*v=|youtu\.be\/)([^&\n?#]+)/);
+      const ytId = ytMatch ? ytMatch[1] : null;
+      const imgSrc = card.imageUrl || (ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null);
+      html += `<div style="margin-bottom: 28px; background: #fff8f0; border: 1px solid #fed7aa; border-radius: 10px; overflow: hidden;">
+        ${imgSrc ? `<a href="${card.linkUrl || '#'}" target="_blank" style="display:block;"><img src="${imgSrc}" alt="${card.title}" style="width:100%;max-height:280px;object-fit:cover;display:block;" /></a>` : ''}
+        <div style="padding: 16px 20px;">
+          <h3 style="font-size: 16px; font-weight: bold; color: #1f2937; margin: 0 0 8px 0;">${card.title}</h3>
+          ${card.description ? `<p style="font-size: 13px; color: #4b5563; line-height: 1.7; white-space: pre-wrap; margin: 0 0 14px 0;">${card.description}</p>` : ''}
+          ${card.linkUrl ? `<a href="${card.linkUrl}" target="_blank" style="display:inline-block;background:#f97316;color:#fff;font-size:13px;font-weight:bold;padding:10px 22px;border-radius:6px;text-decoration:none;">참여하기 →</a>` : ''}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
   }
 
   html += `
