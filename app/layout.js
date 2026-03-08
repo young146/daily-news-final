@@ -27,7 +27,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} ${notoSansKR.variable} antialiased min-h-screen flex flex-col`}>
         <div id="site-header"><Header /></div>
         <main className="flex-grow">

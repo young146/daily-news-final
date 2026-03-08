@@ -73,3 +73,16 @@ model Subscriber {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 }
+
+model PromoCard {
+  id          Int      @id @default(autoincrement())
+  title       String                    // 카드 제목
+  description String?  @db.Text         // 홍보 문구/설명
+  imageUrl    String?                   // Firebase Storage 이미지 URL
+  videoUrl    String?                   // YouTube 등 동영상 URL (선택)
+  linkUrl     String                    // 클릭 시 이동 링크
+  isActive    Boolean  @default(true)   // ON/OFF
+  sortOrder   Int      @default(0)      // 정렬 순서 (낮을수록 먼저)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

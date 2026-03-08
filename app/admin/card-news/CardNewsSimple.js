@@ -1,21 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+
+// URL을 자동으로 클릭 가능한 링크로 변환
+const linkify = (text) => {
+  if (!text) return null;
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, i) =>
+    urlRegex.test(part)
+      ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb", textDecoration: "underline", wordBreak: "break-all" }}>{part}</a>
+      : part
+  );
+};
+
 
 export default function CardNewsSimple({ data, mode = "preview" }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [publishResult, setPublishResult] = useState(null);
   const [selectedNews, setSelectedNews] = useState(null); // 선택된 뉴스 (탑뉴스 또는 최신 뉴스)
   const [useGradient, setUseGradient] = useState(false); // 그라디언트 사용 여부 (기본값: false)
+  const [promoCards, setPromoCards] = useState([]); // DB에서 로드된 홍보카드
+  const [currentPromoSlide, setCurrentPromoSlide] = useState(0); // 슬라이더 현재 인덱스
 
-  const { 
-    topNews, 
-    topNewsList = [], 
+  // 활성 홍보카드 DB에서 로드
+  useEffect(() => {
+    fetch("/api/promo-cards/active")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) setPromoCards(data.cards || []);
+      })
+      .catch((e) => console.warn("[PromoCards] 로드 실패:", e));
+  }, []);
+
+  const {
+    topNews,
+    topNewsList = [],
     allNewsList = [], // 전체 뉴스 리스트 (탑뉴스 + 최신 뉴스)
     isUsingFallback = false,
     fallbackReason = null,
-    weather, 
-    rates 
+    weather,
+    rates
   } = data || {};
 
   // 초기 선택: 선택된 뉴스가 없으면 기본 뉴스 사용
@@ -159,24 +184,22 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
               {newsListToShow.map((news, index) => {
                 const isTopNews = topNewsList.some(tn => tn.id === news.id);
                 const isSelected = selectedNews?.id === news.id || (!selectedNews && index === 0);
-                
+
                 return (
                   <button
                     key={news.id}
                     onClick={() => setSelectedNews(news)}
-                    className={`p-4 rounded-lg border-2 transition-all text-left ${
-                      isSelected
-                        ? "border-blue-500 bg-blue-50 shadow-md"
-                        : "border-gray-200 bg-white hover:border-gray-300"
-                    }`}
+                    className={`p-4 rounded-lg border-2 transition-all text-left ${isSelected
+                      ? "border-blue-500 bg-blue-50 shadow-md"
+                      : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
                   >
                     <div className="flex items-start gap-3">
                       <div
-                        className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                          isSelected
-                            ? "border-blue-500 bg-blue-500"
-                            : "border-gray-300"
-                        }`}
+                        className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center ${isSelected
+                          ? "border-blue-500 bg-blue-500"
+                          : "border-gray-300"
+                          }`}
                       >
                         {isSelected && (
                           <span className="text-white text-xs">✓</span>
@@ -223,9 +246,8 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                           </div>
                         )}
                         <div
-                          className={`text-sm font-bold line-clamp-2 ${
-                            isSelected ? "text-blue-700" : "text-gray-800"
-                          }`}
+                          className={`text-sm font-bold line-clamp-2 ${isSelected ? "text-blue-700" : "text-gray-800"
+                            }`}
                         >
                           {news.translatedTitle || news.title}
                         </div>
@@ -440,11 +462,11 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
         )}
         {currentTopNews && !currentTopNews.wordpressImageUrl && (
           <div className="mb-4 p-4 bg-red-100 border border-red-400 rounded-lg text-red-800">
-            ⚠️ <strong>주의:</strong> 선택한 뉴스는 아직 WordPress에 발행되지 않아 이미지가 DB에 없습니다. 
+            ⚠️ <strong>주의:</strong> 선택한 뉴스는 아직 WordPress에 발행되지 않아 이미지가 DB에 없습니다.
             이미지가 있는 뉴스를 선택하거나 먼저 뉴스를 발행해주세요.
           </div>
         )}
-        
+
         {/* 그라디언트 사용 옵션 */}
         <div className="mb-4 p-4 bg-gray-50 border border-gray-300 rounded-lg">
           <label className="flex items-center gap-2 cursor-pointer">
@@ -459,15 +481,14 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
             </span>
           </label>
         </div>
-        
+
         <button
           onClick={handlePublishToWordPress}
           disabled={isGenerating || !currentTopNews}
-          className={`px-8 py-3 text-white rounded-lg text-base font-bold shadow-lg flex items-center gap-2 transition-all ${
-            isGenerating || !currentTopNews
-              ? "bg-gray-400 cursor-not-allowed opacity-50"
-              : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
-          }`}
+          className={`px-8 py-3 text-white rounded-lg text-base font-bold shadow-lg flex items-center gap-2 transition-all ${isGenerating || !currentTopNews
+            ? "bg-gray-400 cursor-not-allowed opacity-50"
+            : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+            }`}
           type="button"
         >
           {isGenerating ? (
@@ -481,8 +502,8 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
         </button>
 
         {publishResult && publishResult.success && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-lg mx-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto py-4">
+            <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-lg mx-4 my-auto">
               <div className="flex flex-col gap-5">
                 <div className="text-center">
                   <span className="text-4xl">🎉</span>
@@ -541,6 +562,73 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                   </div>
                 </div>
 
+                {/* ─── 홍보카드 섹션 (전체 표시) ─── */}
+                {promoCards.length > 0 && (() => {
+                  const dateParam = `${String(new Date().getMonth() + 1).padStart(2, "0")}${String(new Date().getDate()).padStart(2, "0")}`;
+                  const newsShareUrl = `https://chaovietnam.co.kr/daily-news-terminal/?v=${dateParam}`;
+                  return (
+                    <div className="bg-orange-50 p-4 rounded-xl border-2 border-orange-300">
+                      <p className="text-orange-800 font-bold text-sm mb-3">📣 함께 홍보하기 ({promoCards.length}개)</p>
+                      <div className="flex flex-col gap-3">
+                        {promoCards.map((card) => {
+                          const ytMatch = card.videoUrl?.match(/(?:youtube\.com.*v=|youtu\.be\/)([^&\n?#]+)/);
+                          const ytId = ytMatch ? ytMatch[1] : null;
+                          const thumbSrc = card.imageUrl || (ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null);
+                          return (
+                            <div key={card.id} className="bg-white rounded-lg border border-orange-200 overflow-hidden">
+                              {/* 이미지 */}
+                              {thumbSrc && (
+                                <img
+                                  src={thumbSrc}
+                                  alt={card.title}
+                                  className="w-full object-contain bg-gray-50"
+                                  style={{ maxHeight: "150px" }}
+                                  onError={(e) => { e.target.style.display = "none"; }}
+                                />
+                              )}
+                              <div className="p-3">
+                                <p className="font-bold text-gray-800 text-sm mb-1">{card.title}</p>
+                                {card.description && (
+                                  <div className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed mb-2">
+                                    {linkify(card.description)}
+                                  </div>
+                                )}
+                                {/* 통합 복사 버튼 — 뉴스URL + 홍보카드 페이지 URL */}
+                                <button
+                                  type="button"
+                                  id={`copy-combined-${card.id}`}
+                                  onClick={() => {
+                                    const promoPageUrl = `https://chaovietnam.co.kr/promo/${card.id}`;
+                                    // 카카오톡에서 URL 두 개를 한 줄씩 보내면 각각 이미지 카드 미리보기가 생성됨
+                                    const combined = `📰 오늘의 씬짜오 뉴스\n${newsShareUrl}\n\n📣 함께 홍보해요! (${card.title})\n${promoPageUrl}`;
+                                    const ta = document.createElement("textarea");
+                                    ta.value = combined;
+                                    ta.style.position = "fixed";
+                                    ta.style.left = "-9999px";
+                                    document.body.appendChild(ta);
+                                    ta.select();
+                                    document.execCommand("copy");
+                                    document.body.removeChild(ta);
+                                    const btn = document.getElementById(`copy-combined-${card.id}`);
+                                    if (btn) {
+                                      btn.textContent = "✅ 복사됨! 카카오톡에 붙여넣기 → 2개 카드 미리보기 생성";
+                                      setTimeout(() => { btn.textContent = "📋 뉴스 + 이 카드 함께 공유"; }, 3000);
+                                    }
+                                  }}
+                                  className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded font-bold text-xs transition-colors"
+                                >
+                                  📋 뉴스 + 이 카드 함께 공유
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+
                 <div className="flex gap-3">
                   <a
                     href={`/admin/card-news/preview?imageUrl=${encodeURIComponent(publishResult.imageUrl)}`}
@@ -550,7 +638,7 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                   >
                     🖼️ 카드 보기
                   </a>
-                  
+
                   <button
                     onClick={() => {
                       setPublishResult(null);
@@ -559,7 +647,7 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                   >
                     🔄 다시 생성
                   </button>
-                  
+
                   <button
                     onClick={() => {
                       fetch('/api/reset-card-news', { method: 'POST' })

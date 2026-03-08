@@ -5,7 +5,7 @@ dotenv.config();
 
 const prisma = new PrismaClient();
 
-function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems) {
+function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = []) {
   let html = `
     <div style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; max-width: 700px; margin: 0 auto; color: #333; padding: 20px; background-color: #fff;">
       <h2 style="font-size: 16px; color: #666; margin-bottom: 20px;">
@@ -28,7 +28,6 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems) 
 
   if (newsItems && newsItems.length > 0) {
     newsItems.forEach(item => {
-      // Find the URL (fallback to terminal if missing)
       const url = item.wordpressUrl || terminalUrl;
       const summary = (item.translatedSummary || item.summary || '').replace(/\n/g, '<br/>');
 
@@ -50,8 +49,42 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems) 
     });
   }
 
+  // 홍보카드 섹션 (DB에서 동적 로드)
+  if (promoCards && promoCards.length > 0) {
+    html += `
+      <div style="margin-top: 40px; padding: 24px; background-color: #fff8f0; border: 2px solid #f97316; border-radius: 12px;">
+        <p style="margin: 0 0 6px 0; font-size: 16px; font-weight: bold; color: #c2410c; text-align: center;">📣 함께 홍보하기</p>
+        <p style="margin: 0 0 20px 0; font-size: 13px; color: #92400e; text-align: center;">제목을 클릭하여 자세히 알아보세요!</p>
+    `;
+
+    promoCards.forEach(card => {
+      const imgHtml = card.imageUrl
+        ? `<a href="${card.linkUrl}" target="_blank"><img src="${card.imageUrl}" alt="${card.title}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;display:block;margin-bottom:12px;" /></a>`
+        : '';
+      const descHtml = card.description
+        ? `<p style="font-size:13px;color:#555;margin:8px 0;line-height:1.5;">${card.description.replace(/\n/g, '<br/>')}</p>`
+        : '';
+
+      html += `
+        <div style="margin-bottom:16px;background:#fff;border:1px solid #fed7aa;border-radius:10px;padding:16px;">
+          ${imgHtml}
+          <h3 style="margin:0 0 4px 0;font-size:15px;font-weight:bold;">
+            <a href="${card.linkUrl}" target="_blank" style="color:#c2410c;text-decoration:none;">${card.title}</a>
+          </h3>
+          ${descHtml}
+          <a href="${card.linkUrl}" target="_blank"
+            style="display:inline-block;margin-top:10px;padding:8px 20px;background:#f97316;color:#fff;border-radius:6px;text-decoration:none;font-size:13px;font-weight:bold;">
+            자세히 보기 →
+          </a>
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+  }
+
   html += `
-      <div style="margin-top: 40px; border-top: 1px solid #ddd; padding-top: 20px; text-align: left;">
+      <div style="margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px; text-align: left;">
         <div style="font-size: 12px; color: #666; line-height: 1.6;">
           <p style="margin: 0 0 5px 0;"><strong>HANHOA CO., LTD | www.chaovietnam.co.kr</strong></p>
           <p style="margin: 0 0 5px 0;">9Th Floor, EBM Building, 685-685 Dien Bien Phu, Ward 25, Binh Thanh</p>
@@ -76,6 +109,14 @@ export async function sendDailyDigest(isTest = false) {
       console.log('No active subscribers. Skipping email dispatch.');
       return;
     }
+
+    // 활성 홍보카드 DB에서 로드
+    console.log('Fetching active promo cards...');
+    const promoCards = await prisma.promoCard.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+    });
+    console.log(`Found ${promoCards.length} active promo cards.`);
 
     // Set "today" to begin of the day in Vietnam timezone
     const now = new Date();
@@ -149,7 +190,7 @@ export async function sendDailyDigest(isTest = false) {
     // format to e.g. "2026년 02월 27일 (금)"
     const todayString = `${year}년 ${month}월 ${day}일 (${weekday[0]})`;
 
-    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems);
+    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards);
     const subject = `[씬짜오베트남] 데일리뉴스 | ${todayString}`;
 
     const recipientEmails = isTest

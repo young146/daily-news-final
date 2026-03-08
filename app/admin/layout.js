@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, FileText, Settings, LogOut, Users, Newspaper, Mail } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings, LogOut, Users, Newspaper, Mail, Megaphone } from 'lucide-react';
 
 export default function AdminLayout({ children }) {
     const [user, setUser] = useState(null);
@@ -48,6 +48,7 @@ export default function AdminLayout({ children }) {
         { href: '/admin/published-news', icon: Newspaper, label: '발행된 뉴스 관리' },
         { href: '/admin/drafts', icon: FileText, label: '초안' },
         { href: '/admin/subscribers', icon: Mail, label: '구독자 관리' },
+        { href: '/admin/promo-cards', icon: Megaphone, label: '홍보카드' },
         { href: '/admin/settings', icon: Settings, label: '설정' },
     ];
 
@@ -74,8 +75,8 @@ export default function AdminLayout({ children }) {
                                 key={item.href}
                                 href={item.href}
                                 className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                                        ? 'bg-slate-800 text-white'
-                                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                    ? 'bg-slate-800 text-white'
+                                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                                     }`}
                             >
                                 <Icon size={20} />
