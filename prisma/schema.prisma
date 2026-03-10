@@ -93,3 +93,15 @@ model TestEmail {
   name      String?                      // 이름 (선택)
   createdAt DateTime @default(now())
 }
+
+model EmailSendLog {
+  id         Int      @id @default(autoincrement())
+  sentAt     DateTime @default(now())   // 발송 일시
+  subject    String                     // 이메일 제목
+  method     String                     // 'resend' | 'smtp'
+  total      Int                        // 총 발송 시도
+  succeeded  Int      @default(0)       // 성공
+  failed     Int      @default(0)       // 실패
+  batches    Int      @default(0)       // 배치 수
+  note       String?                    // 비고 (오류 메시지 등)
+}

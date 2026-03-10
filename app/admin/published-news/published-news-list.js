@@ -35,6 +35,7 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
   const [newTestEmail, setNewTestEmail] = useState({ email: '', name: '' });
   // confirmSend: null | 'test-resend' | 'test-smtp' | 'all-resend' | 'all-smtp'
   const [sendMethod, setSendMethod] = useState(null); // 가장 최근 사용한 방식 기록
+  const [smtpAccount, setSmtpAccount] = useState('both'); // 'both' | 'account1' | 'account2'
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -187,7 +188,7 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
       const res = await fetch('/api/send-daily-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ test: isTest, forceSmtp })
+        body: JSON.stringify({ test: isTest, forceSmtp, smtpAccount: forceSmtp ? smtpAccount : undefined })
       });
       const result = await res.json();
       if (result.success) {
@@ -326,6 +327,18 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
                 className="px-3 py-2 bg-teal-600 text-white rounded hover:bg-teal-700 disabled:opacity-50 text-sm font-medium cursor-pointer disabled:cursor-not-allowed">
                 {isTestSending ? '⏳' : '🧪'} 테스트(SMTP)
               </button>
+              {/* SMTP 계정 선택 드롭다운 */}
+              <select
+                value={smtpAccount}
+                onChange={e => setSmtpAccount(e.target.value)}
+                className="px-2 py-2 border border-teal-300 rounded text-sm bg-teal-50 text-teal-800 font-medium cursor-pointer"
+                title="SMTP 발송 계정 선택"
+              >
+                <option value="both">📊 균등 분산 (전체)</option>
+                <option value="account1">계정1 (info@)</option>
+                <option value="account2">계정2 (younghan146@)</option>
+                <option value="account3">계정3 (xinchao.id@)</option>
+              </select>
               {/* 구분선 */}
               <span className="text-gray-300 select-none">|</span>
               {/* Resend 전체 */}

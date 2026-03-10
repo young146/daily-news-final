@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { sendNewsletter } from '@/lib/email-service';
+import { sendNewsletterWithFallback } from '@/lib/email-service';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -198,8 +198,8 @@ export async function sendDailyDigest(isTest = false) {
       : subscribers.map(s => s.email);
 
     console.log(`Sending email to ${recipientEmails.length} recipients...`);
-    await sendNewsletter(recipientEmails, subject, htmlContent);
-    console.log('Daily digest email sent successfully.');
+    const sendResult = await sendNewsletterWithFallback(recipientEmails, subject, htmlContent, { forceSmtp: true });
+    console.log(`Daily digest email sent. Method: ${sendResult.method} | 성공: ${sendResult.succeeded} | 실패: ${sendResult.failed}`);
 
   } catch (error) {
     console.error('Failed to send daily digest:', error);
