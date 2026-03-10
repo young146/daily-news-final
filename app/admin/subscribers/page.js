@@ -6,21 +6,31 @@ import * as XLSX from 'xlsx';
 
 export default function SubscribersPage() {
     const [subscribers, setSubscribers] = useState([]);
+    const [total, setTotal] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
+    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState('');
+    const [searchInput, setSearchInput] = useState('');
     const [loading, setLoading] = useState(true);
-    const [newEmail, setNewEmail] = useState('');
+    const [newEmail, setNewEmail] = useState('');;
     const [adding, setAdding] = useState(false);
     const [importing, setImporting] = useState(false);
     const [cleaning, setCleaning] = useState(false);
     const [selected, setSelected] = useState(new Set());
     const [bulkDeleting, setBulkDeleting] = useState(false);
 
-    useEffect(() => { fetchSubscribers(); }, []);
+    useEffect(() => { fetchSubscribers(page, search); }, [page, search]);
 
-    const fetchSubscribers = async () => {
+    const fetchSubscribers = async (p = 1, q = '') => {
         setLoading(true);
         try {
-            const res = await fetch('/api/admin/subscribers');
-            if (res.ok) setSubscribers(await res.json());
+            const res = await fetch(`/api/admin/subscribers?page=${p}&limit=100&search=${encodeURIComponent(q)}`);
+            if (res.ok) {
+                const data = await res.json();
+                setSubscribers(data.subscribers);
+                setTotal(data.total);
+                setTotalPages(data.totalPages);
+            }
         } catch (error) {
             console.error('Failed to fetch subscribers:', error);
         } finally {
@@ -28,6 +38,7 @@ export default function SubscribersPage() {
             setSelected(new Set());
         }
     };
+
 
     const exportToCSV = () => {
         const headers = ['회사명', '이메일', '이름', '전화번호', '상태', '구독 일시'];
@@ -185,6 +196,12 @@ export default function SubscribersPage() {
         else setSelected(new Set(subscribers.map(s => s.id)));
     };
 
+    const handleSearch = (e) => {
+        e.preventDefault();
+        setSearch(searchInput);
+        setPage(1);
+    };
+
     if (loading) return <div className="flex justify-center p-8">로딩 중...</div>;
 
     return (
@@ -195,7 +212,7 @@ export default function SubscribersPage() {
                 </h1>
                 <div className="flex items-center flex-wrap gap-2">
                     <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
-                        총 {subscribers.length}명
+                        총 {total}명 (이 페이지: {subscribers.length}명)
                     </span>
                     {selected.size > 0 && (
                         <button onClick={handleBulkDelete} disabled={bulkDeleting}
@@ -300,6 +317,26 @@ export default function SubscribersPage() {
                             )}
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            {/* 검색 + 페이지네이션 */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <form onSubmit={handleSearch} className="flex gap-2">
+                    <input
+                        type="text" value={searchInput}
+                        onChange={e => setSearchInput(e.target.value)}
+                        placeholder="이메일/이름/회사 검색"
+                        className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 w-56" />
+                    <button type="submit" className="bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm hover:bg-blue-700">검색</button>
+                    {search && <button type="button" onClick={() => { setSearch(''); setSearchInput(''); setPage(1); }} className="text-gray-500 text-sm hover:underline">초기화</button>}
+                </form>
+                <div className="flex items-center gap-2 text-sm">
+                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
+                        className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50">◀ 이전</button>
+                    <span className="text-gray-600">{page} / {totalPages} 페이지</span>
+                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
+                        className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50">다음 ▶</button>
                 </div>
             </div>
         </div>

@@ -3,18 +3,35 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// GET: Fetch all subscribers
-export async function GET() {
+// GET: Fetch subscribers (페이지네이션)
+export async function GET(req) {
     try {
-        const subscribers = await prisma.subscriber.findMany({
-            orderBy: { createdAt: "desc" },
-        });
-        return NextResponse.json(subscribers);
+        const { searchParams } = new URL(req.url);
+        const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
+        const limit = Math.min(200, parseInt(searchParams.get('limit') || '100'));
+        const search = searchParams.get('search') || '';
+
+        const where = search
+            ? { OR: [{ email: { contains: search, mode: 'insensitive' } }, { name: { contains: search, mode: 'insensitive' } }, { company: { contains: search, mode: 'insensitive' } }] }
+            : {};
+
+        const [subscribers, total] = await Promise.all([
+            prisma.subscriber.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                skip: (page - 1) * limit,
+                take: limit,
+            }),
+            prisma.subscriber.count({ where }),
+        ]);
+
+        return NextResponse.json({ subscribers, total, page, limit, totalPages: Math.ceil(total / limit) });
     } catch (error) {
         console.error("Fetch Subscribers Error:", error);
         return NextResponse.json({ message: "서버 오류가 발생했습니다." }, { status: 500 });
     }
 }
+
 
 // POST: Add a new subscriber (single or bulk import)
 export async function POST(req) {
