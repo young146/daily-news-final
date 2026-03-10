@@ -11,6 +11,7 @@ export default function SubscribersPage() {
     const [page, setPage] = useState(1);
     const [search, setSearch] = useState('');
     const [searchInput, setSearchInput] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
     const [loading, setLoading] = useState(true);
     const [newEmail, setNewEmail] = useState('');;
     const [adding, setAdding] = useState(false);
@@ -18,13 +19,14 @@ export default function SubscribersPage() {
     const [cleaning, setCleaning] = useState(false);
     const [selected, setSelected] = useState(new Set());
     const [bulkDeleting, setBulkDeleting] = useState(false);
+    const [toggling, setToggling] = useState(false);
 
-    useEffect(() => { fetchSubscribers(page, search); }, [page, search]);
+    useEffect(() => { fetchSubscribers(page, search, statusFilter); }, [page, search, statusFilter]);
 
-    const fetchSubscribers = async (p = 1, q = '') => {
+    const fetchSubscribers = async (p = 1, q = '', s = 'all') => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/admin/subscribers?page=${p}&limit=100&search=${encodeURIComponent(q)}`);
+            const res = await fetch(`/api/admin/subscribers?page=${p}&limit=100&search=${encodeURIComponent(q)}&status=${s}`);
             if (res.ok) {
                 const data = await res.json();
                 setSubscribers(data.subscribers);
@@ -139,7 +141,7 @@ export default function SubscribersPage() {
                 body: JSON.stringify({ email: newEmail }),
             });
             const data = await res.json();
-            if (res.ok) { setNewEmail(''); fetchSubscribers(); alert(data.message); }
+            if (res.ok) { setNewEmail(''); fetchSubscribers(page, search, statusFilter); alert(data.message); }
             else alert(data.message || '추가 실패');
         } catch { alert('오류가 발생했습니다.'); }
         finally { setAdding(false); }
@@ -166,9 +168,52 @@ export default function SubscribersPage() {
             });
             const data = await res.json();
             alert(data.message);
-            fetchSubscribers();
+            fetchSubscribers(page, search, statusFilter);
         } catch { alert('삭제 중 오류가 발생했습니다.'); }
         finally { setBulkDeleting(false); }
+    };
+
+    const handleToggleActive = async (id, currentStatus) => {
+        setToggling(true);
+        try {
+            const res = await fetch('/api/admin/subscribers', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, isActive: !currentStatus }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                // Optimistically update UI
+                setSubscribers(subscribers.map(s => s.id === id ? { ...s, isActive: !currentStatus } : s));
+            } else {
+                alert(data.message || '상태 변경에 실패했습니다.');
+            }
+        } catch { alert('서버 오류가 발생했습니다.'); }
+        finally { setToggling(false); }
+    };
+
+    const handleBulkToggleActive = async (isActive) => {
+        if (selected.size === 0) return;
+        const actionText = isActive ? '활성화' : '비활성화';
+        if (!confirm(`선택된 ${selected.size}명의 이메일을 일괄 ${actionText} 하시겠습니까?`)) return;
+
+        setToggling(true);
+        try {
+            const res = await fetch('/api/admin/subscribers', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: Array.from(selected), isActive }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.message);
+                fetchSubscribers(page, search, statusFilter); // Refresh list
+                setSelected(new Set()); // Deselect all on success
+            } else {
+                alert(data.message || '상태 변경에 실패했습니다.');
+            }
+        } catch { alert('서버 오류가 발생했습니다.'); }
+        finally { setToggling(false); }
     };
 
     const handleCleanup = async () => {
@@ -178,7 +223,7 @@ export default function SubscribersPage() {
             const res = await fetch('/api/admin/subscribers', { method: 'PATCH' });
             const data = await res.json();
             alert(data.message);
-            fetchSubscribers();
+            fetchSubscribers(page, search, statusFilter);
         } catch { alert('정리 중 오류가 발생했습니다.'); }
         finally { setCleaning(false); }
     };
@@ -215,11 +260,24 @@ export default function SubscribersPage() {
                         총 {total}명 (이 페이지: {subscribers.length}명)
                     </span>
                     {selected.size > 0 && (
-                        <button onClick={handleBulkDelete} disabled={bulkDeleting}
-                            className="bg-red-600 text-white px-3 py-1.5 rounded-md hover:bg-red-700 transition flex items-center text-sm font-medium shadow-sm disabled:opacity-50">
-                            <Trash2 size={16} className="mr-1" />
-                            {bulkDeleting ? '삭제 중...' : `선택 삭제 (${selected.size}명)`}
-                        </button>
+                        <div className="flex items-center gap-2 border-r pr-2 mr-1">
+                            <span className="text-sm text-gray-500 font-medium">{selected.size}명 선택됨:</span>
+                            <button onClick={() => handleBulkToggleActive(true)} disabled={toggling}
+                                className="bg-green-600 text-white px-3 py-1.5 rounded-md hover:bg-green-700 transition flex items-center text-sm font-medium shadow-sm disabled:opacity-50">
+                                <CheckCircle2 size={16} className="mr-1" />
+                                활성화
+                            </button>
+                            <button onClick={() => handleBulkToggleActive(false)} disabled={toggling}
+                                className="bg-yellow-600 text-white px-3 py-1.5 rounded-md hover:bg-yellow-700 transition flex items-center text-sm font-medium shadow-sm disabled:opacity-50">
+                                <XCircle size={16} className="mr-1" />
+                                비활성화
+                            </button>
+                            <button onClick={handleBulkDelete} disabled={bulkDeleting}
+                                className="bg-red-600 text-white px-3 py-1.5 rounded-md hover:bg-red-700 transition flex items-center text-sm font-medium shadow-sm disabled:opacity-50">
+                                <Trash2 size={16} className="mr-1" />
+                                삭제
+                            </button>
+                        </div>
                     )}
                     <button onClick={handleCleanup} disabled={cleaning}
                         className={`px-3 py-1.5 rounded-md transition flex items-center text-sm font-medium shadow-sm text-white ${cleaning ? 'bg-gray-400 cursor-not-allowed' : 'bg-gray-600 hover:bg-gray-700'}`}>
@@ -248,6 +306,28 @@ export default function SubscribersPage() {
                         className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition flex items-center whitespace-nowrap disabled:opacity-50">
                         {adding ? '추가 중...' : <><Plus size={18} className="mr-1" /> 추가</>}
                     </button>
+                </form>
+            </div>
+
+            {/* 검색 필터 영역 */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <form onSubmit={handleSearch} className="flex gap-2 items-center">
+                    <select
+                        value={statusFilter}
+                        onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+                        className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    >
+                        <option value="all">모든 상태</option>
+                        <option value="active">활성 (ON)</option>
+                        <option value="inactive">비활성 (OFF)</option>
+                    </select>
+                    <input
+                        type="text" value={searchInput}
+                        onChange={e => setSearchInput(e.target.value)}
+                        placeholder="이메일/이름/회사 검색"
+                        className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 w-56" />
+                    <button type="submit" className="bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm hover:bg-blue-700">검색</button>
+                    {(search || statusFilter !== 'all') && <button type="button" onClick={() => { setSearch(''); setSearchInput(''); setStatusFilter('all'); setPage(1); }} className="text-gray-500 text-sm hover:underline">초기화</button>}
                 </form>
             </div>
 
@@ -290,15 +370,21 @@ export default function SubscribersPage() {
                                         <td className="px-4 py-3 whitespace-nowrap text-gray-700 text-sm">{s.name || '-'}</td>
                                         <td className="px-4 py-3 whitespace-nowrap text-gray-700 text-sm">{s.phone || '-'}</td>
                                         <td className="px-4 py-3 whitespace-nowrap">
-                                            {s.isActive ? (
-                                                <span className="flex items-center text-green-600 text-sm font-medium">
-                                                    <CheckCircle2 size={16} className="mr-1" /> 활성
-                                                </span>
-                                            ) : (
-                                                <span className="flex items-center text-red-500 text-sm font-medium">
-                                                    <XCircle size={16} className="mr-1" /> 취소됨
-                                                </span>
-                                            )}
+                                            <button
+                                                onClick={() => handleToggleActive(s.id, s.isActive)}
+                                                disabled={toggling}
+                                                className={`flex items-center text-sm font-medium px-2 py-1 rounded transition disabled:opacity-50 ${s.isActive
+                                                    ? 'text-green-700 bg-green-50 hover:bg-green-100'
+                                                    : 'text-red-700 bg-red-50 hover:bg-red-100'
+                                                    }`}
+                                                title="클릭하여 상태 변경"
+                                            >
+                                                {s.isActive ? (
+                                                    <><CheckCircle2 size={16} className="mr-1" /> 활성 (ON)</>
+                                                ) : (
+                                                    <><XCircle size={16} className="mr-1" /> 비활성 (OFF)</>
+                                                )}
+                                            </button>
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap text-gray-500 text-sm">
                                             {new Date(s.createdAt).toLocaleDateString('ko-KR', {
@@ -320,17 +406,8 @@ export default function SubscribersPage() {
                 </div>
             </div>
 
-            {/* 검색 + 페이지네이션 */}
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <form onSubmit={handleSearch} className="flex gap-2">
-                    <input
-                        type="text" value={searchInput}
-                        onChange={e => setSearchInput(e.target.value)}
-                        placeholder="이메일/이름/회사 검색"
-                        className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 w-56" />
-                    <button type="submit" className="bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm hover:bg-blue-700">검색</button>
-                    {search && <button type="button" onClick={() => { setSearch(''); setSearchInput(''); setPage(1); }} className="text-gray-500 text-sm hover:underline">초기화</button>}
-                </form>
+            {/* 페이지네이션 (하단 배치) */}
+            <div className="flex justify-center bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                 <div className="flex items-center gap-2 text-sm">
                     <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
                         className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50">◀ 이전</button>

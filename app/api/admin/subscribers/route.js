@@ -10,10 +10,15 @@ export async function GET(req) {
         const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
         const limit = Math.min(200, parseInt(searchParams.get('limit') || '100'));
         const search = searchParams.get('search') || '';
+        const status = searchParams.get('status') || 'all';
 
-        const where = search
+        const baseWhere = search
             ? { OR: [{ email: { contains: search, mode: 'insensitive' } }, { name: { contains: search, mode: 'insensitive' } }, { company: { contains: search, mode: 'insensitive' } }] }
             : {};
+
+        const where = { ...baseWhere };
+        if (status === 'active') where.isActive = true;
+        if (status === 'inactive') where.isActive = false;
 
         const [subscribers, total] = await Promise.all([
             prisma.subscriber.findMany({
@@ -140,6 +145,45 @@ export async function PATCH() {
         return NextResponse.json({ message: `${invalid.length}개의 잘못된 항목을 삭제했습니다.`, deleted: invalid.length });
     } catch (error) {
         console.error("Cleanup Error:", error);
+        return NextResponse.json({ message: "서버 오류가 발생했습니다." }, { status: 500 });
+    }
+}
+
+// PUT: Toggle active status (single or bulk)
+export async function PUT(req) {
+    try {
+        const body = await req.json();
+
+        // Bulk toggle
+        if (body.ids && Array.isArray(body.ids)) {
+            const { ids, isActive } = body;
+            const result = await prisma.subscriber.updateMany({
+                where: { id: { in: ids } },
+                data: { isActive: isActive }
+            });
+            return NextResponse.json({
+                message: `${result.count}명의 상태를 ${isActive ? '활성화' : '비활성화'}로 변경했습니다.`,
+                updated: result.count
+            });
+        }
+
+        // Single toggle
+        if (body.id) {
+            const { id, isActive } = body;
+            const updated = await prisma.subscriber.update({
+                where: { id },
+                data: { isActive }
+            });
+            return NextResponse.json({
+                message: `상태가 ${isActive ? '활성' : '취소됨'}(으)로 변경되었습니다.`,
+                subscriber: updated
+            });
+        }
+
+        return NextResponse.json({ message: "잘못된 요청입니다. (id 또는 ids 누락)" }, { status: 400 });
+
+    } catch (error) {
+        console.error("Update Subscriber Status Error:", error);
         return NextResponse.json({ message: "서버 오류가 발생했습니다." }, { status: 500 });
     }
 }
