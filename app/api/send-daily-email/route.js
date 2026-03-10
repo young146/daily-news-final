@@ -117,19 +117,20 @@ export async function POST(request) {
       });
     }
 
-    // 전체 발송: Resend 우선, 실패 시 SMTP BCC 폴백 (100명씩 배치)
-    const { batchTotal, succeeded, failed, method } = await sendNewsletterWithFallback(
+    // 전체 발송: Resend 우선, 실패 시 SMTP 개별 폴백
+    const { batchTotal, succeeded, failed, method, failedEmails } = await sendNewsletterWithFallback(
       recipientEmails, subject, htmlContent, { forceSmtp, smtpAccount }
     );
 
-    const methodLabel = method === 'smtp' ? '📧 SMTP BCC' : '🚀 Resend';
+    const methodLabel = method === 'smtp' ? '📧 SMTP 개별' : '🚀 Resend';
 
     return Response.json({
       success: true,
-      message: `[${methodLabel}] ${batchTotal}배치 발송 완료 | 성공 ${succeeded}명 / 실패 ${failed}명`,
+      message: `[${methodLabel}] 총 ${batchTotal}건 발송 처리 | 성공 ${succeeded}명 / 실패 ${failed}명`,
       succeeded,
       failed,
       method,
+      failedEmails,
     });
   } catch (error) {
     console.error('[SendEmail API] Error:', error);

@@ -95,13 +95,28 @@ model TestEmail {
 }
 
 model EmailSendLog {
-  id         Int      @id @default(autoincrement())
-  sentAt     DateTime @default(now())   // 발송 일시
-  subject    String                     // 이메일 제목
-  method     String                     // 'resend' | 'smtp'
-  total      Int                        // 총 발송 시도
-  succeeded  Int      @default(0)       // 성공
-  failed     Int      @default(0)       // 실패
-  batches    Int      @default(0)       // 배치 수
-  note       String?                    // 비고 (오류 메시지 등)
+  id         Int               @id @default(autoincrement())
+  sentAt     DateTime          @default(now())   // 발송 일시
+  subject    String                              // 이메일 제목
+  method     String                              // 'resend' | 'smtp'
+  total      Int                                 // 총 발송 시도
+  succeeded  Int               @default(0)       // 성공
+  failed     Int               @default(0)       // 실패
+  batches    Int               @default(0)       // 배치 수
+  note       String?                             // 비고 (오류 메시지 등)
+  details    EmailSendDetail[]                   // 개별 발송 결과
+}
+
+model EmailSendDetail {
+  id        Int          @id @default(autoincrement())
+  logId     Int                                  // FK → EmailSendLog
+  log       EmailSendLog @relation(fields: [logId], references: [id], onDelete: Cascade)
+  email     String                               // 수신자 이메일
+  status    String                               // 'success' | 'failed'
+  errorMsg  String?                              // 실패 시 오류 메시지
+  sentAt    DateTime     @default(now())
+
+  @@index([logId])
+  @@index([status])
+  @@index([email])
 }

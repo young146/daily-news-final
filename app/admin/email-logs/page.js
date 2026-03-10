@@ -10,7 +10,53 @@ export default function EmailLogsPage() {
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
 
+    const [showModal, setShowModal] = useState(false);
+    const [failedEmails, setFailedEmails] = useState([]);
+    const [selectedLogId, setSelectedLogId] = useState(null);
+
     useEffect(() => { fetchLogs(page); }, [page]);
+
+    const fetchFailedEmails = async (logId = null) => {
+        try {
+            const url = logId ? `/api/admin/email-failures?logId=${logId}` : '/api/admin/email-failures';
+            const res = await fetch(url);
+            if (res.ok) {
+                const data = await res.json();
+                setFailedEmails(data.failures);
+                setSelectedLogId(logId);
+                setShowModal(true);
+            } else {
+                alert('실패 이메일 목록을 불러오지 못했습니다.');
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleDeactivate = async () => {
+        if (!confirm('이 이메일들을 구독 취소 처리하시겠습니까?')) return;
+
+        // Remove duplicates just in case
+        const emailSet = new Set(failedEmails.map(f => f.email));
+        const emails = Array.from(emailSet);
+
+        try {
+            const res = await fetch('/api/admin/email-failures', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ emails })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                alert(data.message);
+                setShowModal(false);
+            } else {
+                alert('비활성화 실패');
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
 
     const fetchLogs = async (p = 1) => {
         setLoading(true);
@@ -48,6 +94,10 @@ export default function EmailLogsPage() {
                     <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
                         총 {total}건
                     </span>
+                    <button onClick={() => fetchFailedEmails()}
+                        className="flex items-center gap-1 bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-md text-sm transition font-semibold">
+                        <XCircle size={14} /> 최근 7일 실패
+                    </button>
                     <button onClick={() => fetchLogs(page)}
                         className="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-md text-sm transition">
                         <RefreshCw size={14} /> 새로고침
@@ -98,9 +148,9 @@ export default function EmailLogsPage() {
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                             {log.failed > 0 ? (
-                                                <span className="flex items-center justify-center gap-1 text-red-500 font-semibold text-sm">
+                                                <button onClick={() => fetchFailedEmails(log.id)} title="상세 보기" className="flex items-center justify-center gap-1 text-red-600 hover:text-red-800 font-semibold text-sm transition bg-red-50 hover:bg-red-100 px-2 py-1 rounded w-full border border-red-200">
                                                     <XCircle size={14} /> {log.failed.toLocaleString()}
-                                                </span>
+                                                </button>
                                             ) : (
                                                 <span className="text-gray-400 text-sm">0</span>
                                             )}
@@ -116,12 +166,68 @@ export default function EmailLogsPage() {
             </div>
 
             {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 text-sm">
+                <div className="flex items-center justify-center gap-2 text-sm mt-4">
                     <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
                         className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50">◀ 이전</button>
                     <span className="text-gray-600">{page} / {totalPages} 페이지</span>
                     <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
                         className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50">다음 ▶</button>
+                </div>
+            )}
+
+            {/* 실패 이메일 모달 */}
+            {showModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col m-4 overflow-hidden border border-gray-100">
+                        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                <XCircle className="text-red-500" size={20} />
+                                실패 이메일 목록 {selectedLogId ? `(Log ID: ${selectedLogId})` : '(최근 7일)'}
+                                <span className="ml-2 bg-red-100 text-red-700 py-0.5 px-2 rounded-full text-xs font-medium">
+                                    총 {failedEmails.length}건
+                                </span>
+                            </h2>
+                            <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 transition">✕</button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto flex-1 bg-gray-50/50">
+                            {failedEmails.length === 0 ? (
+                                <div className="text-center py-10 bg-white rounded-lg border border-dashed border-gray-200">
+                                    <p className="text-gray-500">실패한 이메일 기록이 없습니다.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    <div className="text-sm text-gray-500 mb-2 flex items-center justify-between">
+                                        <span>아래 이메일들은 발송 중 에러가 발생하여 도달하지 못한 주소들입니다.</span>
+                                    </div>
+                                    {failedEmails.map((f, i) => (
+                                        <div key={i} className="bg-white p-3 rounded-lg shadow-sm border border-red-100 hover:border-red-200 transition group">
+                                            <div className="flex justify-between items-start">
+                                                <div className="font-medium text-red-600 truncate mr-3">{f.email}</div>
+                                                <div className="text-xs text-gray-400 whitespace-nowrap bg-gray-100 px-2 py-1 rounded">
+                                                    {new Date(f.sentAt).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                </div>
+                                            </div>
+                                            <div className="text-sm text-gray-600 mt-1.5 bg-red-50/50 p-2 rounded text-xs break-words">
+                                                {f.errorMsg || '이유 없음'}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-end gap-3">
+                            <button onClick={() => setShowModal(false)} className="px-4 py-2 font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">
+                                닫기
+                            </button>
+                            {failedEmails.length > 0 && (
+                                <button onClick={handleDeactivate} className="px-4 py-2 font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center gap-2 shadow-sm">
+                                    <XCircle size={16} /> 일괄 비활성화 처분 (구독 취소)
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
