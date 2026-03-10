@@ -33,6 +33,8 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
   const [customEmail, setCustomEmail] = useState('');
   const [testEmails, setTestEmails] = useState([]);
   const [newTestEmail, setNewTestEmail] = useState({ email: '', name: '' });
+  // confirmSend: null | 'test-resend' | 'test-smtp' | 'all-resend' | 'all-smtp'
+  const [sendMethod, setSendMethod] = useState(null); // 가장 최근 사용한 방식 기록
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -175,46 +177,30 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
     });
   };
 
-  const handleSendEmail = async () => {
-    setIsAllSending(true);
+  // 발송 실행 (confirmSend 타입에 따라 방식 결정)
+  const executeSend = async (type) => {
+    const isTest = type.startsWith('test');
+    const forceSmtp = type.endsWith('smtp');
+    if (isTest) setIsTestSending(true); else setIsAllSending(true);
     setConfirmSend(null);
     try {
       const res = await fetch('/api/send-daily-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
+        body: JSON.stringify({ test: isTest, forceSmtp })
       });
       const result = await res.json();
       if (result.success) {
-        showToast(`✅ 전체 발송 완료! ${result.message}`);
+        setSendMethod(result.method);
+        const label = result.method === 'smtp' ? '📧 SMTP BCC' : '🚀 Resend';
+        showToast(`✅ [${label}] 발송 완료! ${result.message}`);
       } else {
-        showToast(`❌ 메일 발송 실패: ${result.error}`, 'error');
+        showToast(`❌ 발송 실패: ${result.error}`, 'error');
       }
     } catch (e) {
       showToast(`❌ 오류: ${e.message}`, 'error');
     }
-    setIsAllSending(false);
-  };
-
-  const handleTestEmail = async () => {
-    setIsTestSending(true);
-    setConfirmSend(null);
-    try {
-      const res = await fetch('/api/send-daily-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ test: true })
-      });
-      const result = await res.json();
-      if (result.success) {
-        showToast(`✅ 테스트 발송 완료! ${result.message}`);
-      } else {
-        showToast(`❌ 테스트 실패: ${result.error}`, 'error');
-      }
-    } catch (e) {
-      showToast(`❌ 오류: ${e.message}`, 'error');
-    }
-    setIsTestSending(false);
+    if (isTest) setIsTestSending(false); else setIsAllSending(false);
   };
 
   const handleCustomEmail = async () => {
@@ -299,17 +285,19 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
           </div>
           {/* 버튼 영역 */}
           {confirmSend ? (
-            /* 2단계: 인라인 확인 */
+            /* 2단계: 발송 방식 + 인원 확인 */
             <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
               <span className="text-sm font-bold text-red-700">
-                {confirmSend === 'test'
+                {confirmSend.endsWith('smtp') ? '📧 SMTP BCC' : '🚀 Resend'}
+                {' · '}
+                {confirmSend.startsWith('test')
                   ? testEmails.length > 0
-                    ? `🧪 테스트 수신자 ${testEmails.length}명에게 발송?`
-                    : `🧪 테스트 발송 (수신자 목록에서 추가 필요)`
-                  : `📧 구독자 ${subscriberCount.toLocaleString()}명 전체 발송?`}
+                    ? `테스트 ${testEmails.length}명 발송?`
+                    : '테스트 수신자 없음'
+                  : `구독자 ${subscriberCount.toLocaleString()}명 전체 발송?`}
               </span>
               <button
-                onClick={confirmSend === 'test' ? handleTestEmail : handleSendEmail}
+                onClick={() => executeSend(confirmSend)}
                 className="px-3 py-1.5 bg-red-600 text-white rounded text-sm font-bold hover:bg-red-700 cursor-pointer"
               >
                 ✅ 발송
@@ -322,19 +310,33 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
               </button>
             </div>
           ) : (
-            /* 1단계: 기본 버튼 3개 */
-            <div className="flex items-center gap-2">
+            /* 1단계: 미리보기 + 발송방식별 버튼 */
+            <div className="flex items-center gap-2 flex-wrap justify-end">
               <button onClick={handlePreview} disabled={isPending || isPreviewing}
                 className="px-3 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50 text-sm font-medium cursor-pointer disabled:cursor-not-allowed">
                 {isPreviewing ? '⏳' : '👁️'} 미리보기
               </button>
-              <button onClick={() => setConfirmSend('test')} disabled={isTestSending || isAllSending || isPending}
+              {/* Resend 테스트 */}
+              <button onClick={() => setConfirmSend('test-resend')} disabled={isTestSending || isAllSending || isPending}
                 className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm font-medium cursor-pointer disabled:cursor-not-allowed">
-                {isTestSending ? '⏳ 발송 중...' : '🧪 테스트 발송'}
+                {isTestSending ? '⏳' : '🧪'} 테스트(Resend)
               </button>
-              <button onClick={() => setConfirmSend('all')} disabled={isTestSending || isAllSending || isPending}
+              {/* SMTP BCC 테스트 */}
+              <button onClick={() => setConfirmSend('test-smtp')} disabled={isTestSending || isAllSending || isPending}
+                className="px-3 py-2 bg-teal-600 text-white rounded hover:bg-teal-700 disabled:opacity-50 text-sm font-medium cursor-pointer disabled:cursor-not-allowed">
+                {isTestSending ? '⏳' : '🧪'} 테스트(SMTP)
+              </button>
+              {/* 구분선 */}
+              <span className="text-gray-300 select-none">|</span>
+              {/* Resend 전체 */}
+              <button onClick={() => setConfirmSend('all-resend')} disabled={isTestSending || isAllSending || isPending}
                 className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium cursor-pointer disabled:cursor-not-allowed">
-                {isAllSending ? <><Send size={14} /> 발송 중...</> : <><Send size={14} /> 전체 발송</>}
+                {isAllSending ? <><Send size={14} /> 발송 중...</> : <><Send size={14} /> Resend 전체</>}
+              </button>
+              {/* SMTP BCC 전체 */}
+              <button onClick={() => setConfirmSend('all-smtp')} disabled={isTestSending || isAllSending || isPending}
+                className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm font-medium cursor-pointer disabled:cursor-not-allowed">
+                {isAllSending ? <><Send size={14} /> 발송 중...</> : <><Send size={14} /> SMTP 전체</>}
               </button>
             </div>
           )}
@@ -623,15 +625,25 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
                   >
                     📤 SNS용 URL 복사
                   </button>
-                  {/* 전체 발송 */}
+                  {/* Resend 전체 발송 */}
                   <button
                     onClick={() => {
                       setPreviewHtml(null);
-                      setConfirmSend('all');
+                      setConfirmSend('all-resend');
                     }}
                     className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-bold text-sm flex items-center gap-2 cursor-pointer"
                   >
-                    <Send size={14} /> 이대로 발송
+                    <Send size={14} /> Resend 발송
+                  </button>
+                  {/* SMTP BCC 전체 발송 */}
+                  <button
+                    onClick={() => {
+                      setPreviewHtml(null);
+                      setConfirmSend('all-smtp');
+                    }}
+                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-bold text-sm flex items-center gap-2 cursor-pointer"
+                  >
+                    <Send size={14} /> SMTP 발송
                   </button>
                   <button onClick={() => setPreviewHtml(null)} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 font-bold text-sm cursor-pointer">✕ 닫기</button>
                 </div>

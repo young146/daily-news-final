@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma';
-import { sendNewsletter, sendNewsletterBatched } from '../../../lib/email-service.js';
+import { sendNewsletter, sendNewsletterWithFallback } from '../../../lib/email-service.js';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // Vercel Pro: 최대 5분 (대량 발송용)
@@ -9,6 +9,7 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     const isTest = body.test === true;
     const customEmail = body.customEmail ? body.customEmail.trim() : null;
+    const forceSmtp = body.forceSmtp === true;
 
     // 수신자 결정
     let recipientEmails;
@@ -114,14 +115,19 @@ export async function POST(request) {
       });
     }
 
-    // 전체 발송: 500명씩 BCC 배치
-    const { batchTotal, succeeded, failed } = await sendNewsletterBatched(recipientEmails, subject, htmlContent);
+    // 전체 발송: Resend 우선, 실패 시 SMTP BCC 폴백 (100명씩 배치)
+    const { batchTotal, succeeded, failed, method } = await sendNewsletterWithFallback(
+      recipientEmails, subject, htmlContent, { forceSmtp }
+    );
+
+    const methodLabel = method === 'smtp' ? '📧 SMTP BCC' : '🚀 Resend';
 
     return Response.json({
       success: true,
-      message: `${batchTotal}배치 발송 완료 | 성공 ${succeeded}명 / 실패 ${failed}명`,
+      message: `[${methodLabel}] ${batchTotal}배치 발송 완료 | 성공 ${succeeded}명 / 실패 ${failed}명`,
       succeeded,
       failed,
+      method,
     });
   } catch (error) {
     console.error('[SendEmail API] Error:', error);
