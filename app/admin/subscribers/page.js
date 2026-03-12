@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Mail, Plus, Trash2, CheckCircle2, XCircle, Download, Upload } from 'lucide-react';
+import { Mail, Plus, Trash2, CheckCircle2, XCircle, Download, Upload, Edit } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export default function SubscribersPage() {
@@ -20,6 +20,8 @@ export default function SubscribersPage() {
     const [selected, setSelected] = useState(new Set());
     const [bulkDeleting, setBulkDeleting] = useState(false);
     const [toggling, setToggling] = useState(false);
+    const [editingSubscriber, setEditingSubscriber] = useState(null);
+    const [editForm, setEditForm] = useState({ email: '', name: '', company: '', phone: '' });
 
     useEffect(() => { fetchSubscribers(page, search, statusFilter); }, [page, search, statusFilter]);
 
@@ -247,6 +249,43 @@ export default function SubscribersPage() {
         setPage(1);
     };
 
+    const handleEditClick = (subscriber) => {
+        setEditingSubscriber(subscriber.id);
+        setEditForm({
+            email: subscriber.email || '',
+            name: subscriber.name || '',
+            company: subscriber.company || '',
+            phone: subscriber.phone || ''
+        });
+    };
+
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        if (!editForm.email || !editForm.email.includes('@')) {
+            alert('유효한 이메일 주소를 입력해주세요.');
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/admin/subscribers', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: editingSubscriber,
+                    ...editForm
+                }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.message);
+                setEditingSubscriber(null);
+                fetchSubscribers(page, search, statusFilter);
+            } else {
+                alert(data.message || '수정에 실패했습니다.');
+            }
+        } catch { alert('서버 오류가 발생했습니다.'); }
+    };
+
     if (loading) return <div className="flex justify-center p-8">로딩 중...</div>;
 
     return (
@@ -393,10 +432,16 @@ export default function SubscribersPage() {
                                             })}
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap text-right">
-                                            <button onClick={() => handleDelete(s.email)}
-                                                className="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded-md transition" title="삭제">
-                                                <Trash2 size={18} />
-                                            </button>
+                                            <div className="flex justify-end gap-2">
+                                                <button onClick={() => handleEditClick(s)}
+                                                    className="text-blue-500 hover:text-blue-700 bg-blue-50 p-2 rounded-md transition" title="수정">
+                                                    <Edit size={18} />
+                                                </button>
+                                                <button onClick={() => handleDelete(s.email)}
+                                                    className="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded-md transition" title="삭제">
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -416,6 +461,43 @@ export default function SubscribersPage() {
                         className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50">다음 ▶</button>
                 </div>
             </div>
+
+            {/* 수정 모달 */}
+            {editingSubscriber && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+                        <h2 className="text-xl font-bold mb-4">구독자 정보 수정</h2>
+                        <form onSubmit={handleEditSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">이메일 *</label>
+                                <input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} required
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">회사명</label>
+                                <input type="text" value={editForm.company} onChange={e => setEditForm({ ...editForm, company: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">이름</label>
+                                <input type="text" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">전화번호</label>
+                                <input type="text" value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
+                            </div>
+                            <div className="flex justify-end gap-2 mt-6">
+                                <button type="button" onClick={() => setEditingSubscriber(null)}
+                                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">취소</button>
+                                <button type="submit"
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">저장</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -12,6 +12,7 @@ export default function ManualNewsForm({ onClose, onSuccess, editData = null }) 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [postId, setPostId] = useState(null);
+  const [isTopNews, setIsTopNews] = useState(false);
 
   // 수정 모드일 때 기존 데이터 로드
   useEffect(() => {
@@ -21,6 +22,7 @@ export default function ManualNewsForm({ onClose, onSuccess, editData = null }) 
       setCategory(editData.category || "Society");
       setSource(editData.source || "자체 취재");
       setPostId(editData.postId || null);
+      setIsTopNews(editData.isTopNews === true || editData.isTopNews === "1");
       // 이미지는 수정 시 새로 업로드해야 하므로 빈 배열로 시작
     }
   }, [editData]);
@@ -64,7 +66,7 @@ export default function ManualNewsForm({ onClose, onSuccess, editData = null }) 
     const text = content;
     const newText = text.substring(0, start) + placeholder + text.substring(end);
     setContent(newText);
-    
+
     // 커서 위치 조정
     setTimeout(() => {
       textarea.focus();
@@ -76,7 +78,7 @@ export default function ManualNewsForm({ onClose, onSuccess, editData = null }) 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    
+
     if (!title.trim() || !content.trim()) {
       setError("제목과 본문은 필수입니다.");
       return;
@@ -91,6 +93,7 @@ export default function ManualNewsForm({ onClose, onSuccess, editData = null }) 
       formData.append("category", category);
       formData.append("source", source);
       formData.append("featuredImageIndex", featuredImageIndex.toString());
+      formData.append("isTopNews", isTopNews ? "1" : "0");
 
       // 이미지 파일 추가
       images.forEach((img) => {
@@ -129,7 +132,7 @@ export default function ManualNewsForm({ onClose, onSuccess, editData = null }) 
           source,
         });
       }
-      
+
       // 성공 메시지는 부모 컴포넌트에서 처리하므로 여기서는 닫지 않음
     } catch (err) {
       setError(err.message || "오류가 발생했습니다.");
@@ -205,6 +208,19 @@ export default function ManualNewsForm({ onClose, onSuccess, editData = null }) 
                 placeholder="자체 취재"
               />
             </div>
+            <div className="flex items-center mt-7">
+              <label className="flex items-center text-sm font-medium text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isTopNews}
+                  onChange={(e) => setIsTopNews(e.target.checked)}
+                  className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs ml-1 shadow-sm border border-yellow-200">
+                  🔥 탑뉴스로 지정
+                </span>
+              </label>
+            </div>
           </div>
 
           {/* 이미지 업로드 */}
@@ -219,17 +235,16 @@ export default function ManualNewsForm({ onClose, onSuccess, editData = null }) 
               onChange={handleImageUpload}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
-            
+
             {images.length > 0 && (
               <div className="mt-4 grid grid-cols-3 gap-4">
                 {images.map((img, index) => (
                   <div
                     key={img.id}
-                    className={`relative border-2 rounded-lg overflow-hidden ${
-                      featuredImageIndex === index
+                    className={`relative border-2 rounded-lg overflow-hidden ${featuredImageIndex === index
                         ? "border-blue-500 ring-2 ring-blue-300"
                         : "border-gray-200"
-                    }`}
+                      }`}
                   >
                     <img
                       src={img.preview}
@@ -307,8 +322,8 @@ export default function ManualNewsForm({ onClose, onSuccess, editData = null }) 
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isSubmitting}
             >
-              {isSubmitting 
-                ? (postId ? "수정 중..." : "발행 중...") 
+              {isSubmitting
+                ? (postId ? "수정 중..." : "발행 중...")
                 : (postId ? "수정하기" : "WordPress에 발행")}
             </button>
           </div>

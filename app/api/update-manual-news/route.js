@@ -20,11 +20,11 @@ async function uploadFileToWordPress(file, title) {
     const auth = getWPAuth();
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    
+
     const boundary = `----WebKitFormBoundary${Date.now()}`;
     const filename = file.name || `image_${Date.now()}.jpg`;
     const mimeType = file.type || "image/jpeg";
-    
+
     const parts = [];
     const fileHeader = `--${boundary}\r\n` +
       `Content-Disposition: form-data; name="file"; filename="${filename}"\r\n` +
@@ -34,9 +34,9 @@ async function uploadFileToWordPress(file, title) {
     parts.push(Buffer.from("\r\n", "utf8"));
     const footer = `--${boundary}--\r\n`;
     parts.push(Buffer.from(footer, "utf8"));
-    
+
     const formDataBuffer = Buffer.concat(parts);
-    
+
     const response = await fetch(`${WP_URL}/wp-json/wp/v2/media`, {
       method: "POST",
       headers: {
@@ -46,13 +46,13 @@ async function uploadFileToWordPress(file, title) {
       },
       body: formDataBuffer,
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error("[Update Manual News] WordPress media upload failed:", errorText);
       return null;
     }
-    
+
     const mediaData = await response.json();
     return {
       id: mediaData.id,
@@ -67,14 +67,15 @@ async function uploadFileToWordPress(file, title) {
 export async function PUT(request) {
   try {
     const formData = await request.formData();
-    
+
     const postId = formData.get("postId");
     const title = formData.get("title");
     const content = formData.get("content");
     const category = formData.get("category");
     const source = formData.get("source") || "자체 취재";
     const featuredImageIndex = parseInt(formData.get("featuredImageIndex") || "0");
-    
+    const isTopNews = formData.get("isTopNews") || "0";
+
     if (!postId || !title || !content || !category) {
       return NextResponse.json(
         { error: "필수 필드가 누락되었습니다." },
@@ -100,7 +101,7 @@ export async function PUT(request) {
     // 새로 업로드된 이미지 파일들 처리
     const imageFiles = [];
     const imageIds = [];
-    
+
     for (const [key, value] of formData.entries()) {
       if (key.startsWith("image_") && value instanceof File && value.size > 0) {
         const imageId = key.replace("image_", "");
@@ -111,7 +112,7 @@ export async function PUT(request) {
         });
       }
     }
-    
+
     imageFiles.sort((a, b) => {
       const indexA = imageIds.indexOf(a.id);
       const indexB = imageIds.indexOf(b.id);
@@ -126,7 +127,7 @@ export async function PUT(request) {
         img.file,
         `${title}_${i}`
       );
-      
+
       if (uploadResult) {
         uploadedImages.push({
           id: img.id,
@@ -139,7 +140,7 @@ export async function PUT(request) {
 
     // 대표 사진 선택
     const featuredImage = uploadedImages[featuredImageIndex] || uploadedImages[0];
-    
+
     // 본문에 이미지 삽입
     let finalContent = content;
     uploadedImages.forEach((img) => {
@@ -161,7 +162,7 @@ export async function PUT(request) {
       const featuredImageHtml = `<img src="${featuredImage.url}" alt="${title}" style="width:100%; height:auto; margin-bottom: 20px; display:block;" /><br/>`;
       wpContent += featuredImageHtml;
     }
-    
+
     wpContent += finalContent;
 
     // WordPress 기사 업데이트
@@ -174,6 +175,7 @@ export async function PUT(request) {
       meta: {
         news_category: category,
         news_source: source,
+        is_top_news: isTopNews,
       },
     };
 

@@ -167,15 +167,35 @@ export async function PUT(req) {
             });
         }
 
-        // Single toggle
+        // Single toggle or Edit update
         if (body.id) {
-            const { id, isActive } = body;
+            const { id, isActive, email, name, company, phone } = body;
+            const updateData = {};
+
+            if (isActive !== undefined) updateData.isActive = isActive;
+            if (email !== undefined) {
+                // Check if the new email already exists for another subscriber
+                const existing = await prisma.subscriber.findUnique({ where: { email } });
+                if (existing && existing.id !== id) {
+                    return NextResponse.json({ message: "이미 사용 중인 이메일입니다." }, { status: 400 });
+                }
+                updateData.email = email;
+            }
+            if (name !== undefined) updateData.name = name;
+            if (company !== undefined) updateData.company = company;
+            if (phone !== undefined) updateData.phone = phone;
+
             const updated = await prisma.subscriber.update({
                 where: { id },
-                data: { isActive }
+                data: updateData
             });
+
+            const message = isActive !== undefined && email === undefined
+                ? `상태가 ${isActive ? '활성' : '취소됨'}(으)로 변경되었습니다.`
+                : "구독자 정보가 수정되었습니다.";
+
             return NextResponse.json({
-                message: `상태가 ${isActive ? '활성' : '취소됨'}(으)로 변경되었습니다.`,
+                message,
                 subscriber: updated
             });
         }
