@@ -6,6 +6,14 @@ dotenv.config();
 const prisma = new PrismaClient();
 
 function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = []) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chaovietnam.co.kr';
+  const trackUrl = (target, type) => {
+    if (!target) return '#';
+    return `${baseUrl}/api/click?url=${encodeURIComponent(target)}&type=${type}`;
+  };
+
+  const trackedTerminalUrl = trackUrl(terminalUrl, 'TERMINAL');
+
   let html = `
     <div style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; max-width: 700px; margin: 0 auto; color: #333; padding: 20px; background-color: #fff;">
       <h2 style="font-size: 16px; color: #666; margin-bottom: 20px;">
@@ -19,7 +27,7 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
   if (cardImageUrl) {
     html += `
       <div style="margin-bottom: 30px;">
-        <a href="${terminalUrl}" target="_blank" style="text-decoration: none;">
+        <a href="${trackedTerminalUrl}" target="_blank" style="text-decoration: none;">
           <img src="${cardImageUrl}" alt="오늘의 뉴스 카드" style="max-width: 100%; height: auto; display: block; border: 1px solid #eee;" />
         </a>
       </div>
@@ -29,6 +37,7 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
   if (newsItems && newsItems.length > 0) {
     newsItems.forEach(item => {
       const url = item.wordpressUrl || terminalUrl;
+      const trackedNewsUrl = trackUrl(url, 'NEWS');
       const summary = (item.translatedSummary || item.summary || '').replace(/\n/g, '<br/>');
 
       html += `
@@ -40,7 +49,7 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
             ${summary}
           </p>
           <div style="font-size: 13px;">
-            <a href="${url}" style="color: #0056b3; text-decoration: underline; word-break: break-all;" target="_blank">
+            <a href="${trackedNewsUrl}" style="color: #0056b3; text-decoration: underline; word-break: break-all;" target="_blank">
               자세한 내용은 링크를 클릭: ${url}
             </a>
           </div>
@@ -58,8 +67,9 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
     `;
 
     promoCards.forEach(card => {
+      const trackedPromoUrl = trackUrl(card.linkUrl, 'PROMO');
       const imgHtml = card.imageUrl
-        ? `<a href="${card.linkUrl}" target="_blank"><img src="${card.imageUrl}" alt="${card.title}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;display:block;margin-bottom:12px;" /></a>`
+        ? `<a href="${trackedPromoUrl}" target="_blank"><img src="${card.imageUrl}" alt="${card.title}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;display:block;margin-bottom:12px;" /></a>`
         : '';
       const descHtml = card.description
         ? `<p style="font-size:13px;color:#555;margin:8px 0;line-height:1.5;">${card.description.replace(/\n/g, '<br/>')}</p>`
@@ -69,10 +79,10 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
         <div style="margin-bottom:16px;background:#fff;border:1px solid #fed7aa;border-radius:10px;padding:16px;">
           ${imgHtml}
           <h3 style="margin:0 0 4px 0;font-size:15px;font-weight:bold;">
-            <a href="${card.linkUrl}" target="_blank" style="color:#c2410c;text-decoration:none;">${card.title}</a>
+            <a href="${trackedPromoUrl}" target="_blank" style="color:#c2410c;text-decoration:none;">${card.title}</a>
           </h3>
           ${descHtml}
-          <a href="${card.linkUrl}" target="_blank"
+          <a href="${trackedPromoUrl}" target="_blank"
             style="display:inline-block;margin-top:10px;padding:8px 20px;background:#f97316;color:#fff;border-radius:6px;text-decoration:none;font-size:13px;font-weight:bold;">
             자세히 보기 →
           </a>

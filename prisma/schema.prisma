@@ -120,3 +120,16 @@ model EmailSendDetail {
   @@index([status])
   @@index([email])
 }
+
+model ClickLog {
+  id        Int      @id @default(autoincrement())
+  url       String   // The destination URL that was clicked
+  type      String   // Category of the link: 'NEWS', 'PROMO', 'TERMINAL'
+  userIp    String?  // Optional IP address for analytics
+  userAgent String?  // Optional device/browser info
+  clickedAt DateTime @default(now())
+
+  @@index([url])
+  @@index([type])
+  @@index([clickedAt])
+}
