@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { sendNewsletterWithFallback } from '@/lib/email-service';
+import { autoLinkHtml } from '@/lib/html-utils';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -71,8 +72,9 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
       const imgHtml = card.imageUrl
         ? `<a href="${trackedPromoUrl}" target="_blank"><img src="${card.imageUrl}" alt="${card.title}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;display:block;margin-bottom:12px;" /></a>`
         : '';
-      const descHtml = card.description
-        ? `<p style="font-size:13px;color:#555;margin:8px 0;line-height:1.5;">${card.description.replace(/\n/g, '<br/>')}</p>`
+      const processedHtml = card.description ? autoLinkHtml(card.description) : '';
+      const descHtml = processedHtml
+        ? `<div style="font-size:13px;color:#555;margin:8px 0;line-height:1.5;">${processedHtml}</div>`
         : '';
 
       html += `

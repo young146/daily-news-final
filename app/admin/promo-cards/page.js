@@ -4,6 +4,16 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { getClientStorage } from "@/lib/firebase-client";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { autoLinkHtml } from "@/lib/html-utils";
+import dynamic from 'next/dynamic';
+import 'react-quill-new/dist/quill.snow.css';
+
+const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
+
+const stripHtml = (html) => {
+    if (!html) return "";
+    return html.replace(/<[^>]*>?/gm, '');
+};
 
 // URL을 자동으로 클릭 가능한 링크로 변환
 const linkify = (text) => {
@@ -149,7 +159,12 @@ export default function PromoCardsPage() {
                         </div>
                         <div>
                             <label style={lbl}>📝 홍보 문구 / 설명</label>
-                            <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="예: 베트남 한인 중고거래 & 나눔 커뮤니티에 참여하세요!" rows={3} style={{ ...inp, resize: "vertical" }} />
+                            <ReactQuill 
+                                theme="snow" 
+                                value={form.description} 
+                                onChange={(val) => setForm((f) => ({ ...f, description: val }))} 
+                                placeholder="예: 베트남 한인 중고거래 & 나눔 커뮤니티에 참여하세요! (텍스트 서식, 색상 등 설정 가능)" 
+                            />
                         </div>
                         <div>
                             <label style={lbl}>🖼️ 홍보 이미지</label>
@@ -247,7 +262,7 @@ export default function PromoCardsPage() {
                                     <div style={{ padding: "14px" }}>
                                         <h3 style={{ fontSize: "15px", fontWeight: "bold", margin: "0 0 6px 0", color: "#1f2937", lineHeight: "1.4" }}>{card.title}</h3>
                                         {card.description && (
-                                            <p style={{ fontSize: "13px", color: "#6b7280", margin: "0 0 8px 0", lineHeight: "1.5", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{card.description}</p>
+                                            <p style={{ fontSize: "13px", color: "#6b7280", margin: "0 0 8px 0", lineHeight: "1.5", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{stripHtml(card.description)}</p>
                                         )}
                                         <a href={card.linkUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#3b82f6", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: "10px" }}>
                                             🔗 {card.linkUrl}
@@ -274,38 +289,43 @@ export default function PromoCardsPage() {
                 )}
             </div>
 
-            {/* 미리보기 모달 - 고객에게 보이는 카드 그대로 */}
+            {/* 미리보기 모달 - 이메일 수신 시 모습 그대로 */}
             {previewCard && (
                 <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "20px" }} onClick={() => setPreviewCard(null)}>
-                    <div style={{ maxWidth: "340px", width: "100%" }} onClick={(e) => e.stopPropagation()}>
-                        {/* 닫기 버튼 */}
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                            <span style={{ color: "white", fontWeight: "bold", fontSize: "14px" }}>📱 고객에게 보이는 카드 미리보기</span>
-                            <button onClick={() => setPreviewCard(null)} style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "50%", width: "32px", height: "32px", fontSize: "16px", cursor: "pointer", color: "white" }}>✕</button>
+                    {/* 이메일 배경 래퍼 (최대폭 600px, 회색 바탕) */}
+                    <div style={{ maxWidth: "600px", width: "100%", maxHeight: "90vh", overflowY: "auto", background: "#f9f9f9", padding: "20px", borderRadius: "12px", border: "1px solid #ddd", position: "relative" }} onClick={(e) => e.stopPropagation()}>
+                        
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                            <span style={{ color: "#333", fontWeight: "bold", fontSize: "14px" }}>✉️ 이메일로 고객이 받는 실제 크기 (600px)</span>
+                            <button onClick={() => setPreviewCard(null)} style={{ background: "rgba(0,0,0,0.1)", border: "none", borderRadius: "50%", width: "28px", height: "28px", fontSize: "14px", cursor: "pointer", color: "#333" }}>✕</button>
                         </div>
-                        {/* 실제 카드 — 관리 버튼 없이 고객 뷰 그대로 */}
-                        <div style={{ borderRadius: "16px", overflow: "hidden", background: "white", boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
-                            {getThumb(previewCard) ? (
-                                <img src={getThumb(previewCard)} alt={previewCard.title} style={{ width: "100%", maxHeight: "220px", objectFit: "contain", background: "#f8f8f8", display: "block" }} />
-                            ) : (
-                                <div style={{ width: "100%", height: "140px", background: "linear-gradient(135deg, #fff7ed, #fed7aa)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "48px" }}>📣</div>
+
+                        {/* 실제 이메일 안쪽 흰색 카드 */}
+                        <div style={{ borderRadius: "12px", background: "#fff", border: "1px solid #eee", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
+                            {getThumb(previewCard) && (
+                                <img src={getThumb(previewCard)} alt={previewCard.title} style={{ width: "100%", maxHeight: "200px", objectFit: "cover", borderRadius: "8px", display: "block", marginBottom: "12px" }} />
                             )}
-                            <div style={{ padding: "18px" }}>
-                                <h3 style={{ margin: "0 0 10px 0", fontSize: "17px", fontWeight: "bold", color: "#1f2937", lineHeight: "1.4" }}>
-                                    {previewCard.title}
-                                </h3>
-                                {previewCard.description && (
-                                    <p style={{ margin: "0 0 14px 0", fontSize: "14px", color: "#555", lineHeight: "1.7", whiteSpace: "pre-wrap" }}>
-                                        {linkify(previewCard.description)}
-                                    </p>
-                                )}
+                            <h3 style={{ margin: "0 0 10px 0", fontSize: "16px", fontWeight: "bold", color: "#333", lineHeight: "1.4" }}>
+                                {previewCard.title}
+                            </h3>
+                            {previewCard.description && (
+                                <div className="ql-snow" style={{ margin: "0 0 14px 0" }}>
+                                    <div 
+                                        className="ql-editor"
+                                        style={{ padding: 0, fontSize: "13px", color: "#555", lineHeight: "1.5", wordBreak: "break-word" }}
+                                        dangerouslySetInnerHTML={{ __html: autoLinkHtml(previewCard.description) }}
+                                    />
+                                </div>
+                            )}
+                            <div style={{ textAlign: "center", marginTop: "16px" }}>
                                 <a href={previewCard.linkUrl} target="_blank" rel="noopener noreferrer"
-                                    style={{ display: "block", textAlign: "center", padding: "12px", background: "#f97316", color: "white", borderRadius: "10px", textDecoration: "none", fontWeight: "bold", fontSize: "15px" }}>
-                                    자세히 보기 →
+                                    style={{ display: "inline-block", padding: "10px 24px", background: "#f97316", color: "#ffffff", borderRadius: "6px", textDecoration: "none", fontWeight: "bold", fontSize: "14px" }}>
+                                    자세히 보기
                                 </a>
                             </div>
                         </div>
-                        <p style={{ textAlign: "center", color: "rgba(255,255,255,0.7)", fontSize: "12px", marginTop: "12px" }}>
+                        <p style={{ textAlign: "center", color: "#9ca3af", fontSize: "12px", marginTop: "16px" }}>
+
                             화면 바깥을 클릭하면 닫힙니다
                         </p>
                     </div>

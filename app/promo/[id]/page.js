@@ -3,6 +3,8 @@
 
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
+import { autoLinkHtml } from '@/lib/html-utils';
+import 'react-quill-new/dist/quill.snow.css';
 
 // ─── OG 메타태그 (카카오톡 링크 미리보기용) ───
 export async function generateMetadata({ params }) {
@@ -73,9 +75,13 @@ export default async function PromoPage({ params }) {
                             {card.title}
                         </h1>
                         {card.description && (
-                            <p style={{ fontSize: '14px', color: '#555', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: '0 0 20px 0' }}>
-                                {card.description}
-                            </p>
+                            <div className="ql-snow" style={{ margin: '0 0 20px 0' }}>
+                                <div 
+                                    className="ql-editor"
+                                    style={{ fontSize: '15px', color: '#333', lineHeight: 1.8, padding: 0, wordBreak: 'break-word' }}
+                                    dangerouslySetInnerHTML={{ __html: autoLinkHtml(card.description) }}
+                                />
+                            </div>
                         )}
 
                         {/* 자세히 보기 버튼 → 실제 linkUrl 로 이동 */}

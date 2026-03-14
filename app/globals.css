@@ -38,3 +38,30 @@ h6 {
   font-family: var(--font-serif);
   font-weight: 700;
 }
+
+/* Custom Rich Text Fallbacks for Tailwind Preflight 
+   Forces standard HTML styles onto Quill editor output in previews and public pages */
+.ql-editor h1 { font-size: 2em; font-weight: bold; margin: 0; padding: 0; }
+.ql-editor h2 { font-size: 1.5em; font-weight: bold; margin: 0; padding: 0; }
+.ql-editor h3 { font-size: 1.17em; font-weight: bold; margin: 0; padding: 0; }
+.ql-editor h4 { font-size: 1em; font-weight: bold; margin: 0; padding: 0; }
+.ql-editor h5 { font-size: 0.83em; font-weight: bold; margin: 0; padding: 0; }
+.ql-editor h6 { font-size: 0.67em; font-weight: bold; margin: 0; padding: 0; }
+.ql-editor p { margin: 0; padding: 0; }
+.ql-editor ul { list-style-type: disc; padding-left: 2em; margin: 0; }
+.ql-editor ol { list-style-type: decimal; padding-left: 2em; margin: 0; }
+.ql-editor li { display: list-item; }
+.ql-editor b, .ql-editor strong { font-weight: bolder; }
+.ql-editor i, .ql-editor em { font-style: italic; }
+.ql-editor u { text-decoration: underline; }
+
+/* Force empty tags to take up text height for accurate blank line spacing */
+.ql-editor p:empty::after,
+.ql-editor h1:empty::after,
+.ql-editor h2:empty::after,
+.ql-editor h3:empty::after,
+.ql-editor h4:empty::after,
+.ql-editor h5:empty::after,
+.ql-editor h6:empty::after {
+    content: '\00a0';
+}
