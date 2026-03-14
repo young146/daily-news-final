@@ -1,0 +1,35 @@
+----------------------------------------------------
+sentAt: 3/12/2026, 9:18:12 AM (VN Time: 3/12/2026, 9:18:12 AM)
+method: smtp, total: 4513, succeeded: 3311, failed: 1202
+note: [계정2] jadmaxvn@yahoo..co.kr 발송 실패: Can't send mail - all recipients were rejected: 553-5.1.3 The recipient address <jadmaxvn@yahoo..co.kr> is not a valid RFC 5321
+553-5.1.3 address. For more information, go to
+553-5.1.3  https://support.google.com/a/answer/3221692 and review RFC 5321
+553 5.1.3 specifications. d9443c01a7336-2aeae378930sm35483675ad.85 - gsmtp | [계정2] jennifer1256@@naver.com 발송 실패: Can't send mail - all recipients were rejected: 553-5.1.3 The recipient address <jennifer1256@@naver.com> is not a valid RFC
+553-5.1.3 5321 address. For more information, go to
+553-5.1.3  https://support.google.com/a/answer/3221692 and review RFC 5321
+553 5.1.3 specifications. 98e67ed59e1d1-359ffdbf1bfsm1863500a91.0 - gsmtp | [계정3] jungkwoun@hanmail.net. 발송 실패: Can't send mail - all recipients were rejected: 553-5.1.3 The recipient address <jungkwoun@hanmail.net.> is not a valid RFC 5321
+553-5.1.3 address. For more information, go to
+553-5.1.3  https://support.google.com/a/answer/3221692 a...
+Errors Grouped:
+- Count: 1 -> Msg: Can't send mail - all recipients were rejected: 553-5.1.3 The recipient address <mattkim@simone@co.k
+- Count: 1 -> Msg: Can't send mail - all recipients were rejected: 553-5.1.3 The recipient address <jungkwoun@hanmail.n
+- Count: 1 -> Msg: Can't send mail - all recipients were rejected: 553-5.1.3 The recipient address <medialegue@6765@gma
+- Count: 1 -> Msg: Can't send mail - all recipients were rejected: 553-5.1.3 The recipient address <jennifer1256@@naver
+- Count: 1 -> Msg: Can't send mail - all recipients were rejected: 553-5.1.3 The recipient address <meat79meat79@@gmail
+- Count: 1195 -> Msg: 모든 계정 한도 초과 또는 사용 불가 상태
+- Count: 1 -> Msg: Can't send mail - all recipients were rejected: 553-5.1.3 The recipient address <kdw@@7856@dshi.co.k
+- Count: 1 -> Msg: Can't send mail - all recipients were rejected: 553-5.1.3 The recipient address <jadmaxvn@yahoo..co.
+----------------------------------------------------
+sentAt: 3/11/2026, 8:02:26 PM (VN Time: 3/11/2026, 8:02:26 PM)
+method: smtp, total: 3013, succeeded: 1096, failed: 1917
+note: Log ID 18 실패분 재발송 (계정2,3 사용)
+Errors Grouped:
+----------------------------------------------------
+sentAt: 3/11/2026, 7:09:25 PM (VN Time: 3/11/2026, 7:09:25 PM)
+method: smtp, total: 4513, succeeded: 1500, failed: 3013
+note: [계정1] daesungvina@hanmai.net 발송 실패: Message failed: 451-4.3.0 Mail server temporarily rejected message. For more information, go to
+451 4.3.0  https://support.google.com/a/answer/3221692 98e67ed59e1d1-359ffdb6e53sm841000a91.0 - gsmtp | [시스템] hyun_moon@naver.com 발송 실패: 모든 계정 한도 초과 또는 사용 불가 상태 | [시스템] hyundai09@hanmail.net 발송 실패: 모든 계정 한도 초과 또는 사용 불가 상태 | [시스템] hyungak2@daum.net 발송 실패: 모든 계정 한도 초과 또는 사용 불가 상태 | [시스템] hyungjin@itechenc.com 발송 실패: 모든 계정 한도 초과 또는 사용 불가 상태 | [시스템] hyungseok.ha@daeunextier.com 발송 실패: 모든 계정 한도 초과 또는 사용 불가 상태 | [시스템] hyungsik82@donga.co.kr 발송 실패: 모든 계정 한도 초과 또는 사용 불가 상태 | [시스템] hyungzoo.ha@assaabloy.com 발송 실패: 모든 계정 한도 초과 또는 사용 불가 상태 | [시스템] hyunholee@posco-ssvina.com 발송 실패: 모든 계정 한도 초과 또는 사용 불가 상태 | [시스템] hyunjai.yoo@ishida.vn 발송 실패: 모든 계정 한도 초과 또는 사용 불가 상태 | [시스템] hyunjin.jang@dskorea.com 발송 실패: 모든 계정 한도 초과 또는 사용 불가 상태 | [시스템] hyunjinee.park@gmail.com 발송 실패: 모든 계정 한도 초과 또는 사용 불가 상태 | [시스템] hyunjoh1@naver.com 발송 실패: 모든 계정 한도 초과 또는 사용 불가 상태 | [시스템] hyyoo@k...
+Errors Grouped:
+- Count: 1 -> Msg: Message failed: 451-4.3.0 Mail server temporarily rejected message. For more information, go to
+451 
+- Count: 3012 -> Msg: 모든 계정 한도 초과 또는 사용 불가 상태
