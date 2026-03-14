@@ -35,6 +35,10 @@ async function getStats() {
     bySource,
     byCategory,
     recentCrawlerLogs,
+    clicksToday,
+    clicksWeek,
+    clicksMonth,
+    topClicksWeek,
   ] = await Promise.all([
     prisma.newsItem.count(),
     prisma.newsItem.count({ where: { createdAt: { gte: todayStart } } }),
@@ -63,6 +67,16 @@ async function getStats() {
       orderBy: { runAt: "desc" },
       take: 10,
     }),
+    prisma.clickLog.count({ where: { clickedAt: { gte: todayStart } } }),
+    prisma.clickLog.count({ where: { clickedAt: { gte: weekStart } } }),
+    prisma.clickLog.count({ where: { clickedAt: { gte: monthStart } } }),
+    prisma.clickLog.groupBy({
+      by: ["url", "type"],
+      _count: { id: true },
+      where: { clickedAt: { gte: weekStart } },
+      orderBy: { _count: { id: "desc" } },
+      take: 10,
+    }),
   ]);
 
   return {
@@ -76,6 +90,10 @@ async function getStats() {
     bySource: bySource.sort((a, b) => b._count.id - a._count.id),
     byCategory: byCategory.sort((a, b) => b._count.id - a._count.id),
     recentCrawlerLogs,
+    clicksToday,
+    clicksWeek,
+    clicksMonth,
+    topClicksWeek: topClicksWeek.map(c => ({ url: c.url, type: c.type, count: c._count.id })),
   };
 }
 
@@ -99,7 +117,7 @@ export default async function StatsPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="text-sm text-gray-600">오늘 수집</div>
           <div className="text-3xl font-bold text-blue-600">
@@ -122,6 +140,27 @@ export default async function StatsPage() {
           <div className="text-sm text-gray-600">이번주 발행</div>
           <div className="text-3xl font-bold text-orange-600">
             {stats.publishedWeek}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+          <div className="text-sm text-gray-600">오늘 조회(클릭) 수</div>
+          <div className="text-3xl font-bold text-indigo-600">
+            {stats.clicksToday}
+          </div>
+        </div>
+        <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+          <div className="text-sm text-gray-600">이번주 조회(클릭) 수</div>
+          <div className="text-3xl font-bold text-indigo-600">
+            {stats.clicksWeek}
+          </div>
+        </div>
+        <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+          <div className="text-sm text-gray-600">이번달 조회(클릭) 수</div>
+          <div className="text-3xl font-bold text-indigo-600">
+            {stats.clicksMonth}
           </div>
         </div>
       </div>
@@ -183,6 +222,63 @@ export default async function StatsPage() {
               <p className="text-gray-500">데이터 없음</p>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="bg-white border rounded-lg p-4 mb-8 shadow-sm">
+        <h2 className="text-lg font-bold mb-4">인기 클릭 링크 (이번 주 Top 10)</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-gray-50">
+                <th className="text-left py-3 px-3 w-16 text-gray-600 font-semibold rounded-tl-md">순위</th>
+                <th className="text-left py-3 px-3 w-24 text-gray-600 font-semibold">유형</th>
+                <th className="text-left py-3 px-3 text-gray-600 font-semibold">클릭 대상 링크 URL</th>
+                <th className="text-center py-3 px-3 w-24 text-gray-600 font-semibold rounded-tr-md">클릭 수</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.topClicksWeek.map((click, index) => {
+                let decodedUrl = click.url;
+                try { decodedUrl = decodeURI(click.url); } catch(e) {}
+                return (
+                  <tr key={index} className="border-b border-gray-100 hover:bg-indigo-50/30 transition-colors">
+                    <td className="py-3 px-3 font-bold text-gray-400 text-center">{index + 1}</td>
+                    <td className="py-3 px-3">
+                      <span
+                        className={`px-2 py-1 rounded text-[11px] font-bold tracking-wider ${
+                          click.type === "NEWS"
+                            ? "bg-blue-100 text-blue-700"
+                            : click.type === "PROMO"
+                            ? "bg-pink-100 text-pink-700"
+                            : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {click.type}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3">
+                      <a href={click.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 hover:underline break-all block max-w-2xl font-medium">
+                        {decodedUrl}
+                      </a>
+                    </td>
+                    <td className="py-3 px-3 text-center">
+                      <span className="inline-flex items-center justify-center bg-indigo-100 text-indigo-700 font-bold px-3 py-1 rounded-full text-xs">
+                        {click.count}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+              {stats.topClicksWeek.length === 0 && (
+                <tr>
+                  <td colSpan="4" className="py-8 text-center text-gray-400">
+                    이번 주 클릭 기록이 아직 없습니다.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
