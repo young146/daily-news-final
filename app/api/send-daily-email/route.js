@@ -139,6 +139,14 @@ export async function POST(request) {
 }
 
 function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = []) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chaovietnam.co.kr';
+  const trackUrl = (target, type) => {
+    if (!target) return '#';
+    return `${baseUrl}/api/click?url=${encodeURIComponent(target)}&type=${type}`;
+  };
+
+  const trackedTerminalUrl = trackUrl(terminalUrl, 'TERMINAL');
+
   let html = `
     <div style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; max-width: 700px; margin: 0 auto; color: #333; padding: 20px; background-color: #fff;">
       <h2 style="font-size: 16px; color: #666; margin-bottom: 20px;">씬짜오베트남 데일리뉴스 | ${dateString}</h2>
@@ -148,7 +156,7 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
   if (cardImageUrl) {
     html += `
       <div style="margin-bottom: 30px;">
-        <a href="${terminalUrl}" target="_blank" style="text-decoration: none;">
+        <a href="${trackedTerminalUrl}" target="_blank" style="text-decoration: none;">
           <img src="${cardImageUrl}" alt="오늘의 뉴스 카드" style="max-width: 100%; height: auto; display: block; border: 1px solid #eee;" />
         </a>
       </div>
@@ -158,13 +166,14 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
   if (newsItems && newsItems.length > 0) {
     newsItems.forEach(item => {
       const url = item.wordpressUrl || terminalUrl;
+      const trackedNewsUrl = trackUrl(url, 'NEWS');
       const summary = (item.translatedSummary || item.summary || '').replace(/\n/g, '<br/>');
       html += `
         <div style="margin-bottom: 25px; line-height: 1.6;">
           <h3 style="font-size: 16px; font-weight: bold; margin: 0 0 8px 0; color: #222;">📍 ${item.translatedTitle || item.title}</h3>
           <p style="font-size: 14px; margin: 0 0 8px 0; color: #444;">${summary}</p>
           <div style="font-size: 13px;">
-            <a href="${url}" style="color: #0056b3; text-decoration: underline; word-break: break-all;" target="_blank">
+            <a href="${trackedNewsUrl}" style="color: #0056b3; text-decoration: underline; word-break: break-all;" target="_blank">
               자세한 내용은 링크를 클릭: ${url}
             </a>
           </div>
@@ -179,7 +188,7 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
       <p style="font-size: 15px; font-weight: bold; color: #1a1a1a; margin: 0 0 6px 0; line-height: 1.6;">
         베트남의 흐름을 관망할 수 있는 뉴스가 섹션별로 다양하게 게재되어 있습니다.
       </p>
-      <a href="${terminalUrl}" target="_blank" style="font-size: 13px; color: #d1121d; text-decoration: underline;">
+      <a href="${trackedTerminalUrl}" target="_blank" style="font-size: 13px; color: #d1121d; text-decoration: underline;">
         👉 뉴스 터미널에서 전체 뉴스 확인하기
       </a>
     </div>
@@ -193,12 +202,13 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
       const ytMatch = card.videoUrl?.match(/(?:youtube\.com.*v=|youtu\.be\/)([^&\n?#]+)/);
       const ytId = ytMatch ? ytMatch[1] : null;
       const imgSrc = card.imageUrl || (ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null);
+      const trackedPromoUrl = trackUrl(card.linkUrl, 'PROMO');
       html += `<div style="margin-bottom: 28px; background: #fff8f0; border: 1px solid #fed7aa; border-radius: 10px; overflow: hidden;">
-        ${imgSrc ? `<a href="${card.linkUrl || '#'}" target="_blank" style="display:block;"><img src="${imgSrc}" alt="${card.title}" style="width:100%;max-height:280px;object-fit:cover;display:block;" /></a>` : ''}
+        ${imgSrc ? `<a href="${trackedPromoUrl}" target="_blank" style="display:block;"><img src="${imgSrc}" alt="${card.title}" style="width:100%;max-height:280px;object-fit:cover;display:block;" /></a>` : ''}
         <div style="padding: 16px 20px;">
           <h3 style="font-size: 16px; font-weight: bold; color: #1f2937; margin: 0 0 8px 0;">${card.title}</h3>
           ${card.description ? `<p style="font-size: 13px; color: #4b5563; line-height: 1.7; white-space: pre-wrap; margin: 0 0 14px 0;">${card.description}</p>` : ''}
-          ${card.linkUrl ? `<a href="${card.linkUrl}" target="_blank" style="display:inline-block;background:#f97316;color:#fff;font-size:13px;font-weight:bold;padding:10px 22px;border-radius:6px;text-decoration:none;">참여하기 →</a>` : ''}
+          ${card.linkUrl ? `<a href="${trackedPromoUrl}" target="_blank" style="display:inline-block;background:#f97316;color:#fff;font-size:13px;font-weight:bold;padding:10px 22px;border-radius:6px;text-decoration:none;">참여하기 →</a>` : ''}
         </div>
       </div>`;
     });
@@ -211,6 +221,10 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
           <p style="margin: 0 0 5px 0;"><strong>HANHOA CO., LTD | www.chaovietnam.co.kr</strong></p>
           <p style="margin: 0 0 5px 0;">9Th Floor, EBM Building, 685-685 Dien Bien Phu, Ward 25, Binh Thanh</p>
           <p style="margin: 0;">T. 028)3511 1075 / 3511 1095 | E. info@chaovietnam.co.kr</p>
+          <div style="margin-top: 20px; text-align: center; border-top: 1px dashed #eee; padding-top: 15px;">
+            <p style="margin: 0; color: #888; font-size: 11px;">더 이상 뉴스레터를 받고 싶지 않으시다면 아래 링크를 클릭해 주세요.</p>
+            <a href="${baseUrl}/unsubscribe" target="_blank" style="color: #999; text-decoration: underline; font-size: 11px; display: inline-block; margin-top: 5px;">수신 거부 (Unsubscribe)</a>
+          </div>
         </div>
       </div>
     </div>
