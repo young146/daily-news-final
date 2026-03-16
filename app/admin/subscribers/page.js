@@ -44,21 +44,39 @@ export default function SubscribersPage() {
     };
 
 
-    const exportToCSV = () => {
-        const headers = ['회사명', '이메일', '이름', '전화번호', '상태', '구독 일시'];
-        const rows = subscribers.map(s => [
-            s.company || '', s.email, s.name || '', s.phone || '',
-            s.isActive ? '활성' : '취소됨',
-            new Date(s.createdAt).toLocaleString('ko-KR')
-        ]);
-        const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `subscribers_${new Date().toISOString().split('T')[0]}.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
+    const [exporting, setExporting] = useState(false);
+
+    const exportToCSV = async () => {
+        setExporting(true);
+        try {
+            // 현재 페이지가 아닌 전체 레코드를 API에서 직접가져오기 (limit=99999)
+            const res = await fetch(`/api/admin/subscribers?page=1&limit=99999&search=&status=all`);
+            if (!res.ok) throw new Error('구독자 데이터를 가져오는 데 실패했습니다.');
+            const data = await res.json();
+            const allSubscribers = data.subscribers;
+
+            const headers = ['회사명', '이메일', '이름', '전화번호', '상태', '구독 일시'];
+            const rows = allSubscribers.map(s => [
+                (s.company || '').replace(/,/g, ' '),
+                (s.email || '').replace(/,/g, ' '),
+                (s.name || '').replace(/,/g, ' '),
+                (s.phone || '').replace(/,/g, ' '),
+                s.isActive ? '활성' : '취소됨',
+                new Date(s.createdAt).toLocaleString('ko-KR')
+            ]);
+            const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `subscribers_all_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            alert('다운로드 중 오류가 발생했습니다: ' + err.message);
+        } finally {
+            setExporting(false);
+        }
     };
 
     const handleImport = (e) => {
@@ -328,9 +346,9 @@ export default function SubscribersPage() {
                         {importing ? '가져오는 중...' : '엑셀 가져오기'}
                         <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImport} disabled={importing} className="hidden" />
                     </label>
-                    <button onClick={exportToCSV}
-                        className="bg-green-600 text-white px-3 py-1.5 rounded-md hover:bg-green-700 transition flex items-center text-sm font-medium shadow-sm">
-                        <Download size={16} className="mr-1" /> 엑셀 다운로드
+                    <button onClick={exportToCSV} disabled={exporting}
+                        className={`text-white px-3 py-1.5 rounded-md transition flex items-center text-sm font-medium shadow-sm ${exporting ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}>
+                        <Download size={16} className="mr-1" /> {exporting ? '다운로드 중...' : '전체 다운로드'}
                     </button>
                 </div>
             </div>

@@ -8,7 +8,7 @@ export async function GET(req) {
     try {
         const { searchParams } = new URL(req.url);
         const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
-        const limit = Math.min(200, parseInt(searchParams.get('limit') || '100'));
+        const limit = Math.min(10000, parseInt(searchParams.get('limit') || '100')); // 10000까지 허용 (전체 다운로드용)
         const search = searchParams.get('search') || '';
         const status = searchParams.get('status') || 'all';
 
