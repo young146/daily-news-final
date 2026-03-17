@@ -33,7 +33,7 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
   const [customEmail, setCustomEmail] = useState('');
   const [testEmails, setTestEmails] = useState([]);
   const [newTestEmail, setNewTestEmail] = useState({ email: '', name: '' });
-  // confirmSend: null | 'test-resend' | 'test-smtp' | 'all-resend' | 'all-smtp'
+  // confirmSend: null | 'test-eservice' | 'test-smtp' | 'all-eservice' | 'all-smtp'
   const [sendMethod, setSendMethod] = useState(null); // 가장 최근 사용한 방식 기록
   const [smtpAccount, setSmtpAccount] = useState('both'); // 'both' | 'account1' | 'account2'
 
@@ -193,7 +193,7 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
       const result = await res.json();
       if (result.success) {
         setSendMethod(result.method);
-        const label = result.method === 'smtp' ? '📧 SMTP BCC' : '🚀 Resend';
+        const label = result.method === 'smtp' ? '📧 SMTP BCC' : '📨 e-service';
         showToast(`✅ [${label}] 발송 완료! ${result.message}`);
       } else {
         showToast(`❌ 발송 실패: ${result.error}`, 'error');
@@ -289,7 +289,7 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
             /* 2단계: 발송 방식 + 인원 확인 */
             <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
               <span className="text-sm font-bold text-red-700">
-                {confirmSend.endsWith('smtp') ? '📧 SMTP BCC' : '🚀 Resend'}
+                {confirmSend.endsWith('smtp') ? '📧 SMTP BCC' : '📨 e-service'}
                 {' · '}
                 {confirmSend.startsWith('test')
                   ? testEmails.length > 0
@@ -317,10 +317,10 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
                 className="px-3 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50 text-sm font-medium cursor-pointer disabled:cursor-not-allowed">
                 {isPreviewing ? '⏳' : '👁️'} 미리보기
               </button>
-              {/* Resend 테스트 */}
-              <button onClick={() => setConfirmSend('test-resend')} disabled={isTestSending || isAllSending || isPending}
+              {/* e-service 테스트 */}
+              <button onClick={() => setConfirmSend('test-eservice')} disabled={isTestSending || isAllSending || isPending}
                 className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm font-medium cursor-pointer disabled:cursor-not-allowed">
-                {isTestSending ? '⏳' : '🧪'} 테스트(Resend)
+                {isTestSending ? '⏳' : '🧪'} 테스트(e-service)
               </button>
               {/* SMTP BCC 테스트 */}
               <button onClick={() => setConfirmSend('test-smtp')} disabled={isTestSending || isAllSending || isPending}
@@ -341,10 +341,10 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
               </select>
               {/* 구분선 */}
               <span className="text-gray-300 select-none">|</span>
-              {/* Resend 전체 */}
-              <button onClick={() => setConfirmSend('all-resend')} disabled={isTestSending || isAllSending || isPending}
+              {/* e-service 전체 */}
+              <button onClick={() => setConfirmSend('all-eservice')} disabled={isTestSending || isAllSending || isPending}
                 className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium cursor-pointer disabled:cursor-not-allowed">
-                {isAllSending ? <><Send size={14} /> 발송 중...</> : <><Send size={14} /> Resend 전체</>}
+                {isAllSending ? <><Send size={14} /> 발송 중...</> : <><Send size={14} /> e-service 전체</>}
               </button>
               {/* SMTP BCC 전체 */}
               <button onClick={() => setConfirmSend('all-smtp')} disabled={isTestSending || isAllSending || isPending}
@@ -638,15 +638,15 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
                   >
                     📤 SNS용 URL 복사
                   </button>
-                  {/* Resend 전체 발송 */}
+                  {/* e-service 전체 발송 */}
                   <button
                     onClick={() => {
                       setPreviewHtml(null);
-                      setConfirmSend('all-resend');
+                      setConfirmSend('all-eservice');
                     }}
                     className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-bold text-sm flex items-center gap-2 cursor-pointer"
                   >
-                    <Send size={14} /> Resend 발송
+                    <Send size={14} /> e-service 발송
                   </button>
                   {/* SMTP BCC 전체 발송 */}
                   <button

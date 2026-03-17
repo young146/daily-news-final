@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@sendgrid/mail": "^8.1.6",
     "@sparticuz/chromium": "^131.0.1",
     "@vercel/og": "^0.8.5",
     "axios": "^1.13.2",
@@ -38,7 +39,6 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-quill-new": "^3.8.3",
-    "resend": "^6.9.3",
     "rss-parser": "^3.13.0",
     "sharp": "^0.34.5",
     "xlsx": "^0.18.5"

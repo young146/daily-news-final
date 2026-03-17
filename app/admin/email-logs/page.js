@@ -80,7 +80,7 @@ export default function EmailLogsPage() {
             <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold">SMTP</span>
         );
         return (
-            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-bold">Resend</span>
+            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-bold">e-service</span>
         );
     };
 

@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { translateNewsItem, translateText } from "@/lib/translator";
 import { publishToMainSite, deleteWordPressPost } from "@/lib/publisher";
 import { postToSNS } from "@/lib/sns";
-import { sendNewsletter } from "@/lib/email-service";
+import { sendNewsletterWithFallback } from "@/lib/email-service";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -778,7 +778,7 @@ export async function sendDailyEmailAction(isTest = false, customEmail = null) {
     const htmlContent = buildEmailHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards);
     const subject = `[씬짜오베트남] 데일리뉴스 | ${todayString}`;
 
-    await sendNewsletter(targetEmails, subject, htmlContent);
+    await sendNewsletterWithFallback(targetEmails, subject, htmlContent);
 
     return { success: true, message: `${targetEmails.length}명에게 발송 완료` };
   } catch (error) {

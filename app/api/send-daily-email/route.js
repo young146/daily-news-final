@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma';
-import { sendNewsletter, sendNewsletterWithFallback } from '../../../lib/email-service.js';
+import { sendNewsletterWithFallback } from '../../../lib/email-service.js';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // Vercel Pro: 최대 5분 (대량 발송용)
@@ -117,12 +117,12 @@ export async function POST(request) {
       });
     }
 
-    // 전체 발송: Resend 우선, 실패 시 SMTP 개별 폴백
+    // 전체 발송: e-service 우선, 실패 시 SMTP 개별 폴백
     const { batchTotal, succeeded, failed, method, failedEmails } = await sendNewsletterWithFallback(
       recipientEmails, subject, htmlContent, { forceSmtp, smtpAccount }
     );
 
-    const methodLabel = method === 'smtp' ? '📧 SMTP 개별' : '🚀 Resend';
+    const methodLabel = method === 'smtp' ? '📧 SMTP 개별' : '📨 e-service';
 
     return Response.json({
       success: true,
