@@ -2131,6 +2131,9 @@ function jenny_get_styles()
  */
 function jenny_app_banner_script()
 {
+    // chaovn-deeplink-handler 플러그인의 팝업으로 대체됨 — 이 배너는 비활성화
+    return;
+
     // daily-news 페이지에서만 실행
     if (!is_page() || strpos($_SERVER['REQUEST_URI'], 'daily-news') === false) {
         return;
