@@ -140,12 +140,9 @@ export async function POST(request) {
 
 function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = []) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chaovietnam.co.kr';
-  const trackUrl = (target, type) => {
-    if (!target) return '#';
-    return `${baseUrl}/api/click?url=${encodeURIComponent(target)}&type=${type}`;
-  };
+  const directUrl = (target) => target || '#';
 
-  const trackedTerminalUrl = trackUrl(terminalUrl, 'TERMINAL');
+  const trackedTerminalUrl = directUrl(terminalUrl);
 
   let html = `
     <div style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; max-width: 700px; margin: 0 auto; color: #333; padding: 20px; background-color: #fff;">
@@ -166,7 +163,7 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
   if (newsItems && newsItems.length > 0) {
     newsItems.forEach(item => {
       const url = item.wordpressUrl || terminalUrl;
-      const trackedNewsUrl = trackUrl(url, 'NEWS');
+      const trackedNewsUrl = directUrl(url);
       const summary = (item.translatedSummary || item.summary || '').replace(/\n/g, '<br/>');
       html += `
         <div style="margin-bottom: 25px; line-height: 1.6;">
@@ -202,7 +199,7 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
       const ytMatch = card.videoUrl?.match(/(?:youtube\.com.*v=|youtu\.be\/)([^&\n?#]+)/);
       const ytId = ytMatch ? ytMatch[1] : null;
       const imgSrc = card.imageUrl || (ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null);
-      const trackedPromoUrl = trackUrl(card.linkUrl, 'PROMO');
+      const trackedPromoUrl = directUrl(card.linkUrl);
       html += `<div style="margin-bottom: 28px; background: #fff8f0; border: 1px solid #fed7aa; border-radius: 10px; overflow: hidden;">
         ${imgSrc ? `<a href="${trackedPromoUrl}" target="_blank" style="display:block;"><img src="${imgSrc}" alt="${card.title}" style="width:100%;max-height:280px;object-fit:cover;display:block;" /></a>` : ''}
         <div style="padding: 16px 20px;">
