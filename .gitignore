@@ -45,3 +45,7 @@ prisma/dev.db
 prisma/dev.db-journal
 *.db.backup
 .env*.local
+
+# SendGrid suppression/bounce export files (개인정보 포함)
+suppression_bounces*.csv
+bounced-list.txt

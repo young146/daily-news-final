@@ -4,6 +4,7 @@ import AdBanner from "@/components/AdBanner";
 import Image from "next/image";
 import NewsImage from "@/components/NewsImage";
 import { Calendar } from "lucide-react";
+import NeighborBusinessPopup from "@/components/NeighborBusinessPopup";
 
 // Helper Component for List Items
 function NewsItem({ news }) {
@@ -210,6 +211,7 @@ export default async function Home() {
           </div>
         </div>
       </section>
+      <NeighborBusinessPopup />
     </div>
   );
 }
