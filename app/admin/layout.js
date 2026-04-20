@@ -50,6 +50,7 @@ export default function AdminLayout({ children }) {
         { href: '/admin/subscribers', icon: Mail, label: '구독자 관리' },
         { href: '/admin/email-logs', icon: ClipboardList, label: '이메일 발송 기록' },
         { href: '/admin/promo-cards', icon: Megaphone, label: '홍보카드' },
+        { href: '/admin/ads', icon: Megaphone, label: '앱 광고 관리' },
         { href: '/admin/settings', icon: Settings, label: '설정' },
     ];
 
