@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from "next/link";
@@ -67,7 +67,7 @@ export default function NewsCard({ news }) {
                         className={`inline-flex items-center text-sm font-semibold text-primary transition-colors ${news.wordpressUrl ? 'group-hover:text-accent' : 'text-gray-400 cursor-not-allowed'}`}
                         onClick={(e) => !news.wordpressUrl && e.preventDefault()}
                     >
-                        ?�세??보기 <ArrowRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                        ?�세??보기 <ArrowRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
                     </a>
                 </div>
             </div>
