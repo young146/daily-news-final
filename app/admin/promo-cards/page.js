@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -303,7 +303,7 @@ export default function PromoCardsPage() {
                         {/* 실제 이메일 안쪽 흰색 카드 */}
                         <div style={{ borderRadius: "12px", background: "#fff", border: "1px solid #eee", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
                             {getThumb(previewCard) && (
-                                <img src={getThumb(previewCard)} alt={previewCard.title} style={{ width: "100%", maxHeight: "200px", objectFit: "cover", borderRadius: "8px", display: "block", marginBottom: "12px" }} />
+                                <img src={getThumb(previewCard)} alt={previewCard.title} style={{ width: "100%", aspectRatio: "16/9", objectFit: "cover", borderRadius: "8px", display: "block", marginBottom: "12px" }} />
                             )}
                             <h3 style={{ margin: "0 0 10px 0", fontSize: "16px", fontWeight: "bold", color: "#333", lineHeight: "1.4" }}>
                                 {previewCard.title}

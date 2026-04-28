@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import prisma from "@/lib/prisma";
 import { translateNewsItem, translateText } from "@/lib/translator";
@@ -818,7 +818,7 @@ function buildEmailHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoC
       const ytId = ytMatch ? ytMatch[1] : null;
       const imgSrc = card.imageUrl || (ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null);
       html += `<div style="margin-bottom: 28px; background: #fff8f0; border: 1px solid #fed7aa; border-radius: 10px; overflow: hidden;">
-        ${imgSrc ? `<a href="${card.linkUrl || '#'}" target="_blank" style="display:block;"><img src="${imgSrc}" alt="${card.title}" style="width:100%;max-height:280px;object-fit:cover;display:block;" /></a>` : ''}
+        ${imgSrc ? `<a href="${card.linkUrl || '#'}" target="_blank" style="display:block;"><img src="${imgSrc}" alt="${card.title}" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block;" /></a>` : ''}
         <div style="padding: 16px 20px;">
           <h3 style="font-size: 16px; font-weight: bold; color: #1f2937; margin: 0 0 8px 0;">${card.title}</h3>
           ${card.description ? `<p style="font-size: 13px; color: #4b5563; line-height: 1.7; white-space: pre-wrap; margin: 0 0 14px 0;">${card.description}</p>` : ''}
