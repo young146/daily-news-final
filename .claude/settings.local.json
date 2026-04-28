@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep *)",
+      "Bash(grep -n 'jenny_get_target_date\\\\|new DateTime\\\\|$now\\\\s*=\\\\|wp_timezone\\\\|date_default_timezone' /c/xinchao-news-final/daily-news-final/wordpress-plugin/jenny-daily-news.php)",
+      "Bash(grep -n 'jenny_get_sections\\\\|jenny_get_category_map\\\\|jenny_get_sections_keys\\\\|$sections\\\\s*=' /c/xinchao-news-final/daily-news-final/wordpress-plugin/jenny-daily-news.php)",
+      "Bash(git checkout *)"
+    ]
+  }
+}

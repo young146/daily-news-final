@@ -25,12 +25,19 @@ export default function NewsCard({ news }) {
     return (
         <div className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col h-full">
             <div className="relative h-64 md:h-80 w-full overflow-hidden">
-                <NewsImage
-                    src={news.imageUrl}
-                    alt={news.title}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
+                <a
+                    href={news.wordpressUrl ? news.wordpressUrl : '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => !news.wordpressUrl && e.preventDefault()}
+                >
+                    <NewsImage
+                        src={news.imageUrl}
+                        alt={news.title}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                </a>
                 <div className="absolute top-4 left-4">
                     <span className="px-3 py-1 text-xs font-bold bg-white/95 backdrop-blur-sm text-accent rounded-full shadow-sm">
                         {news.category}
