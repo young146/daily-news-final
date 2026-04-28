@@ -24,7 +24,7 @@ export default function NewsCard({ news }) {
 
     return (
         <div className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col h-full">
-            <div className="relative h-64 md:h-80 w-full overflow-hidden">
+            <div className="relative aspect-video w-full overflow-hidden">
                 <a
                     href={news.wordpressUrl ? news.wordpressUrl : '#'}
                     target="_blank"
@@ -67,7 +67,7 @@ export default function NewsCard({ news }) {
                         className={`inline-flex items-center text-sm font-semibold text-primary transition-colors ${news.wordpressUrl ? 'group-hover:text-accent' : 'text-gray-400 cursor-not-allowed'}`}
                         onClick={(e) => !news.wordpressUrl && e.preventDefault()}
                     >
-                        자세히 보기 <ArrowRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                        ?�세??보기 <ArrowRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
                     </a>
                 </div>
             </div>
