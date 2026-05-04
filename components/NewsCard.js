@@ -24,7 +24,7 @@ export default function NewsCard({ news }) {
 
     return (
         <div className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col h-full">
-            <div className="relative h-64 md:h-80 w-full overflow-hidden">
+            <div className="relative aspect-video w-full overflow-hidden">
                 <NewsImage
                     src={news.imageUrl}
                     alt={news.title}
