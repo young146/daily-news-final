@@ -70,7 +70,7 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
     promoCards.forEach(card => {
       const trackedPromoUrl = trackUrl(card.linkUrl, 'PROMO');
       const imgHtml = card.imageUrl
-        ? `<a href="${trackedPromoUrl}" target="_blank"><img src="${card.imageUrl}" alt="${card.title}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;display:block;margin-bottom:12px;" /></a>`
+        ? `<a href="${trackedPromoUrl}" target="_blank"><img src="${card.imageUrl}" alt="${card.title}" style="width:100%;height:auto;border-radius:8px;display:block;margin-bottom:12px;" /></a>`
         : '';
       const processedHtml = card.description ? autoLinkHtml(card.description) : '';
       const descHtml = processedHtml
