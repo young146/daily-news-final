@@ -49,3 +49,7 @@ prisma/dev.db-journal
 # SendGrid suppression/bounce export files (개인정보 포함)
 suppression_bounces*.csv
 bounced-list.txt
+
+# 로그/디버그 출력 파일
+bounce-logs.txt
+bounce_debug_output.txt
