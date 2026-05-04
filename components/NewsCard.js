@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from "next/link";
@@ -25,12 +25,19 @@ export default function NewsCard({ news }) {
     return (
         <div className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col h-full">
             <div className="relative aspect-video w-full overflow-hidden">
-                <NewsImage
-                    src={news.imageUrl}
-                    alt={news.title}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
+                <a
+                    href={news.wordpressUrl ? news.wordpressUrl : '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => !news.wordpressUrl && e.preventDefault()}
+                >
+                    <NewsImage
+                        src={news.imageUrl}
+                        alt={news.title}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                </a>
                 <div className="absolute top-4 left-4">
                     <span className="px-3 py-1 text-xs font-bold bg-white/95 backdrop-blur-sm text-accent rounded-full shadow-sm">
                         {news.category}
@@ -60,7 +67,7 @@ export default function NewsCard({ news }) {
                         className={`inline-flex items-center text-sm font-semibold text-primary transition-colors ${news.wordpressUrl ? 'group-hover:text-accent' : 'text-gray-400 cursor-not-allowed'}`}
                         onClick={(e) => !news.wordpressUrl && e.preventDefault()}
                     >
-                        자세히 보기 <ArrowRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                        ?�세??보기 <ArrowRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
                     </a>
                 </div>
             </div>
