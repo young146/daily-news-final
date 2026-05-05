@@ -20,6 +20,8 @@ if (!defined('ABSPATH')) {
 function jenny_get_category_order()
 {
     return array(
+        '한국 주요뉴스' => 0,
+        'Korea-Hot' => 0,
         '사회' => 1,
         'Society' => 1,
         '경제' => 2,
@@ -57,6 +59,7 @@ function jenny_get_category_order()
 function jenny_get_sections_keys()
 {
     return array(
+        'korea_hot' => array('Korea-Hot', '한국 주요뉴스'),
         'economy' => array('Economy', '경제'),
         'society' => array('Society', '사회'),
         'culture' => array('Culture', '문화'),
@@ -78,6 +81,8 @@ function jenny_get_sections_keys()
 function jenny_get_category_map()
 {
     return array(
+        'Korea-Hot' => '한국 주요뉴스',
+        '한국 주요뉴스' => '한국 주요뉴스',
         'Society' => '사회',
         '사회' => '사회',
         'Economy' => '경제',
@@ -115,6 +120,7 @@ function jenny_get_category_map()
 function jenny_get_sections()
 {
     return array(
+        'korea_hot' => array('title' => '🇰🇷 한국 주요뉴스', 'keys' => array('Korea-Hot', '한국 주요뉴스')),
         'economy' => array('title' => '📈 경제 (Economy)', 'keys' => array('Economy', '경제')),
         'society' => array('title' => '👥 사회 (Society)', 'keys' => array('Society', '사회')),
         'culture' => array('title' => '🎭 문화/스포츠 (Culture)', 'keys' => array('Culture', '문화')),
@@ -136,6 +142,7 @@ function jenny_get_sections()
 function jenny_get_section_nav_items()
 {
     return array(
+        'korea_hot' => array('label' => '한국 주요뉴스', 'icon' => '🇰🇷'),
         'economy' => array('label' => '경제', 'icon' => '📈'),
         'society' => array('label' => '사회', 'icon' => '👥'),
         'culture' => array('label' => '문화/스포츠', 'icon' => '🎭'),
@@ -1008,49 +1015,143 @@ function jenny_get_scripts($category_id = 31)
                 
                 if (!btn || !dateList) return;
                 
-                // AJAX로 날짜 목록 로드 함수
-                function loadArchiveDates() {
-                    if (datesLoaded) return; // 이미 로드됨
-                    
-                    var category = wrapper.getAttribute("data-category") || "31";
-                    var pageUrl = wrapper.getAttribute("data-page-url") || window.location.href;
-                    var selected = wrapper.getAttribute("data-selected") || "";
-                    
-                    // AJAX 요청
-                    var xhr = new XMLHttpRequest();
-                    xhr.open("POST", (typeof jennyAjax !== "undefined" ? jennyAjax.ajaxurl : "/wp-admin/admin-ajax.php"), true);
-                    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-                    xhr.onreadystatechange = function() {
-                        if (xhr.readyState === 4) {
-                            if (xhr.status === 200) {
-                                try {
-                                    var response = JSON.parse(xhr.responseText);
-                                    if (response.success && response.data.html) {
-                                        dateList.innerHTML = response.data.html;
-                                        datesLoaded = true;
-                                        // 새로 로드된 날짜 옵션에 이벤트 리스너 추가
-                                        bindDateOptionEvents();
-                                    }
-                                } catch(e) {
-                                    dateList.innerHTML = "<div class=\"jenny-date-option jenny-no-dates\">날짜 목록을 불러올 수 없습니다.</div>";
-                                }
-                            } else {
-                                dateList.innerHTML = "<div class=\"jenny-date-option jenny-no-dates\">날짜 목록을 불러올 수 없습니다.</div>";
-                            }
-                        }
-                    };
-                    xhr.send("action=jenny_get_archive_dates&category=" + encodeURIComponent(category) + "&page_url=" + encodeURIComponent(pageUrl) + "&selected=" + encodeURIComponent(selected));
+                // 달력 상태
+                var calState = { year: 0, month: 0, dateSet: {}, today: "", selected: "", pageUrl: "" };
+
+                // 쿼리스트링에 news_date 갈아끼우기
+                function buildDateUrl(baseUrl, date) {
+                    var hashIdx = baseUrl.indexOf("#");
+                    var hash = hashIdx >= 0 ? baseUrl.substring(hashIdx) : "";
+                    var url = hashIdx >= 0 ? baseUrl.substring(0, hashIdx) : baseUrl;
+                    // 기존 news_date 제거
+                    url = url.replace(/([?&])news_date=[^&]*(&|$)/g, function(_, p1, p2) {
+                        return p2 === "&" ? p1 : (p1 === "?" ? "?" : "");
+                    });
+                    url = url.replace(/[?&]$/, "");
+                    var sep = url.indexOf("?") >= 0 ? "&" : "?";
+                    return url + sep + "news_date=" + encodeURIComponent(date) + hash;
                 }
-                
-                // 날짜 옵션 이벤트 바인딩 함수
-                function bindDateOptionEvents() {
-                    var dateOptions = dateList.querySelectorAll(".jenny-date-option");
-                    dateOptions.forEach(function(option) {
-                        option.addEventListener("click", function() {
+
+                function pad2(n) { return (n < 10 ? "0" : "") + n; }
+
+                function renderCalendar() {
+                    var year = calState.year, month = calState.month; // month: 1-12
+                    var firstDay = new Date(year, month - 1, 1);
+                    var lastDay = new Date(year, month, 0);
+                    var daysInMonth = lastDay.getDate();
+                    var startWeekday = firstDay.getDay(); // 0=일
+
+                    var wd = ["일","월","화","수","목","금","토"];
+                    var html = "";
+                    html += "<div class=\"jenny-cal-header\">";
+                    html += "<button type=\"button\" class=\"jenny-cal-nav jenny-cal-prev\" aria-label=\"이전 달\">&#8249;</button>";
+                    html += "<span class=\"jenny-cal-title\">" + year + "년 " + month + "월</span>";
+                    html += "<button type=\"button\" class=\"jenny-cal-nav jenny-cal-next\" aria-label=\"다음 달\">&#8250;</button>";
+                    html += "</div>";
+                    html += "<div class=\"jenny-cal-weekdays\">";
+                    for (var i = 0; i < 7; i++) {
+                        var wdCls = "jenny-cal-wd" + (i === 0 ? " sun" : "") + (i === 6 ? " sat" : "");
+                        html += "<span class=\"" + wdCls + "\">" + wd[i] + "</span>";
+                    }
+                    html += "</div>";
+                    html += "<div class=\"jenny-cal-grid\">";
+                    for (var e = 0; e < startWeekday; e++) {
+                        html += "<span class=\"jenny-cal-cell jenny-cal-blank\"></span>";
+                    }
+                    for (var d = 1; d <= daysInMonth; d++) {
+                        var ds = year + "-" + pad2(month) + "-" + pad2(d);
+                        var weekday = (startWeekday + d - 1) % 7;
+                        var cls = "jenny-cal-cell";
+                        if (weekday === 0) cls += " sun";
+                        if (weekday === 6) cls += " sat";
+                        if (ds === calState.today) cls += " today";
+                        if (ds === calState.selected) cls += " selected";
+                        if (calState.dateSet[ds]) {
+                            cls += " has-news";
+                            html += "<a href=\"" + buildDateUrl(calState.pageUrl, ds) + "\" class=\"" + cls + "\" data-date=\"" + ds + "\">" + d + "</a>";
+                        } else {
+                            cls += " no-news";
+                            html += "<span class=\"" + cls + "\">" + d + "</span>";
+                        }
+                    }
+                    html += "</div>";
+                    dateList.innerHTML = html;
+
+                    var prevBtn = dateList.querySelector(".jenny-cal-prev");
+                    var nextBtn = dateList.querySelector(".jenny-cal-next");
+                    if (prevBtn) prevBtn.addEventListener("click", function(ev) {
+                        ev.preventDefault(); ev.stopPropagation();
+                        calState.month--;
+                        if (calState.month < 1) { calState.month = 12; calState.year--; }
+                        renderCalendar();
+                    });
+                    if (nextBtn) nextBtn.addEventListener("click", function(ev) {
+                        ev.preventDefault(); ev.stopPropagation();
+                        calState.month++;
+                        if (calState.month > 12) { calState.month = 1; calState.year++; }
+                        renderCalendar();
+                    });
+
+                    // 뉴스 있는 날짜 클릭 시 드롭다운 닫기 (페이지 이동 직전 상태 정리)
+                    var cells = dateList.querySelectorAll(".jenny-cal-cell.has-news");
+                    cells.forEach(function(cell) {
+                        cell.addEventListener("click", function() {
                             wrapper.classList.remove("active");
                             btn.setAttribute("aria-expanded", "false");
                         });
                     });
+                }
+
+                // AJAX로 날짜 목록 로드 함수
+                function loadArchiveDates() {
+                    if (datesLoaded) return; // 이미 로드됨
+
+                    var category = wrapper.getAttribute("data-category") || "31";
+                    var pageUrl = wrapper.getAttribute("data-page-url") || window.location.href;
+                    var selected = wrapper.getAttribute("data-selected") || "";
+
+                    var xhr = new XMLHttpRequest();
+                    xhr.open("POST", (typeof jennyAjax !== "undefined" ? jennyAjax.ajaxurl : "/wp-admin/admin-ajax.php"), true);
+                    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState !== 4) return;
+                        if (xhr.status !== 200) {
+                            dateList.innerHTML = "<div class=\"jenny-cal-empty\">날짜 목록을 불러올 수 없습니다.</div>";
+                            return;
+                        }
+                        try {
+                            var response = JSON.parse(xhr.responseText);
+                            if (!response.success || !response.data) {
+                                dateList.innerHTML = "<div class=\"jenny-cal-empty\">지난 뉴스가 없습니다.</div>";
+                                return;
+                            }
+                            var dates = response.data.dates || [];
+                            var dateSet = {};
+                            for (var i = 0; i < dates.length; i++) { dateSet[dates[i]] = true; }
+
+                            // 초기 표시 월 결정: 선택된 날짜 > 가장 최근 가능 날짜 > 오늘
+                            var initial = selected || (dates.length > 0 ? dates[0] : (response.data.today || ""));
+                            if (!initial) {
+                                var nowD = new Date();
+                                calState.year = nowD.getFullYear();
+                                calState.month = nowD.getMonth() + 1;
+                            } else {
+                                var parts = initial.split("-");
+                                calState.year = parseInt(parts[0], 10);
+                                calState.month = parseInt(parts[1], 10);
+                            }
+                            calState.dateSet = dateSet;
+                            calState.today = response.data.today || "";
+                            calState.selected = selected;
+                            calState.pageUrl = pageUrl;
+
+                            renderCalendar();
+                            datesLoaded = true;
+                        } catch(e) {
+                            dateList.innerHTML = "<div class=\"jenny-cal-empty\">날짜 목록을 불러올 수 없습니다.</div>";
+                        }
+                    };
+                    xhr.send("action=jenny_get_archive_dates&category=" + encodeURIComponent(category) + "&page_url=" + encodeURIComponent(pageUrl) + "&selected=" + encodeURIComponent(selected));
                 }
                 
                 // 클릭 이벤트 처리 (모바일 + PC)
@@ -1475,6 +1576,117 @@ function jenny_get_styles()
         }
         @keyframes jenny-spin {
             to { transform: rotate(360deg); }
+        }
+        /* ===== 달력 (지난 뉴스 보기) ===== */
+        .jenny-cal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: #fff7ed;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .jenny-cal-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #92400e;
+        }
+        .jenny-cal-nav {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+            font-size: 18px;
+            line-height: 1;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .jenny-cal-nav:hover {
+            background: #fef3c7;
+            border-color: #ea580c;
+            color: #ea580c;
+        }
+        .jenny-cal-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            padding: 6px 4px 4px;
+            background: #fafafa;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .jenny-cal-wd {
+            font-size: 12px;
+            font-weight: 600;
+            color: #6b7280;
+            padding: 4px 0;
+        }
+        .jenny-cal-wd.sun { color: #dc2626; }
+        .jenny-cal-wd.sat { color: #2563eb; }
+        .jenny-cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            padding: 8px;
+        }
+        .jenny-cal-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 36px;
+            font-size: 13px;
+            border-radius: 6px;
+            text-decoration: none;
+            color: #9ca3af;
+            border: 1px solid transparent;
+            transition: all 0.15s ease;
+        }
+        .jenny-cal-cell.sun { color: #dc2626; }
+        .jenny-cal-cell.sat { color: #2563eb; }
+        .jenny-cal-cell.no-news {
+            cursor: default;
+            opacity: 0.45;
+        }
+        .jenny-cal-cell.has-news {
+            background: #fff7ed;
+            color: #ea580c;
+            font-weight: 700;
+            border-color: #fed7aa;
+            cursor: pointer;
+        }
+        .jenny-cal-cell.has-news:hover {
+            background: #fef3c7;
+            border-color: #ea580c;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(234, 88, 12, 0.15);
+        }
+        .jenny-cal-cell.today {
+            outline: 2px solid #fbbf24;
+            outline-offset: -2px;
+        }
+        .jenny-cal-cell.selected {
+            background: #ea580c !important;
+            color: #ffffff !important;
+            border-color: #ea580c !important;
+        }
+        .jenny-cal-cell.jenny-cal-blank {
+            background: transparent;
+            border: none;
+        }
+        .jenny-cal-empty {
+            padding: 24px 16px;
+            color: #9ca3af;
+            text-align: center;
+            font-size: 14px;
+            font-style: italic;
+        }
+        @media (max-width: 480px) {
+            .jenny-cal-cell { height: 34px; font-size: 12px; }
+            .jenny-cal-title { font-size: 13px; }
         }
         .jenny-filter-info { margin-top: 12px; padding: 10px 16px; background: #fef3c7; color: #92400e; font-size: 14px; border-left: 3px solid #ea580c; }
         .jenny-filter-info a { color: #ea580c; font-weight: 600; }
@@ -2401,13 +2613,13 @@ add_action('wp_footer', 'jenny_app_banner_script');
 // ============================================================================
 
 /**
- * 지난 뉴스 날짜 목록을 AJAX로 가져오기
+ * 지난 뉴스 날짜 목록을 AJAX로 가져오기 (달력용 - 모든 가능한 날짜 반환)
  */
 function jenny_get_archive_dates_ajax()
 {
-    // Nonce 체크 (선택적 - 공개 데이터이므로)
+    global $wpdb;
+
     $category_id = isset($_POST['category']) ? intval($_POST['category']) : 31;
-    $page_url = isset($_POST['page_url']) ? esc_url($_POST['page_url']) : '';
     $selected_date = isset($_POST['selected']) ? sanitize_text_field($_POST['selected']) : '';
 
     // 베트남 시간대
@@ -2415,65 +2627,72 @@ function jenny_get_archive_dates_ajax()
     $now = new DateTime('now', $tz);
     $today = $now->format('Y-m-d');
 
-    // 최근 발행일 가져오기 (오늘 뉴스의 날짜)
-    $latest_args = array(
-        'post_type' => 'post',
-        'posts_per_page' => 1,
-        'cat' => $category_id,
-        'post_status' => 'publish',
-        'orderby' => 'date',
-        'order' => 'DESC',
-        'no_found_rows' => true,
-    );
-    $latest_query = new WP_Query($latest_args);
-    $board_date = $today;
-    if ($latest_query->have_posts()) {
-        $latest_query->the_post();
-        $board_date = get_the_date('Y-m-d');
-        wp_reset_postdata();
-    }
-
-    // 지난 날짜 목록 가져오기 (최근 60일치만 - 성능 최적화)
-    $date_args = array(
-        'post_type' => 'post',
-        'posts_per_page' => 200, // 최대 200개 포스트만 (약 60일치)
-        'cat' => $category_id,
-        'post_status' => 'publish',
-        'orderby' => 'date',
-        'order' => 'DESC',
-        'no_found_rows' => true,
-        'date_query' => array(
-            array(
-                'before' => $board_date,
-                'inclusive' => false,
-            ),
-        ),
-    );
-    $date_query = new WP_Query($date_args);
-    $available_dates = array();
-    while ($date_query->have_posts()) {
-        $date_query->the_post();
-        $post_date = get_the_date('Y-m-d');
-        if ($post_date !== $board_date && !in_array($post_date, $available_dates)) {
-            $available_dates[] = $post_date;
+    // WP_Query의 'cat' 파라미터처럼 하위 카테고리도 포함
+    $cat_ids = array($category_id);
+    $children = get_term_children($category_id, 'category');
+    if (is_array($children)) {
+        foreach ($children as $cid) {
+            $cat_ids[] = intval($cid);
         }
     }
-    wp_reset_postdata();
+    $cat_ids = array_values(array_unique(array_filter($cat_ids)));
+    if (empty($cat_ids)) {
+        wp_send_json_success(array(
+            'dates'      => array(),
+            'board_date' => $today,
+            'today'      => $today,
+            'selected'   => $selected_date,
+        ));
+        return;
+    }
+    $placeholders = implode(',', array_fill(0, count($cat_ids), '%d'));
 
-    // HTML 생성
-    $html = '';
-    if (!empty($available_dates)) {
-        foreach ($available_dates as $date) {
-            $date_obj = new DateTime($date);
-            $date_display = $date_obj->format('Y') . '년 ' . $date_obj->format('m') . '월 ' . $date_obj->format('d') . '일';
-            $date_class = ($selected_date === $date) ? ' selected' : '';
-            $html .= '<a href="' . esc_url(add_query_arg('news_date', $date, $page_url)) . '" class="jenny-date-option' . $date_class . '">' . esc_html($date_display) . '</a>';
-        }
-    } else {
-        $html = '<div class="jenny-date-option jenny-no-dates">지난 뉴스가 없습니다.</div>';
+    // 최근 발행일 (오늘 뉴스 날짜)
+    $latest_args = array_merge($cat_ids);
+    $board_date = $wpdb->get_var($wpdb->prepare(
+        "SELECT DATE(p.post_date) AS d
+         FROM {$wpdb->posts} p
+         INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+         INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+         WHERE p.post_status = 'publish'
+           AND p.post_type = 'post'
+           AND tt.taxonomy = 'category'
+           AND tt.term_id IN ($placeholders)
+         ORDER BY p.post_date DESC
+         LIMIT 1",
+        $latest_args
+    ));
+    if (!$board_date) {
+        $board_date = $today;
     }
 
-    wp_send_json_success(array('html' => $html));
+    // 지난 뉴스가 있는 모든 날짜 (DISTINCT, 최대 1년치)
+    $dates_args = array_merge($cat_ids, array($board_date));
+    $available_dates = $wpdb->get_col($wpdb->prepare(
+        "SELECT DISTINCT DATE(p.post_date) AS d
+         FROM {$wpdb->posts} p
+         INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+         INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+         WHERE p.post_status = 'publish'
+           AND p.post_type = 'post'
+           AND tt.taxonomy = 'category'
+           AND tt.term_id IN ($placeholders)
+           AND DATE(p.post_date) < %s
+         ORDER BY d DESC
+         LIMIT 400",
+        $dates_args
+    ));
+
+    if (!is_array($available_dates)) {
+        $available_dates = array();
+    }
+
+    wp_send_json_success(array(
+        'dates'      => $available_dates,
+        'board_date' => $board_date,
+        'today'      => $today,
+        'selected'   => $selected_date,
+    ));
 }
 add_action('wp_ajax_jenny_get_archive_dates', 'jenny_get_archive_dates_ajax');
 add_action('wp_ajax_nopriv_jenny_get_archive_dates', 'jenny_get_archive_dates_ajax');
