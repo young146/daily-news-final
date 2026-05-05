@@ -13,6 +13,8 @@ import crawlVnExpressRealestate from '@/scripts/crawlers/vnexpress-realestate';
 import crawlCafef from '@/scripts/crawlers/cafef';
 import crawlCafefRealestate from '@/scripts/crawlers/cafef-realestate';
 import crawlYonhap from '@/scripts/crawlers/yonhap';
+import crawlYonhapVietnam from '@/scripts/crawlers/yonhap-vietnam';
+import crawlYonhapMain from '@/scripts/crawlers/yonhap-main';
 import crawlInsidevina from '@/scripts/crawlers/insidevina';
 import crawlTuoitre from '@/scripts/crawlers/tuoitre';
 import crawlThanhnien from '@/scripts/crawlers/thanhnien';
@@ -25,7 +27,7 @@ import crawlHealthSource from '@/scripts/crawlers/health';
 import crawlVnExpressTravel from '@/scripts/crawlers/vnexpress-travel';
 import crawlVnExpressHealth from '@/scripts/crawlers/vnexpress-health';
 
-const koreanSources = ['Yonhap', 'Saigoneer'];
+const koreanSources = ['Yonhap', 'Yonhap News', 'Yonhap Vietnam', 'Yonhap Main', 'InsideVina', 'Saigoneer'];
 
 const sourceNames = {
   'vnexpress': 'VnExpress',
@@ -35,6 +37,8 @@ const sourceNames = {
   'cafef': 'Cafef',
   'cafef-realestate': 'Cafef Real Estate',
   'yonhap': 'Yonhap',
+  'yonhap-vietnam': 'Yonhap Vietnam',
+  'yonhap-main': 'Yonhap Main',
   'insidevina': 'InsideVina',
   'tuoitre': 'TuoiTre',
   'thanhnien': 'ThanhNien',
@@ -105,6 +109,8 @@ const crawlers = {
   'cafef': crawlCafef,
   'cafef-realestate': crawlCafefRealestate,
   'yonhap': crawlYonhap,
+  'yonhap-vietnam': crawlYonhapVietnam,
+  'yonhap-main': crawlYonhapMain,
   'insidevina': crawlInsidevina,
   'tuoitre': crawlTuoitre,
   'thanhnien': crawlThanhnien,
@@ -186,13 +192,20 @@ export async function POST(request) {
         } else {
           let translatedTitle = null;
           let category = item.category || 'Society';
-          
+
           if (koreanSources.includes(item.source)) {
             translatedTitle = item.title;
           } else {
             const translated = await translateTitle(item);
             translatedTitle = translated.translatedTitle;
             category = translated.category || category;
+          }
+
+          // 소스별 카테고리 강제 (crawler-service.js와 동일)
+          if (item.source === 'Yonhap News') {
+            category = 'Korea-Vietnam';
+          } else if (item.source === 'Yonhap Vietnam' || item.source === 'Yonhap Main') {
+            category = 'Korea-Hot';
           }
           
           await prisma.newsItem.create({ 
