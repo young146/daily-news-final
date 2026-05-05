@@ -4,12 +4,33 @@ const cheerio = require('cheerio');
 const HOMEPAGE_URL = 'https://www.yna.co.kr/';
 const RSS_URL = 'https://www.yna.co.kr/rss/news.xml';
 const MAX_ITEMS = 10;
+const MIN_TITLE_LEN = 10;
 const REQUEST_TIMEOUT = 20000;
 const HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 };
 
-// 1차 시도: RSS 피드 (안정적)
+// 연합뉴스 기사 URL 패턴
+const ARTICLE_URL_PATTERN = /\/view\/A[A-Z]{2}\d/;
+
+// 알려진 섹션/네비 텍스트
+const SECTION_NAMES = new Set([
+    '세계', '전국', '사회', '산업', '마켓', '경제', '정치', '문화', '스포츠',
+    '연예', 'IT', '국제', '기업', '금융', '부동산', 'TV', '라이프', '오피니언',
+    '지역', '특집', '인사이트', '미국', '아시아', '중국', '일본', '북한',
+    '뉴스', '홈', '메인', 'HOME', '검색'
+]);
+
+function isLikelyArticle(title, link) {
+    if (!title || !link) return false;
+    const t = title.trim();
+    if (t.length < MIN_TITLE_LEN) return false;
+    if (SECTION_NAMES.has(t)) return false;
+    if (!ARTICLE_URL_PATTERN.test(link)) return false;
+    return true;
+}
+
+// 1차 시도: RSS 피드 (안정적, 항상 기사만)
 async function fetchFromRSS() {
     try {
         console.log('[YonhapMain] Trying RSS feed...');
@@ -17,6 +38,7 @@ async function fetchFromRSS() {
         const $ = cheerio.load(data, { xmlMode: true });
 
         const items = [];
+        let rejected = 0;
         $('item').each((i, el) => {
             if (items.length >= MAX_ITEMS) return false;
             const $el = $(el);
@@ -25,21 +47,24 @@ async function fetchFromRSS() {
             const description = $el.find('description').first().text().trim();
             const pubDate = $el.find('pubDate').first().text().trim();
 
-            if (title && link) {
-                items.push({
-                    title,
-                    summary: description.replace(/<[^>]+>/g, '').trim(),
-                    originalUrl: link,
-                    imageUrl: null,
-                    category: 'Korea-Hot',
-                    source: 'Yonhap Main',
-                    publishedAt: pubDate ? new Date(pubDate) : new Date(),
-                    status: 'DRAFT'
-                });
+            if (!isLikelyArticle(title, link)) {
+                if (title || link) rejected++;
+                return;
             }
+
+            items.push({
+                title,
+                summary: description.replace(/<[^>]+>/g, '').trim(),
+                originalUrl: link,
+                imageUrl: null,
+                category: 'Korea-Hot',
+                source: 'Yonhap Main',
+                publishedAt: pubDate ? new Date(pubDate) : new Date(),
+                status: 'DRAFT'
+            });
         });
 
-        console.log(`[YonhapMain] RSS yielded ${items.length} items`);
+        console.log(`[YonhapMain] RSS accepted ${items.length}, rejected ${rejected}`);
         return items;
     } catch (err) {
         console.warn(`[YonhapMain] RSS fetch failed: ${err.message}`);
@@ -47,63 +72,60 @@ async function fetchFromRSS() {
     }
 }
 
-// 2차 시도: 홈페이지 HTML 스크래핑 (RSS 실패 시)
+// 2차 시도: 홈페이지 HTML (RSS 0개일 때만)
 async function fetchFromHomepage() {
     try {
         console.log('[YonhapMain] Trying homepage HTML...');
         const { data } = await axios.get(HOMEPAGE_URL, { timeout: REQUEST_TIMEOUT, headers: HEADERS });
         const $ = cheerio.load(data);
 
-        const SELECTORS = [
-            '.headline-list01 li',
-            '.list-type01 li',
-            '.major-news li',
-            '.lead-news li',
-            'ul.list li',
+        // 후보 컨테이너에서 기사 후보 anchor만 추림 — 광역 'a' fallback 제거
+        const ARTICLE_SELECTORS = [
+            'a.tit-news',
+            'a.tit-wrap',
+            'a.tit',
+            'strong.tit-news a',
+            '.headline-list01 a',
+            '.list-type01 .tit-news',
+            '.major-news .tit',
         ];
 
-        let listEls = $();
-        for (const sel of SELECTORS) {
-            const found = $(sel);
-            if (found.length > 3) {
-                console.log(`[YonhapMain] Using selector: ${sel} (${found.length} items)`);
-                listEls = found;
-                break;
-            }
+        const seen = new Set();
+        const items = [];
+        let rejected = 0;
+
+        for (const sel of ARTICLE_SELECTORS) {
+            $(sel).each((i, el) => {
+                if (items.length >= MAX_ITEMS) return false;
+                const $a = $(el);
+                const title = $a.text().trim();
+                let link = $a.attr('href') || $a.find('a').first().attr('href');
+                if (!link) return;
+                if (link.startsWith('//')) link = 'https:' + link;
+                else if (link.startsWith('/')) link = 'https://www.yna.co.kr' + link;
+
+                if (!isLikelyArticle(title, link)) {
+                    rejected++;
+                    return;
+                }
+                if (seen.has(link)) return;
+                seen.add(link);
+
+                items.push({
+                    title,
+                    summary: '',
+                    originalUrl: link,
+                    imageUrl: null,
+                    category: 'Korea-Hot',
+                    source: 'Yonhap Main',
+                    publishedAt: new Date(),
+                    status: 'DRAFT'
+                });
+            });
+            if (items.length >= MAX_ITEMS) break;
         }
 
-        const items = [];
-        listEls.each((i, el) => {
-            if (items.length >= MAX_ITEMS) return false;
-            const $el = $(el);
-
-            const titleEl = $el.find('.tit-news, .title, h3 a, a.tit, a').first();
-            const title = titleEl.text().trim();
-            let link = titleEl.attr('href') || titleEl.find('a').attr('href');
-            if (!title || !link) return;
-            if (link.startsWith('//')) link = 'https:' + link;
-            else if (link.startsWith('/')) link = 'https://www.yna.co.kr' + link;
-            // 외부 링크 / 광고 필터링
-            if (!link.includes('yna.co.kr')) return;
-
-            const summary = $el.find('.lead, .summary, p').first().text().trim();
-            const imgEl = $el.find('img').first();
-            let imageUrl = imgEl.attr('src') || imgEl.attr('data-src') || null;
-            if (imageUrl && imageUrl.startsWith('//')) imageUrl = 'https:' + imageUrl;
-
-            items.push({
-                title,
-                summary,
-                originalUrl: link,
-                imageUrl,
-                category: 'Korea-Hot',
-                source: 'Yonhap Main',
-                publishedAt: new Date(),
-                status: 'DRAFT'
-            });
-        });
-
-        console.log(`[YonhapMain] Homepage yielded ${items.length} items`);
+        console.log(`[YonhapMain] Homepage accepted ${items.length}, rejected ${rejected}`);
         return items;
     } catch (err) {
         console.warn(`[YonhapMain] Homepage fetch failed: ${err.message}`);
@@ -136,7 +158,6 @@ async function fetchDetail(item) {
 async function crawlYonhapMain() {
     console.log('[YonhapMain] Starting crawl of Yonhap main headlines...');
     try {
-        // RSS 우선, 실패 시 홈페이지
         let items = await fetchFromRSS();
         if (items.length === 0) {
             items = await fetchFromHomepage();
@@ -155,7 +176,7 @@ async function crawlYonhapMain() {
             return true;
         });
 
-        // 상세 본문 가져오기 (순차, rate-limit 보호)
+        // 상세 본문 가져오기
         const detailed = [];
         for (const item of items) {
             console.log(`[YonhapMain] Fetching detail: ${item.title.substring(0, 40)}...`);

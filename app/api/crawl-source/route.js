@@ -164,14 +164,39 @@ export async function POST(request) {
     
     console.log(`[Crawl] ${source}: Found ${items.length} items`);
     console.log(`[Crawl] ========================================`);
-    
+
     if (items.length === 0) {
         console.warn(`[Crawl] ${source}: No items found! This might indicate:`);
         console.warn(`  - Selector mismatch with page structure`);
         console.warn(`  - Network/timeout error`);
         console.warn(`  - Page structure changed`);
     }
-    
+
+    // 가짜 기사(섹션명/네비) 차단 안전망 — crawler-service.js와 동일
+    const NAV_BLOCKLIST = new Set([
+        '세계', '전국', '사회', '산업', '마켓', '경제', '정치', '문화', '스포츠',
+        '연예', 'IT', '국제', '기업', '금융', '부동산', 'TV', '라이프', '오피니언',
+        '지역', '특집', '인사이트', '미국', '아시아', '중국', '일본', '북한',
+        '뉴스', '홈', '메인', '검색', '인기', '최신', '랭킹',
+        'Thế giới', 'Kinh tế', 'Xã hội', 'Pháp luật', 'Giáo dục', 'Sức khỏe',
+        'Du lịch', 'Văn hóa', 'Thể thao', 'Giải trí', 'Công nghệ', 'Đời sống',
+        'World', 'Politics', 'Business', 'Sports', 'Entertainment', 'Tech',
+        'Health', 'Travel', 'Food', 'Home', 'News', 'Top', 'Latest', 'Trending'
+    ]);
+    const beforeFilter = items.length;
+    const filteredOut = [];
+    items = items.filter(it => {
+        const t = (it.title || '').trim();
+        if (t.length < 8 || NAV_BLOCKLIST.has(t)) {
+            filteredOut.push(t);
+            return false;
+        }
+        return true;
+    });
+    if (filteredOut.length > 0) {
+        console.warn(`[Crawl] ${source}: ${filteredOut.length}/${beforeFilter}개 섹션명/네비로 추정되어 제외 — 예: ${filteredOut.slice(0, 3).map(t => `"${t}"`).join(', ')}`);
+    }
+
     let savedCount = 0;
     for (const item of items) {
       try {
