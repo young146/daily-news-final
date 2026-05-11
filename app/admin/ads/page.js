@@ -316,9 +316,24 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const fileRef = useRef(null);
+  const titleRef = useRef(null);
+  const linkUrlRef = useRef(null);
+  const uploadRef = useRef(null);
+  const endDateRef = useRef(null);
 
-  const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const set = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setFieldErrors((prev) => {
+      if (Object.keys(prev).length === 0) return prev;
+      const next = { ...prev };
+      if (key === "title") delete next.title;
+      if (key === "linkUrl") delete next.linkUrl;
+      if (key === "startDate" || key === "endDate") delete next.endDate;
+      return next;
+    });
+  };
 
   const togglePage = (p) => {
     set(
@@ -330,6 +345,13 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
   const onFileChange = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
+
+    setFieldErrors((prev) => {
+      if (!prev.images) return prev;
+      const next = { ...prev };
+      delete next.images;
+      return next;
+    });
 
     if (form.type === "video") {
       const f = files[0];
@@ -366,13 +388,36 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
   };
 
   const handleSave = async () => {
-    if (!form.title.trim()) { onError("광고 제목을 입력해주세요."); return; }
-    if (!form.linkUrl.trim()) { onError("클릭 연결 URL을 입력해주세요."); return; }
+    const errors = {};
+    if (!form.title.trim()) errors.title = "광고 제목을 입력해주세요.";
+    if (!form.linkUrl.trim()) errors.linkUrl = "클릭 이동 URL을 입력해주세요.";
     if (existingImages.length === 0 && pendingFiles.length === 0) {
-      onError("이미지 또는 동영상을 업로드해주세요."); return;
+      errors.images = "이미지 또는 동영상을 업로드해주세요.";
     }
-    if (form.startDate > form.endDate) { onError("종료일이 시작일보다 빠릅니다."); return; }
+    if (form.startDate > form.endDate) errors.endDate = "종료일이 시작일보다 빠릅니다.";
 
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      const order = ["title", "linkUrl", "images", "endDate"];
+      const firstKey = order.find((k) => errors[k]);
+      const refMap = {
+        title: titleRef,
+        linkUrl: linkUrlRef,
+        images: uploadRef,
+        endDate: endDateRef,
+      };
+      const target = refMap[firstKey]?.current;
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
+          setTimeout(() => target.focus({ preventScroll: true }), 300);
+        }
+      }
+      onError(errors[firstKey]);
+      return;
+    }
+
+    setFieldErrors({});
     setSaving(true);
     try {
       let newUrls = [];
@@ -426,9 +471,16 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
         {/* 광고 제목 */}
         <div className="sm:col-span-2">
           <label className="mb-1.5 block text-sm font-bold text-slate-700">캠페인 제목 <span className="text-red-500">*</span></label>
-          <input type="text" value={form.title} onChange={(e) => set("title", e.target.value)}
+          <input ref={titleRef} type="text" value={form.title} onChange={(e) => set("title", e.target.value)}
             placeholder="예: 4월 코리안에어 항공권 이벤트 배너"
-            className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all" />
+            className={`w-full rounded-xl border px-4 py-3 text-sm outline-none focus:ring-2 transition-all ${
+              fieldErrors.title
+                ? "border-red-500 focus:border-red-500 focus:ring-red-100"
+                : "border-slate-300 focus:border-indigo-500 focus:ring-indigo-100"
+            }`} />
+          {fieldErrors.title && (
+            <p className="mt-1.5 text-xs font-semibold text-red-600">⚠ {fieldErrors.title}</p>
+          )}
         </div>
 
         {/* 광고 위치 */}
@@ -451,9 +503,16 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
         {/* 링크 URL */}
         <div className="sm:col-span-2">
           <label className="mb-1.5 block text-sm font-bold text-slate-700">클릭 이동 URL <span className="text-red-500">*</span></label>
-          <input type="url" value={form.linkUrl} onChange={(e) => set("linkUrl", e.target.value)}
+          <input ref={linkUrlRef} type="url" value={form.linkUrl} onChange={(e) => set("linkUrl", e.target.value)}
             placeholder="https://example.com"
-            className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all" />
+            className={`w-full rounded-xl border px-4 py-3 text-sm outline-none focus:ring-2 transition-all ${
+              fieldErrors.linkUrl
+                ? "border-red-500 focus:border-red-500 focus:ring-red-100"
+                : "border-slate-300 focus:border-indigo-500 focus:ring-indigo-100"
+            }`} />
+          {fieldErrors.linkUrl && (
+            <p className="mt-1.5 text-xs font-semibold text-red-600">⚠ {fieldErrors.linkUrl}</p>
+          )}
           <p className="mt-1.5 text-xs text-slate-500 ml-1">※ 앱 클릭 시 바로 이 링크로 이동하게 됩니다 (웹 브라우저 혹은 내부 딥링크 지원).</p>
         </div>
 
@@ -484,8 +543,15 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-bold text-slate-700">노출 종료일</label>
-          <input type="date" value={form.endDate} onChange={(e) => set("endDate", e.target.value)}
-            className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all" />
+          <input ref={endDateRef} type="date" value={form.endDate} onChange={(e) => set("endDate", e.target.value)}
+            className={`w-full rounded-xl border px-4 py-3 text-sm outline-none focus:ring-2 transition-all ${
+              fieldErrors.endDate
+                ? "border-red-500 focus:border-red-500 focus:ring-red-100"
+                : "border-slate-300 focus:border-indigo-500 focus:ring-indigo-100"
+            }`} />
+          {fieldErrors.endDate && (
+            <p className="mt-1.5 text-xs font-semibold text-red-600">⚠ {fieldErrors.endDate}</p>
+          )}
         </div>
 
         {/* 업로드 영역 */}
@@ -516,7 +582,9 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
              </div>
           </div>
 
-          <div className="p-4 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
+          <div ref={uploadRef} className={`p-4 border-2 border-dashed rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors ${
+            fieldErrors.images ? "border-red-500 bg-red-50/40" : "border-slate-300"
+          }`}>
             <div className="flex flex-wrap gap-4 items-center">
               {/* 기본 이미지들 */}
               {existingImages.map((url) => (
@@ -574,6 +642,9 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
               </div>
             )}
           </div>
+          {fieldErrors.images && (
+            <p className="mt-1.5 text-xs font-semibold text-red-600">⚠ {fieldErrors.images}</p>
+          )}
         </div>
 
         {/* 토글 상태 */}

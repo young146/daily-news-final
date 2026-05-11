@@ -31,6 +31,8 @@ const nextConfig = {
       { protocol: 'https', hostname: 'en.cand.com.vn' },
       { protocol: 'https', hostname: 'img.cand.com.vn' },
       { protocol: 'https', hostname: 'cafefcdn.com' },
+      { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
+      { protocol: 'https', hostname: '**.firebasestorage.app' },
     ],
   },
   allowedDevOrigins: [
