@@ -304,11 +304,66 @@ export async function POST(request) {
       }
     });
 
+    // 6. 페이스북 자동 게시 (실패해도 카드뉴스 발행 성공은 보존)
+    //    중복 방지: topNews.isSentSNS=true 면 스킵
+    let facebookResult = null;
+    if (!topNews.isSentSNS && process.env.PUBLISH_API_KEY && result.imageUrl) {
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://daily-news-final.vercel.app";
+        const [selfR, adR] = await Promise.all([
+          fetch(`${baseUrl}/api/promo-cards/active?kind=self`),
+          fetch(`${baseUrl}/api/promo-cards/active?kind=ad`),
+        ]);
+        const selfCards = (await selfR.json()).cards || [];
+        const adCards = (await adR.json()).cards || [];
+        const promos = [...selfCards, ...adCards]
+          .filter(c => c.imageUrl && c.linkUrl)
+          .map(c => ({ imageUrl: c.imageUrl, title: c.title, linkUrl: c.linkUrl }));
+
+        const fbBody = {
+          news: {
+            imageUrl: result.imageUrl,
+            caption: `🗞 씬짜오 데일리뉴스 — ${dateStr}\n${title}\n오늘의 뉴스 전체 보기 ↓`,
+            link: result.terminalUrl || "https://chaovietnam.co.kr/daily-news-terminal/",
+          },
+          promos,
+        };
+
+        const fbRes = await fetch(
+          "https://asia-northeast3-chaovietnam-login.cloudfunctions.net/publishToFacebookPage",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: "Bearer " + process.env.PUBLISH_API_KEY },
+            body: JSON.stringify(fbBody),
+          }
+        );
+        const fbData = await fbRes.json();
+        if (fbData.ok) {
+          facebookResult = { ok: true, postId: fbData.postId, permalink: fbData.permalink };
+          await prisma.newsItem.update({
+            where: { id: topNews.id },
+            data: { isSentSNS: true },
+          });
+          console.log("[CardNews API] ✅ Facebook posted:", fbData.permalink);
+        } else {
+          facebookResult = { ok: false, error: fbData.error || "unknown" };
+          console.warn("[CardNews API] ⚠️ Facebook post failed:", fbData.error);
+        }
+      } catch (fbErr) {
+        facebookResult = { ok: false, error: fbErr.message };
+        console.warn("[CardNews API] ⚠️ Facebook post error (non-blocking):", fbErr.message);
+      }
+    } else if (topNews.isSentSNS) {
+      console.log("[CardNews API] Facebook skipped (already sent for this topNews)");
+      facebookResult = { ok: false, skipped: "already_sent" };
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         terminalUrl: result.terminalUrl,
         imageUrl: result.imageUrl,
+        facebook: facebookResult,
       }),
       { headers: { "Content-Type": "application/json" } }
     );
