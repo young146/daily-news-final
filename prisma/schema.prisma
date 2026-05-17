@@ -83,8 +83,14 @@ model PromoCard {
   linkUrl     String                    // 클릭 시 이동 링크
   isActive    Boolean  @default(true)   // ON/OFF
   sortOrder   Int      @default(0)      // 정렬 순서 (낮을수록 먼저)
+  // 분류 — "ad" = 광고주 카드 (수익원) / "self" = 자체 홍보 라이브러리 (앱 설치 등)
+  kind        String   @default("ad")
+  // 자체 홍보 카드의 용도 — "app" | "magazine" | "event" | "other"
+  category    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([kind, isActive, sortOrder])
 }
 
 model TestEmail {

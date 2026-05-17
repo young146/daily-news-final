@@ -38,8 +38,9 @@ export default function PromoCardsPage() {
     const [previewCard, setPreviewCard] = useState(null);
     const fileInputRef = useRef(null);
 
-    const emptyForm = { title: "", description: "", imageUrl: "", videoUrl: "", linkUrl: "", isActive: true, sortOrder: 0 };
+    const emptyForm = { title: "", description: "", imageUrl: "", videoUrl: "", linkUrl: "", isActive: true, sortOrder: 0, kind: "ad", category: "" };
     const [form, setForm] = useState(emptyForm);
+    const [filter, setFilter] = useState("all"); // "all" | "ad" | "self"
 
     useEffect(() => { fetchCards(); }, []);
 
@@ -61,7 +62,7 @@ export default function PromoCardsPage() {
     const openNewForm = () => { setEditingCard(null); setForm(emptyForm); setShowForm(true); window.scrollTo({ top: 0, behavior: "smooth" }); };
     const openEditForm = (card) => {
         setEditingCard(card);
-        setForm({ title: card.title, description: card.description || "", imageUrl: card.imageUrl || "", videoUrl: card.videoUrl || "", linkUrl: card.linkUrl, isActive: card.isActive, sortOrder: card.sortOrder });
+        setForm({ title: card.title, description: card.description || "", imageUrl: card.imageUrl || "", videoUrl: card.videoUrl || "", linkUrl: card.linkUrl, isActive: card.isActive, sortOrder: card.sortOrder, kind: card.kind || "ad", category: card.category || "" });
         setShowForm(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
@@ -195,6 +196,31 @@ export default function PromoCardsPage() {
                             <label style={lbl}>🔗 클릭 링크 <span style={{ color: "#ef4444" }}>*</span></label>
                             <input type="text" value={form.linkUrl} onChange={(e) => setForm((f) => ({ ...f, linkUrl: e.target.value }))} placeholder="예: https://open.kakao.com/o/gDITUGji" style={inp} />
                         </div>
+                        <div>
+                            <label style={lbl}>📂 종류 <span style={{ color: "#ef4444" }}>*</span></label>
+                            <div style={{ display: "flex", gap: "16px" }}>
+                                <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", padding: "6px 12px", borderRadius: "6px", background: form.kind === "ad" ? "#fef3c7" : "transparent", border: form.kind === "ad" ? "1px solid #f59e0b" : "1px solid #e5e7eb" }}>
+                                    <input type="radio" checked={form.kind === "ad"} onChange={() => setForm((f) => ({ ...f, kind: "ad", category: "" }))} />
+                                    💰 광고주 카드 <span style={{ fontSize: "12px", color: "#9ca3af" }}>(수익원)</span>
+                                </label>
+                                <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", padding: "6px 12px", borderRadius: "6px", background: form.kind === "self" ? "#dbeafe" : "transparent", border: form.kind === "self" ? "1px solid #3b82f6" : "1px solid #e5e7eb" }}>
+                                    <input type="radio" checked={form.kind === "self"} onChange={() => setForm((f) => ({ ...f, kind: "self" }))} />
+                                    🏷️ 자체 홍보 <span style={{ fontSize: "12px", color: "#9ca3af" }}>(앱·매거진 등)</span>
+                                </label>
+                            </div>
+                        </div>
+                        {form.kind === "self" && (
+                            <div>
+                                <label style={lbl}>🏷️ 카테고리 <span style={{ color: "#9ca3af", fontWeight: "normal" }}>(자체 홍보용)</span></label>
+                                <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} style={inp}>
+                                    <option value="">— 선택 —</option>
+                                    <option value="app">앱 설치</option>
+                                    <option value="magazine">매거진/콘텐츠</option>
+                                    <option value="event">이벤트</option>
+                                    <option value="other">기타</option>
+                                </select>
+                            </div>
+                        )}
                         <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
                             <div>
                                 <label style={lbl}>🔢 정렬 순서</label>
@@ -222,7 +248,7 @@ export default function PromoCardsPage() {
 
             {/* 카드 목록 (그리드 프리뷰) */}
             <div style={{ background: "white", borderRadius: "12px", padding: "24px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                     <h2 style={{ fontSize: "18px", fontWeight: "bold", margin: 0 }}>
                         📋 보관된 홍보카드 <span style={{ fontSize: "14px", color: "#6b7280", fontWeight: "normal" }}>({cards.length}개)</span>
                     </h2>
@@ -231,6 +257,20 @@ export default function PromoCardsPage() {
                         <span style={{ color: "#dc2626", fontWeight: "bold" }}>● OFF</span> = 보관중
                     </div>
                 </div>
+
+                {/* 필터 탭 */}
+                {(() => {
+                    const adCount = cards.filter((c) => (c.kind || "ad") === "ad").length;
+                    const selfCount = cards.filter((c) => c.kind === "self").length;
+                    const tabStyle = (active) => ({ padding: "8px 16px", borderRadius: "8px", border: active ? "2px solid #f97316" : "1px solid #e5e7eb", background: active ? "#fff7ed" : "white", color: active ? "#c2410c" : "#374151", fontWeight: active ? "bold" : "normal", fontSize: "13px", cursor: "pointer" });
+                    return (
+                        <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
+                            <button onClick={() => setFilter("all")} style={tabStyle(filter === "all")}>전체 ({cards.length})</button>
+                            <button onClick={() => setFilter("ad")} style={tabStyle(filter === "ad")}>💰 광고주 ({adCount})</button>
+                            <button onClick={() => setFilter("self")} style={tabStyle(filter === "self")}>🏷️ 자체 홍보 ({selfCount})</button>
+                        </div>
+                    );
+                })()}
 
                 {loading ? (
                     <p style={{ color: "#9ca3af", textAlign: "center", padding: "40px" }}>불러오는 중...</p>
@@ -244,13 +284,18 @@ export default function PromoCardsPage() {
                     </div>
                 ) : (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
-                        {cards.map((card) => {
+                        {cards.filter((c) => filter === "all" || (c.kind || "ad") === filter).map((card) => {
                             const thumb = getThumb(card);
+                            const isSelf = card.kind === "self";
                             return (
                                 <div key={card.id} style={{ borderRadius: "12px", border: card.isActive ? "2px solid #fed7aa" : "2px solid #e5e7eb", overflow: "hidden", background: card.isActive ? "#fff" : "#f9fafb", boxShadow: card.isActive ? "0 2px 8px rgba(249,115,22,0.12)" : "none", opacity: card.isActive ? 1 : 0.75, position: "relative" }}>
                                     {/* ON/OFF 배지 */}
                                     <div style={{ position: "absolute", top: "10px", right: "10px", zIndex: 2, padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "bold", background: card.isActive ? "#dcfce7" : "#fee2e2", color: card.isActive ? "#16a34a" : "#dc2626", border: `1px solid ${card.isActive ? "#86efac" : "#fca5a5"}` }}>
                                         {card.isActive ? "● ON" : "● OFF"}
+                                    </div>
+                                    {/* 종류 배지 (좌상단) */}
+                                    <div style={{ position: "absolute", top: "10px", left: "10px", zIndex: 2, padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "bold", background: isSelf ? "#dbeafe" : "#fef3c7", color: isSelf ? "#1d4ed8" : "#92400e", border: `1px solid ${isSelf ? "#93c5fd" : "#fcd34d"}` }}>
+                                        {isSelf ? `🏷️ 자체${card.category ? ` · ${card.category}` : ""}` : "💰 광고주"}
                                     </div>
                                     {/* 썸네일 */}
                                     {thumb ? (

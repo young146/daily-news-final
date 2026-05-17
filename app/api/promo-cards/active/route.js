@@ -4,10 +4,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-export async function GET() {
+export async function GET(request) {
     try {
+        const { searchParams } = new URL(request.url);
+        const kind = searchParams.get('kind'); // "ad" | "self" | null(전체)
+        const where = { isActive: true, ...(kind && { kind }) };
+
         const cards = await prisma.promoCard.findMany({
-            where: { isActive: true },
+            where,
             orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
         });
         return NextResponse.json({ success: true, cards });

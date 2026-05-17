@@ -4,9 +4,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-export async function GET() {
+export async function GET(request) {
     try {
+        const { searchParams } = new URL(request.url);
+        const kind = searchParams.get('kind'); // "ad" | "self" | null(전체)
+        const where = kind ? { kind } : {};
+
         const cards = await prisma.promoCard.findMany({
+            where,
             orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
         });
         return NextResponse.json({ success: true, cards });
@@ -19,7 +24,7 @@ export async function GET() {
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { title, description, imageUrl, videoUrl, linkUrl, isActive, sortOrder } = body;
+        const { title, description, imageUrl, videoUrl, linkUrl, isActive, sortOrder, kind, category } = body;
 
         if (!title || !linkUrl) {
             return NextResponse.json({ error: '제목과 링크 URL은 필수입니다.' }, { status: 400 });
@@ -34,6 +39,8 @@ export async function POST(request) {
                 linkUrl,
                 isActive: isActive !== false,
                 sortOrder: sortOrder || 0,
+                kind: kind === 'self' ? 'self' : 'ad',
+                category: category || null,
             },
         });
 
