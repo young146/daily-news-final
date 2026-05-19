@@ -20,6 +20,7 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
   const [selectedNews, setSelectedNews] = useState(null); // 선택된 뉴스 (탑뉴스 또는 최신 뉴스)
   const [useGradient, setUseGradient] = useState(false); // 그라디언트 사용 여부 (기본값: false)
   const [promoCards, setPromoCards] = useState([]); // 활성 홍보카드
+  const [showPreviewModal, setShowPreviewModal] = useState(false); // 게시 전 미리보기 모달
 
   // 활성 홍보카드 로드
   useEffect(() => {
@@ -84,6 +85,17 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
     typeof rates?.krwVnd === "number"
       ? rates.krwVnd.toFixed(1)
       : rates?.krwVnd ?? "--";
+
+  const handlePreviewClick = (e) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (isGenerating || !currentTopNews) return;
+    setShowPreviewModal(true);
+  };
+
+  const handleConfirmAndPublish = async () => {
+    setShowPreviewModal(false);
+    await handlePublishToWordPress();
+  };
 
   const handlePublishToWordPress = async (e) => {
     // 이벤트가 전달된 경우 기본 동작 방지
@@ -479,7 +491,7 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
         </div>
 
         <button
-          onClick={handlePublishToWordPress}
+          onClick={handlePreviewClick}
           disabled={isGenerating || !currentTopNews}
           className={`px-8 py-3 text-white rounded-lg text-base font-bold shadow-lg flex items-center gap-2 transition-all ${isGenerating || !currentTopNews
             ? "bg-gray-400 cursor-not-allowed opacity-50"
@@ -493,9 +505,112 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
               게시 중...
             </>
           ) : (
-            <>📤 WordPress에 카드 엽서 게시</>
+            <>👁️ 미리보기 후 게시</>
           )}
         </button>
+
+        {/* ─── 게시 전 미리보기 모달 ─── */}
+        {showPreviewModal && (
+          <div className="fixed inset-0 bg-black/70 flex items-start justify-center z-50 overflow-y-auto py-8">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-bold text-gray-800">👁️ 게시 전 미리보기</h2>
+                <button
+                  onClick={() => setShowPreviewModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl font-light leading-none"
+                >×</button>
+              </div>
+
+              {/* 뉴스카드 미리보기 */}
+              <div className="mb-6">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">📰 Facebook 뉴스카드 (1번째 이미지)</p>
+                <div style={{ transform: 'scale(0.55)', transformOrigin: 'top left', width: '800px', height: '420px', marginBottom: '-190px' }}>
+                  <div style={{ width: '800px', height: '420px', display: 'flex', flexDirection: 'row', boxShadow: '0 10px 30px rgba(0,0,0,0.2)', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#ffffff' }}>
+                    <div style={{ width: '400px', height: '420px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#000000' }}>
+                      {newsImage ? (
+                        <img src={newsImage} alt="News" style={{ width: '400px', height: '420px', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: '400px', height: '420px', background: 'linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%)' }} />
+                      )}
+                    </div>
+                    <div style={{ width: '400px', height: '420px', display: 'flex', flexDirection: 'column', padding: '30px 40px', backgroundColor: '#ffffff' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <div style={{ color: '#1e3a5f', fontSize: '24px', fontWeight: 'bold' }}>Xin Chào Vietnam</div>
+                        <div style={{ backgroundColor: '#8b0000', color: '#ffffff', fontSize: '16px', fontWeight: 'bold', padding: '6px 20px', borderRadius: '20px' }}>{dateStr}</div>
+                      </div>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <div style={{ color: '#fbbf24', fontSize: '20px', fontWeight: 'bold', marginBottom: '15px' }}>오늘의 뉴스</div>
+                        <h1 style={{ color: '#1f2937', fontSize: newsTitle.length > 40 ? '28px' : '32px', fontWeight: 'bold', margin: 0, lineHeight: 1.3, marginBottom: '20px' }}>{newsTitle}</h1>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '20px', paddingTop: '15px', borderTop: '1px solid #e5e7eb' }}>
+                        <span style={{ color: '#374151', fontSize: '14px' }}>🌡️ 서울 {weatherTemp}°C</span>
+                        <span style={{ color: '#374151', fontSize: '14px' }}>💵 USD {usdRate}₫</span>
+                        <span style={{ color: '#374151', fontSize: '14px' }}>💴 KRW {krwRate}₫</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 홍보카드 미리보기 */}
+              <div className="mb-6">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+                  🎯 함께 게시되는 홍보카드 ({promoCards.length}장)
+                </p>
+                {promoCards.length === 0 ? (
+                  <div className="p-4 bg-gray-50 rounded-lg text-gray-500 text-sm text-center">
+                    활성 홍보카드 없음 — 뉴스카드만 게시됩니다
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {promoCards.map((card, idx) => (
+                      <div key={card.id} className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+                        {card.imageUrl ? (
+                          <img src={card.imageUrl} alt={card.title} className="w-full h-36 object-cover" />
+                        ) : (
+                          <div className="w-full h-36 bg-gray-200 flex items-center justify-center text-gray-400 text-xs">이미지 없음</div>
+                        )}
+                        <div className="p-2">
+                          <p className="text-sm font-bold text-gray-800 line-clamp-1">{card.title}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${card.kind === 'self' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                              {card.kind === 'self' ? '자체홍보' : '광고'}
+                            </span>
+                            <span className="text-[10px] text-gray-400">#{idx + 2}번째 이미지</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 안내 메시지 */}
+              <div className="mb-5 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
+                위 카드들이 Facebook 앨범으로 게시됩니다. 확인 후 게시 버튼을 누르세요.
+              </div>
+
+              {/* 액션 버튼 */}
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowPreviewModal(false)}
+                  className="flex-1 py-3 rounded-lg border border-gray-300 text-gray-700 font-bold hover:bg-gray-50 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmAndPublish}
+                  disabled={isGenerating}
+                  className="flex-1 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold transition-colors"
+                >
+                  ✅ 확인 후 게시
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {publishResult && publishResult.success && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
