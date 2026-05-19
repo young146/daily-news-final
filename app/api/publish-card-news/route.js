@@ -323,8 +323,8 @@ export async function POST(request) {
         const selfCards = (await selfR.json()).cards || [];
         const adCards = (await adR.json()).cards || [];
         const promos = [...selfCards, ...adCards]
-          .filter(c => c.imageUrl && c.linkUrl)
-          .map(c => ({ imageUrl: c.imageUrl, title: c.title, linkUrl: c.linkUrl }));
+          .filter(c => c.imageUrl)
+          .map(c => ({ imageUrl: c.imageUrl, title: c.title, linkUrl: c.linkUrl || "" }));
 
         const fbBody = {
           news: {
