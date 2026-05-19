@@ -55,7 +55,7 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
       window.FB.api("/me/groups", { fields: "id,name", access_token: token }, (data) => {
         setFbGroups(data.data || []);
       });
-    }, { scope: "publish_to_groups,groups_show_list" });
+    }, { scope: "publish_to_groups" });
   };
 
   const handleGroupPost = async (caption, imageUrls) => {
