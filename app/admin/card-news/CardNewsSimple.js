@@ -24,19 +24,27 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
 
   const [captionCopied, setCaptionCopied] = useState(false);
 
-  const downloadImage = (imageUrl, filename) => {
+  const downloadImage = async (imageUrl, filename) => {
     const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(imageUrl)}&filename=${encodeURIComponent(filename)}&download=1`;
+    const res = await fetch(proxyUrl);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = proxyUrl;
+    a.href = url;
     a.download = filename;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
-  const downloadAll = (newsImageUrl, promos) => {
-    if (newsImageUrl) downloadImage(newsImageUrl, "뉴스카드.jpg");
-    promos.forEach((c, i) => {
-      if (c.imageUrl) setTimeout(() => downloadImage(c.imageUrl, `홍보카드_${i + 1}.jpg`), (i + 1) * 800);
-    });
+  const downloadAll = async (newsImageUrl, promos) => {
+    const items = [];
+    if (newsImageUrl) items.push({ url: newsImageUrl, name: "뉴스카드.jpg" });
+    promos.forEach((c, i) => { if (c.imageUrl) items.push({ url: c.imageUrl, name: `홍보카드_${i + 1}.jpg` }); });
+    for (const item of items) {
+      await downloadImage(item.url, item.name);
+    }
   };
 
   // 활성 홍보카드 로드
