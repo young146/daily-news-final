@@ -604,7 +604,7 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
 
               {/* ─── 그룹 수동 게시 준비 ─── */}
               {(() => {
-                const caption = `🗞 씬짜오 데일리뉴스 — ${year}.${String(month).padStart(2,'0')}.${String(day).padStart(2,'0')}\n${newsTitle}\n\n오늘의 뉴스 전체 보기 ↓\nhttps://chaovietnam.co.kr/daily-news-terminal/`;
+                const caption = `🗞 씬짜오 데일리뉴스 — ${year}.${String(month).padStart(2,'0')}.${String(day).padStart(2,'0')}\n${newsTitle}`;
                 const allImageUrls = [
                   currentTopNews?.wordpressImageUrl,
                   ...promoCards.filter(c => c.imageUrl).map(c => c.imageUrl),
