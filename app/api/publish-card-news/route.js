@@ -341,6 +341,7 @@ export async function POST(request) {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: "Bearer " + process.env.PUBLISH_API_KEY },
             body: JSON.stringify(fbBody),
+            signal: AbortSignal.timeout(120000), // 2분 초과 시 포기 (WordPress 카드는 이미 성공)
           }
         );
         const fbData = await fbRes.json();

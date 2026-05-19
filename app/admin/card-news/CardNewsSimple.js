@@ -22,30 +22,6 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
   const [promoCards, setPromoCards] = useState([]);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
-  const [captionCopied, setCaptionCopied] = useState(false);
-
-  const downloadImage = async (imageUrl, filename) => {
-    const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(imageUrl)}&filename=${encodeURIComponent(filename)}&download=1`;
-    const res = await fetch(proxyUrl);
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const downloadAll = async (newsImageUrl, promos) => {
-    const items = [];
-    if (newsImageUrl) items.push({ url: newsImageUrl, name: "뉴스카드.jpg" });
-    promos.forEach((c, i) => { if (c.imageUrl) items.push({ url: c.imageUrl, name: `홍보카드_${i + 1}.jpg` }); });
-    for (const item of items) {
-      await downloadImage(item.url, item.name);
-    }
-  };
 
   // 활성 홍보카드 로드
   useEffect(() => {
@@ -610,43 +586,6 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                   </div>
                 )}
               </div>
-
-              {/* ─── 그룹 수동 게시 준비 ─── */}
-              {(() => {
-                const caption = `🗞 씬짜오 데일리뉴스 — ${year}.${String(month).padStart(2,'0')}.${String(day).padStart(2,'0')}\n${newsTitle}`;
-                const allImageUrls = [
-                  currentTopNews?.wordpressImageUrl,
-                  ...promoCards.filter(c => c.imageUrl).map(c => c.imageUrl),
-                ].filter(Boolean);
-
-                return (
-                  <div className="mb-5 bg-blue-50 p-4 rounded-xl border-2 border-blue-200">
-                    <p className="text-sm font-bold text-gray-700 mb-1">📤 Facebook 그룹 게시 준비</p>
-                    <p className="text-xs text-gray-500 mb-3">아래 버튼으로 준비 후 Facebook 그룹에 직접 붙여넣기 하세요</p>
-
-                    <div className="flex flex-col gap-2">
-                      {/* 1단계: 캡션 복사 + 이미지 전체 저장 한 번에 */}
-                      <button type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(caption).then(() => {
-                            setCaptionCopied(true);
-                            setTimeout(() => setCaptionCopied(false), 3000);
-                          });
-                          downloadAll(currentTopNews?.wordpressImageUrl, promoCards.filter(c => c.imageUrl));
-                        }}
-                        className={`w-full py-3 rounded-lg font-bold text-sm transition-colors text-white ${captionCopied ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-800'}`}>
-                        {captionCopied ? `✅ 준비 완료! (이미지 ${allImageUrls.length}장 저장 중)` : `① 캡션 복사 + 이미지 저장 (${allImageUrls.length}장)`}
-                      </button>
-
-                      {/* 2단계: Facebook 열기 */}
-                      <a href="https://www.facebook.com" target="_blank" rel="noopener noreferrer"
-                        className="w-full py-3 rounded-lg font-bold text-sm bg-[#1877f2] hover:bg-[#166fe5] text-white transition-colors text-center block">
-                        ② Facebook 열기 → 그룹에 붙여넣기
-                      </a>
-                    </div>
-                  </div>
-                );
-              })()}
 
               {/* 안내 메시지 */}
               <div className="mb-5 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
