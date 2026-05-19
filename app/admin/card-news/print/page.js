@@ -2,6 +2,8 @@ import prisma from "@/lib/prisma";
 import CardNewsPreview from "../CardNewsPreview"; // Reuse the component
 import { getSeoulWeather, getExchangeRates } from "@/lib/external-data";
 
+export const dynamic = "force-dynamic";
+
 // This page is dedicated for Puppeteer to visit and capture.
 // It should render ONLY the card, with no admin layout/buttons.
 export default async function CardNewsPrintPage() {
