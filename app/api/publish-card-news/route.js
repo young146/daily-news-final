@@ -307,6 +307,7 @@ export async function POST(request) {
     // 6. 페이스북 자동 게시 (실패해도 카드뉴스 발행 성공은 보존)
     //    중복 방지: topNews.isSentSNS=true 면 스킵
     let facebookResult = null;
+    console.log(`[CardNews API] FB check: isSentSNS=${topNews.isSentSNS}, hasKey=${!!process.env.PUBLISH_API_KEY}, hasImageUrl=${!!result.imageUrl}`);
     if (!topNews.isSentSNS && process.env.PUBLISH_API_KEY && result.imageUrl) {
       try {
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://daily-news-final.vercel.app";
