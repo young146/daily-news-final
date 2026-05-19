@@ -177,6 +177,7 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
           success: true,
           terminalUrl: result.terminalUrl,
           imageUrl: result.imageUrl,
+          facebook: result.facebook,
         });
       } else {
         throw new Error(result.error || "알 수 없는 오류가 발생했습니다.");
@@ -718,6 +719,29 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                     📋 뉴스 URL 복사
                   </button>
                 </div>
+
+                {/* Facebook 게시물 링크 → 그룹 공유용 */}
+                {publishResult.facebook?.ok && publishResult.facebook?.permalink && (
+                  <div className="bg-[#e7f0fd] p-4 rounded-xl border-2 border-[#1877f2]">
+                    <p className="text-xs font-semibold text-[#1877f2] uppercase mb-2">📘 Facebook 게시물 링크 — 그룹에 붙여넣기</p>
+                    <div className="p-3 bg-white rounded-lg border border-blue-200 mb-3">
+                      <span className="text-blue-700 font-mono text-xs break-all">{publishResult.facebook.permalink}</span>
+                    </div>
+                    <button
+                      type="button"
+                      id="fb-copy-btn"
+                      onClick={() => {
+                        navigator.clipboard.writeText(publishResult.facebook.permalink).then(() => {
+                          const btn = document.getElementById('fb-copy-btn');
+                          if (btn) { btn.textContent = '✅ 복사됨!'; setTimeout(() => { btn.textContent = '📋 Facebook 링크 복사 → 그룹에 붙여넣기'; }, 2000); }
+                        });
+                      }}
+                      className="w-full bg-[#1877f2] hover:bg-[#166fe5] text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
+                    >
+                      📋 Facebook 링크 복사 → 그룹에 붙여넣기
+                    </button>
+                  </div>
+                )}
 
                 {/* 이메일 발송 안내 */}
                 <div className="bg-orange-50 p-4 rounded-xl border-2 border-orange-200">
