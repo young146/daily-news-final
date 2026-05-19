@@ -672,6 +672,51 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                   </a>
                 </div>
 
+                {/* ─── 수동 게시용 자료 (그룹 공유) ─── */}
+                <div className="bg-gray-50 p-4 rounded-xl border-2 border-gray-200">
+                  <p className="text-xs font-semibold text-gray-500 uppercase mb-3">📋 수동 게시용 자료 (Facebook 그룹 공유 시)</p>
+
+                  {/* 캡션 */}
+                  <div className="mb-3">
+                    <p className="text-xs text-gray-500 mb-1">캡션 텍스트</p>
+                    <div className="bg-white border border-gray-200 rounded-lg p-3 text-xs text-gray-700 whitespace-pre-wrap font-mono leading-relaxed mb-2">
+                      {`🗞 씬짜오 데일리뉴스 — ${year}.${String(month).padStart(2,'0')}.${String(day).padStart(2,'0')}\n${newsTitle}\n\n오늘의 뉴스 전체 보기 ↓\nhttps://chaovietnam.co.kr/daily-news-terminal/`}
+                    </div>
+                    <button
+                      type="button"
+                      id="caption-copy-btn"
+                      onClick={() => {
+                        const caption = `🗞 씬짜오 데일리뉴스 — ${year}.${String(month).padStart(2,'0')}.${String(day).padStart(2,'0')}\n${newsTitle}\n\n오늘의 뉴스 전체 보기 ↓\nhttps://chaovietnam.co.kr/daily-news-terminal/`;
+                        navigator.clipboard.writeText(caption).then(() => {
+                          const btn = document.getElementById('caption-copy-btn');
+                          if (btn) { btn.textContent = '✅ 복사됨!'; setTimeout(() => { btn.textContent = '📋 캡션 복사'; }, 2000); }
+                        });
+                      }}
+                      className="w-full bg-gray-700 hover:bg-gray-800 text-white py-2 rounded-lg font-bold text-sm transition-colors"
+                    >
+                      📋 캡션 복사
+                    </button>
+                  </div>
+
+                  {/* 이미지 */}
+                  <div>
+                    <p className="text-xs text-gray-500 mb-2">이미지 {1 + promoCards.filter(c => c.imageUrl).length}장 — 클릭하여 열기 후 우클릭 저장</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <a href={publishResult.imageUrl} target="_blank" rel="noopener noreferrer"
+                        className="block border border-gray-200 rounded-lg overflow-hidden hover:border-blue-400 transition-colors">
+                        <img src={publishResult.imageUrl} alt="뉴스카드" className="w-full h-24 object-cover" />
+                        <p className="text-xs text-center py-1.5 bg-white font-bold text-blue-700">📰 뉴스카드</p>
+                      </a>
+                      {promoCards.filter(c => c.imageUrl).map((card) => (
+                        <a key={card.id} href={card.imageUrl} target="_blank" rel="noopener noreferrer"
+                          className="block border border-gray-200 rounded-lg overflow-hidden hover:border-blue-400 transition-colors">
+                          <img src={card.imageUrl} alt={card.title} className="w-full h-24 object-cover" />
+                          <p className="text-xs text-center py-1.5 bg-white font-bold text-gray-700 line-clamp-1 px-1">{card.title}</p>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </div>
 
                 <div className="flex gap-3">
                   <a
