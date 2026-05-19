@@ -314,7 +314,8 @@ export async function POST(request) {
     let facebookResult = null;
     if ((skipSNSCheck || !topNews.isSentSNS) && process.env.PUBLISH_API_KEY && result.imageUrl) {
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://daily-news-final.vercel.app";
+        let baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://daily-news-final.vercel.app";
+        if (baseUrl && !baseUrl.startsWith("http")) baseUrl = "https://" + baseUrl;
         const [selfR, adR] = await Promise.all([
           fetch(`${baseUrl}/api/promo-cards/active?kind=self`),
           fetch(`${baseUrl}/api/promo-cards/active?kind=ad`),
