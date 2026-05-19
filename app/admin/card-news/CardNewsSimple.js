@@ -16,6 +16,7 @@ const linkify = (text) => {
 
 export default function CardNewsSimple({ data, mode = "preview" }) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingEmail, setIsGeneratingEmail] = useState(false);
   const [publishResult, setPublishResult] = useState(null);
   const [selectedNews, setSelectedNews] = useState(null);
   const [useGradient, setUseGradient] = useState(false);
@@ -91,6 +92,29 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
     if (e) { e.preventDefault(); e.stopPropagation(); }
     if (isGenerating || !currentTopNews) return;
     setShowPreviewModal(true);
+  };
+
+  const handleEmailCardOnly = async () => {
+    if (isGeneratingEmail || !currentTopNews) return;
+    setIsGeneratingEmail(true);
+    setPublishResult(null);
+    try {
+      const response = await fetch("/api/publish-card-news", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topNewsId: currentTopNews?.id || null, useGradient, emailOnly: true }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setPublishResult({ success: true, terminalUrl: result.terminalUrl, imageUrl: result.imageUrl, facebook: null });
+      } else {
+        throw new Error(result.error || "카드 생성 실패");
+      }
+    } catch (error) {
+      alert(`이메일 카드 생성 실패: ${error.message}`);
+    } finally {
+      setIsGeneratingEmail(false);
+    }
   };
 
   const handleConfirmAndPublish = async () => {
@@ -492,9 +516,27 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
           </label>
         </div>
 
+        {/* 이메일 카드 생성 (Facebook 없음, 빠름) */}
+        <button
+          onClick={handleEmailCardOnly}
+          disabled={isGeneratingEmail || isGenerating || !currentTopNews}
+          className={`px-8 py-3 text-white rounded-lg text-base font-bold shadow-lg flex items-center gap-2 transition-all ${isGeneratingEmail || !currentTopNews
+            ? "bg-gray-400 cursor-not-allowed opacity-50"
+            : "bg-green-600 hover:bg-green-700 cursor-pointer"
+            }`}
+          type="button"
+        >
+          {isGeneratingEmail ? (
+            <><span className="animate-spin">⏳</span> 카드 생성 중...</>
+          ) : (
+            <>📧 이메일 카드 생성</>
+          )}
+        </button>
+
+        {/* Facebook 4개 페이지 자동 게시 (느릴 수 있음) */}
         <button
           onClick={handlePreviewClick}
-          disabled={isGenerating || !currentTopNews}
+          disabled={isGenerating || isGeneratingEmail || !currentTopNews}
           className={`px-8 py-3 text-white rounded-lg text-base font-bold shadow-lg flex items-center gap-2 transition-all ${isGenerating || !currentTopNews
             ? "bg-gray-400 cursor-not-allowed opacity-50"
             : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
@@ -502,12 +544,9 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
           type="button"
         >
           {isGenerating ? (
-            <>
-              <span className="animate-spin">⏳</span>
-              게시 중...
-            </>
+            <><span className="animate-spin">⏳</span> 게시 중...</>
           ) : (
-            <>👁️ 미리보기 후 게시</>
+            <>📘 Facebook 4페이지 자동 게시</>
           )}
         </button>
 

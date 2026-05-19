@@ -308,6 +308,14 @@ export async function POST(request) {
       }
     });
 
+    // emailOnly 모드: WordPress 카드 생성만 하고 즉시 반환 (이메일 전용, Facebook 없음)
+    if (body.emailOnly) {
+      return new Response(
+        JSON.stringify({ success: true, terminalUrl: result.terminalUrl, imageUrl: result.imageUrl, facebook: null }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // 6. 페이스북 자동 게시 (실패해도 카드뉴스 발행 성공은 보존)
     //    사용자가 명시적으로 뉴스를 선택한 경우(body.topNewsId) isSentSNS 무시
     const skipSNSCheck = !!body.topNewsId;
