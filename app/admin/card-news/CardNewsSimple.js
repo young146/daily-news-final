@@ -14,13 +14,80 @@ const linkify = (text) => {
   );
 };
 
+const FB_APP_ID = "1761247928588118";
+
 export default function CardNewsSimple({ data, mode = "preview" }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [publishResult, setPublishResult] = useState(null);
-  const [selectedNews, setSelectedNews] = useState(null); // 선택된 뉴스 (탑뉴스 또는 최신 뉴스)
-  const [useGradient, setUseGradient] = useState(false); // 그라디언트 사용 여부 (기본값: false)
-  const [promoCards, setPromoCards] = useState([]); // 활성 홍보카드
-  const [showPreviewModal, setShowPreviewModal] = useState(false); // 게시 전 미리보기 모달
+  const [selectedNews, setSelectedNews] = useState(null);
+  const [useGradient, setUseGradient] = useState(false);
+  const [promoCards, setPromoCards] = useState([]);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  // 그룹 게시 관련 상태
+  const [fbUserToken, setFbUserToken] = useState(null);
+  const [fbGroups, setFbGroups] = useState([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState([]);
+  const [groupPostStatus, setGroupPostStatus] = useState(null); // null | "posting" | {ok, results}
+  const [fbSdkReady, setFbSdkReady] = useState(false);
+
+  // Facebook SDK 로드
+  useEffect(() => {
+    if (window.FB) { setFbSdkReady(true); return; }
+    window.fbAsyncInit = function () {
+      window.FB.init({ appId: FB_APP_ID, cookie: true, xfbml: false, version: "v25.0" });
+      setFbSdkReady(true);
+    };
+    const script = document.createElement("script");
+    script.src = "https://connect.facebook.net/en_US/sdk.js";
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+  }, []);
+
+  const handleFBLogin = () => {
+    if (!window.FB) return alert("Facebook SDK 로딩 중입니다. 잠시 후 다시 시도하세요.");
+    window.FB.login((response) => {
+      if (!response.authResponse) return alert("Facebook 로그인 취소됨");
+      const token = response.authResponse.accessToken;
+      setFbUserToken(token);
+      window.FB.api("/me/groups", { fields: "id,name", access_token: token }, (data) => {
+        setFbGroups(data.data || []);
+      });
+    }, { scope: "publish_to_groups,groups_show_list" });
+  };
+
+  const handleGroupPost = async (caption, imageUrls) => {
+    if (!fbUserToken) return alert("먼저 Facebook 로그인을 해주세요.");
+    if (selectedGroupIds.length === 0) return alert("게시할 그룹을 선택해주세요.");
+    setGroupPostStatus("posting");
+    try {
+      const res = await fetch("/api/fb-group-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groupIds: selectedGroupIds, message: caption, imageUrls, userToken: fbUserToken }),
+      });
+      const data = await res.json();
+      setGroupPostStatus(data);
+    } catch (e) {
+      setGroupPostStatus({ ok: false, error: e.message });
+    }
+  };
+
+  const downloadImage = (imageUrl, filename) => {
+    const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(imageUrl)}&filename=${encodeURIComponent(filename)}&download=1`;
+    const a = document.createElement("a");
+    a.href = proxyUrl;
+    a.download = filename;
+    a.click();
+  };
+
+  const downloadAll = (newsImageUrl, promos) => {
+    if (newsImageUrl) downloadImage(newsImageUrl, "뉴스카드.jpg");
+    promos.forEach((c, i) => {
+      if (c.imageUrl) setTimeout(() => downloadImage(c.imageUrl, `홍보카드_${i + 1}.jpg`), (i + 1) * 800);
+    });
+  };
 
   // 활성 홍보카드 로드
   useEffect(() => {
@@ -585,50 +652,102 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                 )}
               </div>
 
-              {/* ─── 수동 게시용 자료 ─── */}
-              <div className="mb-5 bg-gray-50 p-4 rounded-xl border-2 border-gray-300">
-                <p className="text-xs font-semibold text-gray-600 uppercase mb-3">📋 수동 게시용 자료 — Facebook 그룹 공유 시 사용 (자동 게시와 무관)</p>
+              {/* ─── 그룹 게시 섹션 (자동 게시와 무관하게 항상 사용 가능) ─── */}
+              {(() => {
+                const caption = `🗞 씬짜오 데일리뉴스 — ${year}.${String(month).padStart(2,'0')}.${String(day).padStart(2,'0')}\n${newsTitle}\n\n오늘의 뉴스 전체 보기 ↓\nhttps://chaovietnam.co.kr/daily-news-terminal/`;
+                const allImageUrls = [
+                  currentTopNews?.wordpressImageUrl,
+                  ...promoCards.filter(c => c.imageUrl).map(c => c.imageUrl),
+                ].filter(Boolean);
 
-                {/* 캡션 */}
-                <div className="mb-3">
-                  <div className="bg-white border border-gray-200 rounded-lg p-3 text-xs text-gray-700 whitespace-pre-wrap font-mono leading-relaxed mb-2">
-                    {`🗞 씬짜오 데일리뉴스 — ${year}.${String(month).padStart(2,'0')}.${String(day).padStart(2,'0')}\n${newsTitle}\n\n오늘의 뉴스 전체 보기 ↓\nhttps://chaovietnam.co.kr/daily-news-terminal/`}
+                return (
+                  <div className="mb-5 bg-gray-50 p-4 rounded-xl border-2 border-gray-300">
+                    <p className="text-xs font-semibold text-gray-600 uppercase mb-3">📋 Facebook 그룹 게시 (자동 게시와 무관)</p>
+
+                    {/* 캡션 복사 + 전체 다운로드 */}
+                    <div className="flex gap-2 mb-3">
+                      <button type="button" id="modal-caption-copy-btn"
+                        onClick={() => navigator.clipboard.writeText(caption).then(() => {
+                          const btn = document.getElementById('modal-caption-copy-btn');
+                          if (btn) { btn.textContent = '✅ 복사됨!'; setTimeout(() => { btn.textContent = '📋 캡션 복사'; }, 2000); }
+                        })}
+                        className="flex-1 bg-gray-700 hover:bg-gray-800 text-white py-2 rounded-lg font-bold text-sm transition-colors">
+                        📋 캡션 복사
+                      </button>
+                      <button type="button"
+                        onClick={() => downloadAll(currentTopNews?.wordpressImageUrl, promoCards.filter(c => c.imageUrl))}
+                        className="flex-1 bg-green-700 hover:bg-green-800 text-white py-2 rounded-lg font-bold text-sm transition-colors">
+                        ⬇️ 이미지 전체 저장 ({allImageUrls.length}장)
+                      </button>
+                    </div>
+
+                    {/* 이미지 미리보기 (개별 저장) */}
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                      {currentTopNews?.wordpressImageUrl && (
+                        <button type="button" onClick={() => downloadImage(currentTopNews.wordpressImageUrl, '뉴스카드.jpg')}
+                          className="block border-2 border-blue-300 rounded-lg overflow-hidden hover:border-blue-500 transition-colors text-left">
+                          <img src={currentTopNews.wordpressImageUrl} alt="뉴스카드" className="w-full h-16 object-cover" />
+                          <p className="text-[10px] text-center py-1 bg-blue-50 font-bold text-blue-700">⬇️ 뉴스카드</p>
+                        </button>
+                      )}
+                      {promoCards.filter(c => c.imageUrl).map((card, i) => (
+                        <button key={card.id} type="button" onClick={() => downloadImage(card.imageUrl, `홍보카드_${i+1}.jpg`)}
+                          className="block border-2 border-gray-200 rounded-lg overflow-hidden hover:border-gray-400 transition-colors text-left">
+                          <img src={card.imageUrl} alt={card.title} className="w-full h-16 object-cover" />
+                          <p className="text-[10px] text-center py-1 bg-gray-100 font-bold text-gray-600 line-clamp-1 px-1">⬇️ {card.title}</p>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Facebook 그룹 자동 게시 */}
+                    <div className="border-t border-gray-200 pt-3">
+                      <p className="text-xs font-bold text-gray-600 mb-2">🚀 그룹 자동 게시</p>
+                      {!fbUserToken ? (
+                        <button type="button" onClick={handleFBLogin}
+                          className="w-full bg-[#1877f2] hover:bg-[#166fe5] text-white py-2.5 rounded-lg font-bold text-sm transition-colors">
+                          Facebook 로그인 후 그룹 선택
+                        </button>
+                      ) : (
+                        <>
+                          {fbGroups.length === 0 ? (
+                            <p className="text-xs text-gray-500 text-center py-2">그룹을 불러오는 중...</p>
+                          ) : (
+                            <div className="mb-2 max-h-32 overflow-y-auto space-y-1">
+                              {fbGroups.map(g => (
+                                <label key={g.id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1.5 rounded">
+                                  <input type="checkbox" checked={selectedGroupIds.includes(g.id)}
+                                    onChange={e => setSelectedGroupIds(prev =>
+                                      e.target.checked ? [...prev, g.id] : prev.filter(id => id !== g.id)
+                                    )}
+                                    className="w-4 h-4 text-blue-600 rounded" />
+                                  <span className="text-sm text-gray-700">{g.name}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                          <button type="button"
+                            disabled={selectedGroupIds.length === 0 || groupPostStatus === "posting"}
+                            onClick={() => handleGroupPost(caption, allImageUrls)}
+                            className={`w-full py-2.5 rounded-lg font-bold text-sm transition-colors text-white ${
+                              selectedGroupIds.length === 0 || groupPostStatus === "posting"
+                                ? "bg-gray-400 cursor-not-allowed"
+                                : "bg-[#1877f2] hover:bg-[#166fe5]"
+                            }`}>
+                            {groupPostStatus === "posting" ? "⏳ 게시 중..." : `✅ 선택한 ${selectedGroupIds.length}개 그룹에 게시`}
+                          </button>
+                          {groupPostStatus && groupPostStatus !== "posting" && (
+                            <div className={`mt-2 p-2 rounded text-xs ${groupPostStatus.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                              {groupPostStatus.results?.map(r => (
+                                <div key={r.groupId}>{r.ok ? '✅' : '❌'} {r.groupId} {r.error || ''}</div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    id="modal-caption-copy-btn"
-                    onClick={() => {
-                      const caption = `🗞 씬짜오 데일리뉴스 — ${year}.${String(month).padStart(2,'0')}.${String(day).padStart(2,'0')}\n${newsTitle}\n\n오늘의 뉴스 전체 보기 ↓\nhttps://chaovietnam.co.kr/daily-news-terminal/`;
-                      navigator.clipboard.writeText(caption).then(() => {
-                        const btn = document.getElementById('modal-caption-copy-btn');
-                        if (btn) { btn.textContent = '✅ 복사됨!'; setTimeout(() => { btn.textContent = '📋 캡션 복사'; }, 2000); }
-                      });
-                    }}
-                    className="w-full bg-gray-700 hover:bg-gray-800 text-white py-2 rounded-lg font-bold text-sm transition-colors"
-                  >
-                    📋 캡션 복사
-                  </button>
-                </div>
-
-                {/* 이미지 */}
-                <p className="text-xs text-gray-500 mb-2">이미지 — 클릭 후 우클릭 → 저장</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {currentTopNews?.wordpressImageUrl && (
-                    <a href={currentTopNews.wordpressImageUrl} target="_blank" rel="noopener noreferrer"
-                      className="block border-2 border-blue-300 rounded-lg overflow-hidden hover:border-blue-500 transition-colors">
-                      <img src={currentTopNews.wordpressImageUrl} alt="뉴스카드" className="w-full h-20 object-cover" />
-                      <p className="text-xs text-center py-1 bg-blue-50 font-bold text-blue-700">📰 뉴스 이미지</p>
-                    </a>
-                  )}
-                  {promoCards.filter(c => c.imageUrl).map((card) => (
-                    <a key={card.id} href={card.imageUrl} target="_blank" rel="noopener noreferrer"
-                      className="block border-2 border-gray-200 rounded-lg overflow-hidden hover:border-gray-400 transition-colors">
-                      <img src={card.imageUrl} alt={card.title} className="w-full h-20 object-cover" />
-                      <p className="text-xs text-center py-1 bg-gray-100 font-bold text-gray-600 line-clamp-1 px-1">{card.title}</p>
-                    </a>
-                  ))}
-                </div>
-              </div>
+                );
+              })()}
 
               {/* 안내 메시지 */}
               <div className="mb-5 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
