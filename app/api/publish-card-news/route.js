@@ -140,14 +140,18 @@ export async function POST(request) {
     // 탑뉴스는 첫 번째 것 사용 (선택된 뉴스가 있으면 그것 사용)
     let topNews = null;
     if (body.topNewsId) {
-      // 선택된 뉴스가 isCardNews = true 리스트에 있는지 확인
-      const selectedNews = [...topNewsList, ...cardNewsItems].find(n => n.id === body.topNewsId);
-      if (selectedNews && selectedNews.status === 'PUBLISHED') {
-        topNews = selectedNews;
+      // isCardNews 리스트에서 먼저 찾고, 없으면 DB에서 직접 조회 (사용자 선택을 항상 우선)
+      topNews = [...topNewsList, ...cardNewsItems].find(n => n.id === body.topNewsId) || null;
+      if (!topNews) {
+        topNews = await prisma.newsItem.findFirst({
+          where: { id: body.topNewsId, status: 'PUBLISHED' }
+        });
+      }
+      if (topNews) {
         console.log(`[CardNews API] ✅ Using selected top news: ${topNews.translatedTitle || topNews.title}`);
       }
     }
-    
+
     // 선택된 뉴스가 없으면 첫 번째 탑뉴스 사용
     if (!topNews) {
       topNews = topNewsList.length > 0 ? topNewsList[0] : null;
@@ -305,10 +309,10 @@ export async function POST(request) {
     });
 
     // 6. 페이스북 자동 게시 (실패해도 카드뉴스 발행 성공은 보존)
-    //    중복 방지: topNews.isSentSNS=true 면 스킵
+    //    사용자가 명시적으로 뉴스를 선택한 경우(body.topNewsId) isSentSNS 무시
+    const skipSNSCheck = !!body.topNewsId;
     let facebookResult = null;
-    console.log(`[CardNews API] FB check: isSentSNS=${topNews.isSentSNS}, hasKey=${!!process.env.PUBLISH_API_KEY}, hasImageUrl=${!!result.imageUrl}`);
-    if (!topNews.isSentSNS && process.env.PUBLISH_API_KEY && result.imageUrl) {
+    if ((skipSNSCheck || !topNews.isSentSNS) && process.env.PUBLISH_API_KEY && result.imageUrl) {
       try {
         const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://daily-news-final.vercel.app";
         const [selfR, adR] = await Promise.all([
