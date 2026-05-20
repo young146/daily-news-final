@@ -1,6 +1,9 @@
 import { PrismaClient } from '@prisma/client';
 import { sendNewsletterWithFallback } from '@/lib/email-service';
 import { autoLinkHtml } from '@/lib/html-utils';
+import { buildKakaoBroadcastText } from '@/lib/kakao-broadcast';
+import fs from 'node:fs';
+import path from 'node:path';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -216,6 +219,26 @@ export async function sendDailyDigest(isTest = false) {
     console.log(`Sending email to ${recipientEmails.length} recipients...`);
     const sendResult = await sendNewsletterWithFallback(recipientEmails, subject, htmlContent, { forceSmtp: true });
     console.log(`Daily digest email sent. Method: ${sendResult.method} | 성공: ${sendResult.succeeded} | 실패: ${sendResult.failed}`);
+
+    // 🔍 [측정 인프라 Phase 4] 카톡 오픈채팅용 텍스트 자동 출력
+    //   - 카톡 봇이 없으므로 사용자가 *수동으로 복사·붙여넣기* 함
+    //   - kakao-out/YYYY-MM-DD.txt 파일에 저장 + 콘솔에도 출력
+    try {
+        const kakaoText = buildKakaoBroadcastText(orderedItems, {
+            terminalUrl,
+            dateString: todayString,
+        });
+        const outDir = path.join(process.cwd(), 'kakao-out');
+        if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+        const outFile = path.join(outDir, `${vnDateStr}.txt`);
+        fs.writeFileSync(outFile, kakaoText, 'utf8');
+        console.log('\n========== 카톡 오픈채팅 복사용 텍스트 ==========');
+        console.log(kakaoText);
+        console.log('==================================================');
+        console.log(`📂 저장 위치: ${outFile}\n`);
+    } catch (kakaoErr) {
+        console.error('카톡 텍스트 생성 실패 (이메일 발송에는 영향 없음):', kakaoErr.message);
+    }
 
   } catch (error) {
     console.error('Failed to send daily digest:', error);
