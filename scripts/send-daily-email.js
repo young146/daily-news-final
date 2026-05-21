@@ -2,14 +2,38 @@ import { PrismaClient } from '@prisma/client';
 import { sendNewsletterWithFallback } from '@/lib/email-service';
 import { autoLinkHtml } from '@/lib/html-utils';
 import { buildKakaoBroadcastText } from '@/lib/kakao-broadcast';
+import { getFirestore } from '@/lib/firebase-admin';
 import fs from 'node:fs';
 import path from 'node:path';
 import dotenv from 'dotenv';
 dotenv.config();
 
+// 최근 24시간 신규 채용/부동산 가져오기 (메인 깔때기 단계 1 보강)
+// 실패해도 이메일 전체 흐름을 막지 않는다 (try/catch + fallback)
+async function fetchRecentJobsAndRealEstate() {
+  try {
+    const db = getFirestore();
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const [jobsSnap, realEstateSnap] = await Promise.all([
+      db.collection('Jobs').where('createdAt', '>', since).limit(5).get().catch(() => null),
+      db.collection('RealEstate').where('createdAt', '>', since).limit(5).get().catch(() => null),
+    ]);
+
+    return {
+      newJobs: jobsSnap ? jobsSnap.size : 0,
+      newRealEstate: realEstateSnap ? realEstateSnap.size : 0,
+      jobsSample: jobsSnap ? jobsSnap.docs.slice(0, 3).map(d => ({ id: d.id, ...d.data() })) : [],
+    };
+  } catch (e) {
+    console.warn('[이메일] 신규 채용/부동산 fetch 실패 (섹션 생략):', e.message);
+    return { newJobs: 0, newRealEstate: 0, jobsSample: [] };
+  }
+}
+
 const prisma = new PrismaClient();
 
-function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = []) {
+function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], appFunnel = null) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chaovietnam.co.kr';
   const trackUrl = (target, type) => {
     if (!target) return '#';
@@ -73,6 +97,27 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
         </div>
       `;
     });
+  }
+
+  // 깔때기 단계 1 보강: 최근 24시간 새 채용·부동산 알림 (앱 가치 어필)
+  // 마케팅 문서 §3 액션 5 의 *현실적 구현* — 개인별 매칭 X, 일괄 신규 N건 노출
+  if (appFunnel && (appFunnel.newJobs > 0 || appFunnel.newRealEstate > 0)) {
+    const appBannerUrl = 'https://chaovietnam-login.web.app/go/app?utm_source=email&utm_medium=newsletter&utm_content=daily_app_funnel';
+    html += `
+      <div style="margin: 30px 0; padding: 16px 18px; background: linear-gradient(135deg, #fff8f0 0%, #fef3e2 100%); border-left: 4px solid #f97316; border-radius: 8px;">
+        <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: #c2410c;">
+          📲 오늘 베트남 한인 사회 새 소식
+        </p>
+        <p style="margin: 0 0 10px 0; font-size: 13px; color: #555; line-height: 1.6;">
+          ${appFunnel.newJobs > 0 ? `💼 새 채용공고 <strong>${appFunnel.newJobs}건</strong> ` : ''}
+          ${appFunnel.newRealEstate > 0 ? `🏠 새 부동산 매물 <strong>${appFunnel.newRealEstate}건</strong>` : ''}
+          이 등록되었습니다.
+        </p>
+        <a href="${appBannerUrl}" target="_blank" style="display: inline-block; padding: 8px 16px; background: #f97316; color: #fff; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 700;">
+          앱에서 자세히 보기 →
+        </a>
+      </div>
+    `;
   }
 
   // 홍보카드 섹션 (DB에서 동적 로드)
@@ -225,7 +270,11 @@ export async function sendDailyDigest(isTest = false) {
     // format to e.g. "2026년 02월 27일 (금)"
     const todayString = `${year}년 ${month}월 ${day}일 (${weekday[0]})`;
 
-    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards);
+    // 깔때기 단계 1 보강: 신규 채용/부동산 카운트 (실패해도 이메일 전체 흐름 OK)
+    const appFunnel = await fetchRecentJobsAndRealEstate();
+    console.log(`[이메일] 신규 채용 ${appFunnel.newJobs}건, 신규 부동산 ${appFunnel.newRealEstate}건`);
+
+    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards, appFunnel);
     const subject = `[씬짜오베트남] 데일리뉴스 | ${todayString}`;
 
     const recipientEmails = isTest

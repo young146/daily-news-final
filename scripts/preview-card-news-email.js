@@ -12,7 +12,7 @@ const prisma = new PrismaClient();
 
 // send-daily-email.js generateCardNewsHtml 의 미리보기 복제본
 // (실제 발송과 시각 동일하게 유지. 발송 로직 변경 시 함께 갱신.)
-function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = []) {
+function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], appFunnel = null) {
   const baseUrl = 'https://chaovietnam.co.kr';
   const trackUrl = (target) => target || '#'; // 미리보기에서는 click tracking 우회
 
@@ -48,6 +48,22 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
       </div>
     `;
   });
+
+  // 깔때기 단계 1 보강: 새 채용/부동산 섹션 (앱 가치 어필)
+  if (appFunnel && (appFunnel.newJobs > 0 || appFunnel.newRealEstate > 0)) {
+    const appBannerUrl = 'https://chaovietnam-login.web.app/go/app?utm_source=email&utm_medium=newsletter&utm_content=daily_app_funnel';
+    html += `
+      <div style="margin: 30px 0; padding: 16px 18px; background: linear-gradient(135deg, #fff8f0 0%, #fef3e2 100%); border-left: 4px solid #f97316; border-radius: 8px;">
+        <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: #c2410c;">📲 오늘 베트남 한인 사회 새 소식</p>
+        <p style="margin: 0 0 10px 0; font-size: 13px; color: #555; line-height: 1.6;">
+          ${appFunnel.newJobs > 0 ? `💼 새 채용공고 <strong>${appFunnel.newJobs}건</strong> ` : ''}
+          ${appFunnel.newRealEstate > 0 ? `🏠 새 부동산 매물 <strong>${appFunnel.newRealEstate}건</strong>` : ''}
+          이 등록되었습니다.
+        </p>
+        <a href="${appBannerUrl}" target="_blank" style="display: inline-block; padding: 8px 16px; background: #f97316; color: #fff; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 700;">앱에서 자세히 보기 →</a>
+      </div>
+    `;
+  }
 
   if (promoCards && promoCards.length > 0) {
     html += `<div style="margin-top: 40px; padding: 24px; background-color: #fff8f0; border: 2px solid #f97316; border-radius: 12px;">
@@ -105,6 +121,9 @@ async function main() {
     take: 3,
   });
 
+  // 미리보기에서는 appFunnel 모의 데이터 (실제 발송과 동일한 시각 확인)
+  const appFunnel = { newJobs: 3, newRealEstate: 2, jobsSample: [] };
+
   const todayString = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short',
     timeZone: 'Asia/Ho_Chi_Minh',
@@ -116,6 +135,7 @@ async function main() {
     'https://chaovietnam.co.kr/daily-news-terminal/',
     recentNews,
     promoCards,
+    appFunnel,
   );
 
   const outDir = path.join(process.cwd(), '.tmp');

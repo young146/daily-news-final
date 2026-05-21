@@ -34,9 +34,9 @@
 
 | 단계 | 현재 상태 | 다음 보강 |
 |---|---|---|
-| **1. 이메일 → 앱 다운로드 유도** | 🟡 진행 중 (배너 OK, 측정 OK) | 컨버전율 측정 → 약점 보강 |
-| **2. 앱 다운로드 → 회원가입** | ❌ 미진단 (다운로드 2,000 vs 가입 584 = ~70% 누수) | funnel 누수 진단 + 첫 화면 UX |
-| **3. 앱 회원가입 → retention** | ❌ 미측정 (MAU 측정 시작 안 됨) | Firebase Analytics retention 코호트 |
+| **1. 이메일 → 앱 다운로드 유도** | 🟢 다중 강화 완료 (상단 배너 + 통합 QR + 신규 채용/부동산 섹션 + 측정) | 1주 후 GA4 컨버전율 측정 → 약점 보강 |
+| **2. 앱 다운로드 → 회원가입** | 🟢 보강 완료 (B + A v1/v2 + C 1·2차 + 4개 가입 경로 환영 통일) | 1주 후 가입 전환율 측정 |
+| **3. 앱 회원가입 → retention** | 🟡 측정 인프라 OK, 데이터 대기 | Firebase Analytics retention 코호트 며칠 후 |
 | **4. 외부 유입 (한인커뮤니티 등)** | ⏭️ 메인 다진 후 진행 | 한인회·교회·학교 협력 |
 
 ---
@@ -108,6 +108,9 @@
 
 ## 🪵 작업 로그 (최신순)
 
+- `2026-05-21` — **단계 1 추가 보강** — 이메일에 "오늘의 새 채용·부동산 N건" 섹션 추가. Firestore Jobs/RealEstate 24h 카운트 → 본문 + "앱에서 보기" CTA. lib/firebase-admin.js getFirestore() export 추가. fail-safe (실패 시 섹션만 생략).
+- `2026-05-21` — **작업 A v2 + 소셜 통일 완료** — WelcomeAfterSignupScreen 신규 (풀스크린 환영 + 4 카테고리 + 푸시 알림 통합). 이메일/Google/Apple/Kakao 4개 가입 경로 모두 환영 화면 경유. isNewSignup flag로 분기. RootNavigator "환영" 스택 등록.
+- `2026-05-21` — **작업 C 2차 완료** — 4곳 추가 통일 (ChatRoom 메시지·찜·게시물·리뷰). 4가지 공존 패턴 → useRequireAuth hook 단일화.
 - `2026-05-21` — **작업 C 1차 완료** — `useRequireAuth` helper hook 도입 + 알림 설정 토글 + 채팅 시작에 가입 유도 모달 박음. 비회원 액션 silent fail/return 패턴 제거. 모두 OTA-safe (native 추가 X).
 - `2026-05-21` — **defensive load + 빌드/OTA 가이드 + 미빌드 추적표 도입** — `lib/analytics.js` 동적 require 로 변경. `PROGRESS_BUILD_PENDING.md` 신규. `CLAUDE.md/AGENTS.md/GEMINI.md` 의사결정 가이드 추가. EAS Update production 1차 발송 (group `9466e6ec-...`).
 - `2026-05-21` — **작업 B 완료** + **작업 A v1 완료** — 닉네임 우선 가입 (SignupScreen.js) + 가입 후 환영/가치 명확화 (App.js, 8→3초).
