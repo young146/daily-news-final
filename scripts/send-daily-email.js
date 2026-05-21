@@ -18,6 +18,18 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
 
   const trackedTerminalUrl = trackUrl(terminalUrl, 'TERMINAL');
 
+  // 상단 가벼운 배너: "왜 앱인가" (실시간/푸시) — 본문 보러 온 사용자가 첫 화면에서 보게 함
+  // 하단 PromoCard 6 은 "어떻게 받나" (QR/다운로드) — 역할 분리로 spammy 회피
+  const topBannerUrl = 'https://chaovietnam-login.web.app/go/app?utm_source=email&utm_medium=newsletter&utm_content=email_top_banner';
+  const topBannerHtml = `
+    <a href="${topBannerUrl}" target="_blank" style="text-decoration:none;display:block;margin-bottom:20px;">
+      <div style="background:#fff8f0;border:1px solid #fed7aa;border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;color:#7c2d12;">
+        <span style="line-height:1.4;">📱 <strong>매일 이메일 + 실시간 알림</strong>은 앱에서. 24년 베트남 한인 미디어, 이제 모바일로.</span>
+        <span style="background:#f97316;color:#fff;padding:6px 14px;border-radius:6px;font-weight:700;white-space:nowrap;font-size:12px;">앱 설치 →</span>
+      </div>
+    </a>
+  `;
+
   let html = `
     <div style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; max-width: 700px; margin: 0 auto; color: #333; padding: 20px; background-color: #fff;">
       <h2 style="font-size: 16px; color: #666; margin-bottom: 20px;">
@@ -26,6 +38,7 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
       <h1 style="font-size: 24px; color: #d1121d; margin-bottom: 20px;">
         씬짜오베트남 오늘의 뉴스
       </h1>
+      ${topBannerHtml}
   `;
 
   if (cardImageUrl) {
