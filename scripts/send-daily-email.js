@@ -195,13 +195,23 @@ export async function sendDailyDigest(isTest = false) {
       return;
     }
 
-    // 활성 홍보카드 DB에서 로드
+    // 활성 홍보카드 DB에서 로드 + 요일 필터
+    // weekdays 필드: null 또는 빈 문자열 = 모든 요일 / "1,3,5" = 월·수·금
+    // ISO 요일: 1=월, 2=화, ..., 7=일
     console.log('Fetching active promo cards...');
-    const promoCards = await prisma.promoCard.findMany({
+    const allPromoCards = await prisma.promoCard.findMany({
       where: { isActive: true },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
-    console.log(`Found ${promoCards.length} active promo cards.`);
+    // 베트남 시간 기준 오늘 요일
+    const vnNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+    const dow = vnNow.getDay() === 0 ? 7 : vnNow.getDay(); // 0(일) → 7
+    const promoCards = allPromoCards.filter(c => {
+      if (!c.weekdays || c.weekdays.trim() === '') return true; // 모든 요일
+      const allowed = c.weekdays.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+      return allowed.includes(dow);
+    });
+    console.log(`Found ${allPromoCards.length} active promo cards, ${promoCards.length} for today (요일=${dow}).`);
 
     // Set "today" to begin of the day in Vietnam timezone
     const now = new Date();

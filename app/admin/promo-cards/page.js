@@ -38,7 +38,7 @@ export default function PromoCardsPage() {
     const [previewCard, setPreviewCard] = useState(null);
     const fileInputRef = useRef(null);
 
-    const emptyForm = { title: "", description: "", imageUrl: "", videoUrl: "", linkUrl: "", isActive: true, sortOrder: 0, kind: "ad", category: "" };
+    const emptyForm = { title: "", description: "", imageUrl: "", videoUrl: "", linkUrl: "", isActive: true, sortOrder: 0, kind: "ad", category: "", weekdays: "" };
     const [form, setForm] = useState(emptyForm);
     const [filter, setFilter] = useState("all"); // "all" | "ad" | "self"
 
@@ -62,7 +62,7 @@ export default function PromoCardsPage() {
     const openNewForm = () => { setEditingCard(null); setForm(emptyForm); setShowForm(true); window.scrollTo({ top: 0, behavior: "smooth" }); };
     const openEditForm = (card) => {
         setEditingCard(card);
-        setForm({ title: card.title, description: card.description || "", imageUrl: card.imageUrl || "", videoUrl: card.videoUrl || "", linkUrl: card.linkUrl, isActive: card.isActive, sortOrder: card.sortOrder, kind: card.kind || "ad", category: card.category || "" });
+        setForm({ title: card.title, description: card.description || "", imageUrl: card.imageUrl || "", videoUrl: card.videoUrl || "", linkUrl: card.linkUrl, isActive: card.isActive, sortOrder: card.sortOrder, kind: card.kind || "ad", category: card.category || "", weekdays: card.weekdays || "" });
         setShowForm(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
@@ -235,6 +235,47 @@ export default function PromoCardsPage() {
                                 </label>
                             </div>
                         </div>
+
+                        {/* 📅 발송 요일 선택 (광고주 약속에 따라 — 비워두면 매일 발송) */}
+                        <div>
+                            <label style={lbl}>📅 발송 요일</label>
+                            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "6px" }}>
+                                {[
+                                    { num: 1, label: "월" }, { num: 2, label: "화" }, { num: 3, label: "수" },
+                                    { num: 4, label: "목" }, { num: 5, label: "금" }, { num: 6, label: "토" }, { num: 7, label: "일" },
+                                ].map(({ num, label }) => {
+                                    const selected = (form.weekdays || "").split(",").map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+                                    const isChecked = selected.includes(num);
+                                    return (
+                                        <label key={num} style={{
+                                            display: "flex", alignItems: "center", gap: "4px",
+                                            cursor: "pointer", padding: "6px 10px", borderRadius: "6px",
+                                            background: isChecked ? "#fef3c7" : "#f9fafb",
+                                            border: isChecked ? "1px solid #f59e0b" : "1px solid #e5e7eb",
+                                            fontSize: "13px", fontWeight: "600",
+                                            color: isChecked ? "#92400e" : "#6b7280",
+                                        }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={isChecked}
+                                                onChange={(e) => {
+                                                    const cur = (form.weekdays || "").split(",").map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+                                                    const next = e.target.checked
+                                                        ? [...cur, num].sort((a, b) => a - b)
+                                                        : cur.filter(n => n !== num);
+                                                    setForm(f => ({ ...f, weekdays: next.join(",") }));
+                                                }}
+                                                style={{ width: "14px", height: "14px" }}
+                                            />
+                                            {label}
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                            <span style={{ fontSize: "12px", color: "#9ca3af" }}>
+                                {form.weekdays ? `선택된 요일: ${form.weekdays}` : "선택 없음 = 매일 발송 (모든 요일)"}
+                            </span>
+                        </div>
                         <div style={{ display: "flex", gap: "12px", paddingTop: "8px" }}>
                             <button onClick={handleSave} disabled={saving}
                                 style={{ flex: 1, padding: "12px", background: saving ? "#9ca3af" : "#f97316", color: "white", border: "none", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: "bold", fontSize: "15px" }}>
@@ -314,6 +355,11 @@ export default function PromoCardsPage() {
                                         </a>
                                         <div style={{ fontSize: "11px", color: "#9ca3af", marginBottom: "12px" }}>
                                             순서: {card.sortOrder} | {new Date(card.createdAt).toLocaleDateString("ko-KR")} 등록
+                                            {card.weekdays && (() => {
+                                                const dayLabels = { 1: "월", 2: "화", 3: "수", 4: "목", 5: "금", 6: "토", 7: "일" };
+                                                const days = card.weekdays.split(",").map(s => dayLabels[parseInt(s.trim(), 10)]).filter(Boolean);
+                                                return days.length > 0 ? ` | 📅 ${days.join("·")}` : "";
+                                            })()}
                                         </div>
                                         {/* 액션 버튼 4개 */}
                                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px" }}>
