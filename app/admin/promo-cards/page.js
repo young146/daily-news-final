@@ -330,14 +330,28 @@ export default function PromoCardsPage() {
                             const isSelf = card.kind === "self";
                             return (
                                 <div key={card.id} style={{ borderRadius: "12px", border: card.isActive ? "2px solid #fed7aa" : "2px solid #e5e7eb", overflow: "hidden", background: card.isActive ? "#fff" : "#f9fafb", boxShadow: card.isActive ? "0 2px 8px rgba(249,115,22,0.12)" : "none", opacity: card.isActive ? 1 : 0.75, position: "relative" }}>
-                                    {/* ON/OFF 배지 */}
-                                    <div style={{ position: "absolute", top: "10px", right: "10px", zIndex: 2, padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "bold", background: card.isActive ? "#dcfce7" : "#fee2e2", color: card.isActive ? "#16a34a" : "#dc2626", border: `1px solid ${card.isActive ? "#86efac" : "#fca5a5"}` }}>
-                                        {card.isActive ? "● ON" : "● OFF"}
+                                    {/* ON/OFF 배지 + 요일 (우상단, 가로 배치) */}
+                                    <div style={{ position: "absolute", top: "10px", right: "10px", zIndex: 2, display: "flex", gap: "6px", alignItems: "center" }}>
+                                        {card.weekdays && (() => {
+                                            const dayLabels = { 1: "월", 2: "화", 3: "수", 4: "목", 5: "금", 6: "토", 7: "일" };
+                                            const days = card.weekdays.split(",").map(s => dayLabels[parseInt(s.trim(), 10)]).filter(Boolean);
+                                            if (days.length === 0) return null;
+                                            return (
+                                                <div style={{ padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "bold", background: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d" }}>
+                                                    📅 {days.join("·")}
+                                                </div>
+                                            );
+                                        })()}
+                                        <div style={{ padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "bold", background: card.isActive ? "#dcfce7" : "#fee2e2", color: card.isActive ? "#16a34a" : "#dc2626", border: `1px solid ${card.isActive ? "#86efac" : "#fca5a5"}` }}>
+                                            {card.isActive ? "● ON" : "● OFF"}
+                                        </div>
                                     </div>
-                                    {/* 종류 배지 (좌상단) */}
-                                    <div style={{ position: "absolute", top: "10px", left: "10px", zIndex: 2, padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "bold", background: isSelf ? "#dbeafe" : "#fef3c7", color: isSelf ? "#1d4ed8" : "#92400e", border: `1px solid ${isSelf ? "#93c5fd" : "#fcd34d"}` }}>
-                                        {isSelf ? `🏷️ 자체${card.category ? ` · ${card.category}` : ""}` : "💰 광고주"}
-                                    </div>
+                                    {/* 자체 홍보 배지 (좌상단, 광고주는 표시 X) */}
+                                    {isSelf && (
+                                        <div style={{ position: "absolute", top: "10px", left: "10px", zIndex: 2, padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "bold", background: "#dbeafe", color: "#1d4ed8", border: "1px solid #93c5fd" }}>
+                                            🏷️ 자체{card.category ? ` · ${card.category}` : ""}
+                                        </div>
+                                    )}
                                     {/* 썸네일 */}
                                     {thumb ? (
                                         <img src={thumb} alt={card.title} style={{ width: "100%", height: "160px", objectFit: "contain", background: "#f8f8f8", display: "block" }} onError={(e) => { e.target.style.display = "none"; }} />
@@ -355,11 +369,6 @@ export default function PromoCardsPage() {
                                         </a>
                                         <div style={{ fontSize: "11px", color: "#9ca3af", marginBottom: "12px" }}>
                                             순서: {card.sortOrder} | {new Date(card.createdAt).toLocaleDateString("ko-KR")} 등록
-                                            {card.weekdays && (() => {
-                                                const dayLabels = { 1: "월", 2: "화", 3: "수", 4: "목", 5: "금", 6: "토", 7: "일" };
-                                                const days = card.weekdays.split(",").map(s => dayLabels[parseInt(s.trim(), 10)]).filter(Boolean);
-                                                return days.length > 0 ? ` | 📅 ${days.join("·")}` : "";
-                                            })()}
                                         </div>
                                         {/* 액션 버튼 4개 */}
                                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px" }}>
