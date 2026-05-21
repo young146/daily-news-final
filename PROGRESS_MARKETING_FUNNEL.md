@@ -108,6 +108,7 @@
 
 ## 🪵 작업 로그 (최신순)
 
+- `2026-05-21` — **작업 C 5차 + 별도 트랙 문서화** — JobsScreen/RealEstateScreen/XinChaoDanggnScreen/MoreScreen 4곳 추가 통일 (inline Alert → hook). 별도 트랙으로 광고주 미디어킷 v1 + 매장 QR 스티커 가이드 v1 작성 (chao-vn-app/marketing/). 추천 프로그램 v1은 비즈니스 특수성(잡지 이미 무료·광고=정보) 반영 재설계했으나 사용자 검토 보류 (파일은 디스크 유지). 이메일 발송 모니터링 알림 추가 시도했으나 SendGrid 100% 성공률·바운스 자동 제외 = 과잉 방어로 되돌림.
 - `2026-05-21` — **PR 검토 후 위험 패치** — `남의 코드 시각`으로 변경 전체 재검토. useRequireAuth optional chaining 안전화 + WelcomeAfterSignupScreen logEvent try/catch + ProfileScreen pickImage 가드 + LoginScreen i18n defaultValue 통일. @babel/parser 16개 파일 syntax 검증 통과. ChatList 비회원 화면에 가입 버튼 추가 (MyItems/MyFavorites는 이미 충분).
 - `2026-05-21` — **단계 1 추가 보강** — 이메일에 "오늘의 새 채용·부동산 N건" 섹션 추가. Firestore Jobs/RealEstate 24h 카운트 → 본문 + "앱에서 보기" CTA. lib/firebase-admin.js getFirestore() export 추가. fail-safe (실패 시 섹션만 생략).
 - `2026-05-21` — **작업 A v2 + 소셜 통일 완료** — WelcomeAfterSignupScreen 신규 (풀스크린 환영 + 4 카테고리 + 푸시 알림 통합). 이메일/Google/Apple/Kakao 4개 가입 경로 모두 환영 화면 경유. isNewSignup flag로 분기. RootNavigator "환영" 스택 등록.
@@ -131,3 +132,41 @@
 3. 진행하려는 작업이 *메인 라인 안*인가? → 진행
 4. 메인 라인 *밖*이거나 모호한가? → 사용자에게 "이게 점프 같은데" 사전 확인
 5. 작업 완료 후 본 파일 *작업 로그 + 진행 상태*를 갱신
+
+---
+
+## 📅 다음 1~2주 액션 (2026-05-22 ~ 2026-06-04)
+
+코드 보강은 *충분히 깊이* 진행됨. 이제 **앱 내 측정 데이터 활성화 + 효과 보기**.
+
+### 🔴 즉시 (이번 주 안) — EAS Build + 스토어 제출 필수
+
+**왜 지금**:
+- 어제 추가한 `@react-native-firebase/analytics` (앱 내 화면·이벤트 측정 네이티브 모듈) 가 *운영 앱에 없음*
+- 빌드 안 하면 *welcome_screen_shown·signup_complete·screen_view 모두 0건* → 1주 후 단계 2·3 효과 측정 *무력화*
+- 빌드 미룬 원래 의도(더 큰 native 변경 모으기)는 *오늘 작업이 다 OTA*라 해소됨
+
+**작업** (개발자 또는 씬짜오 운영진):
+- `cd c:/chao-vn-app/chao-vn-app && eas build --platform all --profile production`
+- 빌드 완료 후 `eas submit --platform ios` + `eas submit --platform android`
+- 스토어 심사 — iOS ~1주, Android ~1~2일
+- 빌드/심사 후 PROGRESS_BUILD_PENDING.md 의 analytics 항목 ✅ 처리
+
+### 매일 (5분, 사용자 직접)
+- **이메일 발송 확인** — 매일 베트남 시간 6am 자동 발송. `daily-news-final/.tmp/kakao-out/YYYY-MM-DD.txt` 또는 admin/published-news 페이지에서 발송 결과 확인
+- **카톡방 게시** — 위 txt 파일 내용을 카톡 오픈채팅 3개(당근/구인구직/부동산)에 복사·붙여넣기
+
+### 빌드 심사 통과 후 (1~2주 후) — 측정 데이터 정착 시점
+- **Firebase Console → Analytics → Events** — `welcome_screen_shown`, `signup_complete`, `screen_view` 이벤트 흐름 확인
+- **GA4 캠페인 보고서**: 이메일 → 앱 다운로드 페이지 클릭 (utm 추적)
+- **3개 핵심 KPI 측정**:
+  1. 이메일 클릭률 (6,073명 중 몇 명이 앱 페이지 도달)
+  2. 앱 가입 전환률 (welcome_screen_shown 대비 signup_complete)
+  3. 가입 후 retention (환영 화면 → 메인 진입 비율)
+
+이 3개 데이터를 보면 *진짜 약점*이 보임 → 메인 라인 다음 보강 방향 결정.
+
+### 2주 후 (별도 트랙 검토)
+- [marketing/MEDIA_KIT_v1.md](../../chao-vn-app/chao-vn-app/marketing/MEDIA_KIT_v1.md) 🔴 TODO 8건 채우기 → Canva 디자인 변환 → 영업 시작
+- [marketing/STORE_QR_STICKER_GUIDE_v1.md](../../chao-vn-app/chao-vn-app/marketing/STORE_QR_STICKER_GUIDE_v1.md) 협력 매장 1~2곳 시범 시작
+- 추천 프로그램 — 광고주 협력 매장이 *3곳 이상* 모이면 v2 재설계 (디스크에 v1 초안 유지)
