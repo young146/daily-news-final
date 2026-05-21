@@ -41,6 +41,8 @@ export default function PromoCardsPage() {
     const emptyForm = { title: "", description: "", imageUrl: "", videoUrl: "", linkUrl: "", isActive: true, sortOrder: 0, kind: "ad", category: "", weekdays: "" };
     const [form, setForm] = useState(emptyForm);
     const [filter, setFilter] = useState("all"); // "all" | "ad" | "self"
+    const [statusFilter, setStatusFilter] = useState("all"); // "all" | "on" | "off"
+    const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => { fetchCards(); }, []);
 
@@ -299,33 +301,93 @@ export default function PromoCardsPage() {
                     </div>
                 </div>
 
-                {/* 필터 탭 */}
+                {/* 검색창 + 필터 탭 */}
                 {(() => {
                     const adCount = cards.filter((c) => (c.kind || "ad") === "ad").length;
                     const selfCount = cards.filter((c) => c.kind === "self").length;
+                    const onCount = cards.filter((c) => c.isActive).length;
+                    const offCount = cards.filter((c) => !c.isActive).length;
                     const tabStyle = (active) => ({ padding: "8px 16px", borderRadius: "8px", border: active ? "2px solid #f97316" : "1px solid #e5e7eb", background: active ? "#fff7ed" : "white", color: active ? "#c2410c" : "#374151", fontWeight: active ? "bold" : "normal", fontSize: "13px", cursor: "pointer" });
+                    const statusStyle = (active, color) => ({ padding: "8px 14px", borderRadius: "8px", border: active ? `2px solid ${color}` : "1px solid #e5e7eb", background: active ? "#f9fafb" : "white", color: active ? color : "#374151", fontWeight: active ? "bold" : "normal", fontSize: "13px", cursor: "pointer" });
                     return (
-                        <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
-                            <button onClick={() => setFilter("all")} style={tabStyle(filter === "all")}>전체 ({cards.length})</button>
-                            <button onClick={() => setFilter("ad")} style={tabStyle(filter === "ad")}>💰 광고주 ({adCount})</button>
-                            <button onClick={() => setFilter("self")} style={tabStyle(filter === "self")}>🏷️ 자체 홍보 ({selfCount})</button>
+                        <div style={{ marginBottom: "20px" }}>
+                            {/* 검색창 */}
+                            <div style={{ position: "relative", marginBottom: "12px" }}>
+                                <input
+                                    type="text"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    placeholder="🔍 카드 제목·설명·링크로 검색…"
+                                    style={{ width: "100%", padding: "10px 14px", fontSize: "14px", border: "1px solid #d1d5db", borderRadius: "8px", boxSizing: "border-box" }}
+                                />
+                                {searchTerm && (
+                                    <button
+                                        onClick={() => setSearchTerm("")}
+                                        style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", fontSize: "16px", color: "#9ca3af", cursor: "pointer" }}
+                                        title="검색어 지우기"
+                                    >×</button>
+                                )}
+                            </div>
+                            {/* 종류 필터 */}
+                            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "8px" }}>
+                                <button onClick={() => setFilter("all")} style={tabStyle(filter === "all")}>전체 ({cards.length})</button>
+                                <button onClick={() => setFilter("ad")} style={tabStyle(filter === "ad")}>💰 광고주 ({adCount})</button>
+                                <button onClick={() => setFilter("self")} style={tabStyle(filter === "self")}>🏷️ 자체 홍보 ({selfCount})</button>
+                            </div>
+                            {/* 상태 필터 */}
+                            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                                <button onClick={() => setStatusFilter("all")} style={statusStyle(statusFilter === "all", "#374151")}>모든 상태</button>
+                                <button onClick={() => setStatusFilter("on")} style={statusStyle(statusFilter === "on", "#16a34a")}>● ON ({onCount})</button>
+                                <button onClick={() => setStatusFilter("off")} style={statusStyle(statusFilter === "off", "#dc2626")}>● OFF ({offCount})</button>
+                            </div>
                         </div>
                     );
                 })()}
 
-                {loading ? (
-                    <p style={{ color: "#9ca3af", textAlign: "center", padding: "40px" }}>불러오는 중...</p>
-                ) : cards.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>
-                        <p style={{ fontSize: "40px" }}>📭</p>
-                        <p>등록된 홍보카드가 없습니다.</p>
-                        <button onClick={openNewForm} style={{ marginTop: "12px", padding: "8px 20px", background: "#f97316", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}>
-                            + 첫 번째 홍보카드 만들기
-                        </button>
-                    </div>
-                ) : (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
-                        {cards.filter((c) => filter === "all" || (c.kind || "ad") === filter).map((card) => {
+                {(() => {
+                    const filtered = cards.filter((c) => {
+                        if (filter !== "all" && (c.kind || "ad") !== filter) return false;
+                        if (statusFilter === "on" && !c.isActive) return false;
+                        if (statusFilter === "off" && c.isActive) return false;
+                        if (searchTerm.trim()) {
+                            const q = searchTerm.toLowerCase();
+                            const hay = `${c.title || ""} ${c.description || ""} ${c.linkUrl || ""}`.toLowerCase();
+                            if (!hay.includes(q)) return false;
+                        }
+                        return true;
+                    });
+                    if (loading) {
+                        return <p style={{ color: "#9ca3af", textAlign: "center", padding: "40px" }}>불러오는 중...</p>;
+                    }
+                    if (cards.length === 0) {
+                        return (
+                            <div style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>
+                                <p style={{ fontSize: "40px" }}>📭</p>
+                                <p>등록된 홍보카드가 없습니다.</p>
+                                <button onClick={openNewForm} style={{ marginTop: "12px", padding: "8px 20px", background: "#f97316", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}>
+                                    + 첫 번째 홍보카드 만들기
+                                </button>
+                            </div>
+                        );
+                    }
+                    if (filtered.length === 0) {
+                        return (
+                            <div style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>
+                                <p style={{ fontSize: "32px" }}>🔍</p>
+                                <p>조건에 맞는 카드가 없습니다.</p>
+                                <p style={{ fontSize: "12px" }}>검색어 / 필터를 다시 확인하세요.</p>
+                            </div>
+                        );
+                    }
+                    return (
+                        <>
+                            {(searchTerm || statusFilter !== "all" || filter !== "all") && (
+                                <p style={{ fontSize: "12px", color: "#6b7280", marginBottom: "12px" }}>
+                                    📊 {filtered.length}건 / 전체 {cards.length}건 일치
+                                </p>
+                            )}
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
+                                {filtered.map((card) => {
                             const thumb = getThumb(card);
                             const isSelf = card.kind === "self";
                             return (
@@ -385,8 +447,10 @@ export default function PromoCardsPage() {
                                 </div>
                             );
                         })}
-                    </div>
-                )}
+                            </div>
+                        </>
+                    );
+                })()}
             </div>
 
             {/* 미리보기 모달 - 이메일 수신 시 모습 그대로 */}
