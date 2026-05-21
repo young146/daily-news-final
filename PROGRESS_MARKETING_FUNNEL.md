@@ -108,6 +108,8 @@
 
 ## 🪵 작업 로그 (최신순)
 
+- `2026-05-21` — **액션 14 v1 — 비회원 첫 화면 가치 카드** — 뉴스 탭(첫 진입 화면) 상단에 `VisitorValueCard` 추가. Firestore Jobs/RealEstate/XinChaoDanggn 24h count + 가입 유도 CTA. 이메일 신규 채용/부동산 섹션 + 환영 화면 + 비회원 첫 화면 = **3채널 데이터/디자인 자동 동기화** (사용자 통찰 반영 — 같은 메시지 3번 노출로 인지 일관성 강화). 빌드 사이클 안 변경이라 새 빌드 출시 후 OTA로 전달.
+- `2026-05-21` — **5/21 EAS Build 추진 + 완료** — iOS build 73 + Android versionCode 106 / v2.4.2 / rv 2.4.2. analytics 측정 + 8 사이클 보강 + 작업 C 5차 통합 빌드. 스토어 심사 중.
 - `2026-05-21` — **작업 C 5차 + 별도 트랙 문서화** — JobsScreen/RealEstateScreen/XinChaoDanggnScreen/MoreScreen 4곳 추가 통일 (inline Alert → hook). 별도 트랙으로 광고주 미디어킷 v1 + 매장 QR 스티커 가이드 v1 작성 (chao-vn-app/marketing/). 추천 프로그램 v1은 비즈니스 특수성(잡지 이미 무료·광고=정보) 반영 재설계했으나 사용자 검토 보류 (파일은 디스크 유지). 이메일 발송 모니터링 알림 추가 시도했으나 SendGrid 100% 성공률·바운스 자동 제외 = 과잉 방어로 되돌림.
 - `2026-05-21` — **PR 검토 후 위험 패치** — `남의 코드 시각`으로 변경 전체 재검토. useRequireAuth optional chaining 안전화 + WelcomeAfterSignupScreen logEvent try/catch + ProfileScreen pickImage 가드 + LoginScreen i18n defaultValue 통일. @babel/parser 16개 파일 syntax 검증 통과. ChatList 비회원 화면에 가입 버튼 추가 (MyItems/MyFavorites는 이미 충분).
 - `2026-05-21` — **단계 1 추가 보강** — 이메일에 "오늘의 새 채용·부동산 N건" 섹션 추가. Firestore Jobs/RealEstate 24h 카운트 → 본문 + "앱에서 보기" CTA. lib/firebase-admin.js getFirestore() export 추가. fail-safe (실패 시 섹션만 생략).
