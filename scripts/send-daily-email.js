@@ -80,17 +80,20 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
         ? `<div style="font-size:13px;color:#555;margin:8px 0;line-height:1.5;">${processedHtml}</div>`
         : '';
 
+      // 앱 다운로드 카드는 description 안에 이미 자체 CTA 버튼이 있으므로 외부 "자세히 보기" 생략
+      const moreButtonHtml = card.category === 'app' ? '' : `
+          <a href="${trackedPromoUrl}" target="_blank"
+            style="display:inline-block;margin-top:10px;padding:8px 20px;background:#f97316;color:#fff;border-radius:6px;text-decoration:none;font-size:13px;font-weight:bold;">
+            자세히 보기 →
+          </a>`;
+
       html += `
         <div style="margin-bottom:16px;background:#fff;border:1px solid #fed7aa;border-radius:10px;padding:16px;">
           ${imgHtml}
           <h3 style="margin:0 0 4px 0;font-size:15px;font-weight:bold;">
             <a href="${trackedPromoUrl}" target="_blank" style="color:#c2410c;text-decoration:none;">${card.title}</a>
           </h3>
-          ${descHtml}
-          <a href="${trackedPromoUrl}" target="_blank"
-            style="display:inline-block;margin-top:10px;padding:8px 20px;background:#f97316;color:#fff;border-radius:6px;text-decoration:none;font-size:13px;font-weight:bold;">
-            자세히 보기 →
-          </a>
+          ${descHtml}${moreButtonHtml}
         </div>
       `;
     });
