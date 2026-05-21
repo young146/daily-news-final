@@ -49,17 +49,17 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
     `;
   });
 
-  // 깔때기 단계 1 보강: 새 채용/부동산 섹션 (앱 가치 어필)
-  if (appFunnel && (appFunnel.newJobs > 0 || appFunnel.newRealEstate > 0)) {
+  // 깔때기 단계 1 보강: 새 채용/부동산/중고 섹션 (3채널 동기화)
+  if (appFunnel && (appFunnel.newJobs > 0 || appFunnel.newRealEstate > 0 || appFunnel.newItems > 0)) {
     const appBannerUrl = 'https://chaovietnam-login.web.app/go/app?utm_source=email&utm_medium=newsletter&utm_content=daily_app_funnel';
+    const parts = [];
+    if (appFunnel.newJobs > 0) parts.push(`💼 새 채용 <strong>${appFunnel.newJobs}건</strong>`);
+    if (appFunnel.newRealEstate > 0) parts.push(`🏠 새 매물 <strong>${appFunnel.newRealEstate}건</strong>`);
+    if (appFunnel.newItems > 0) parts.push(`🛒 새 물품 <strong>${appFunnel.newItems}건</strong>`);
     html += `
       <div style="margin: 30px 0; padding: 16px 18px; background: linear-gradient(135deg, #fff8f0 0%, #fef3e2 100%); border-left: 4px solid #f97316; border-radius: 8px;">
-        <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: #c2410c;">📲 오늘 베트남 한인 사회 새 소식</p>
-        <p style="margin: 0 0 10px 0; font-size: 13px; color: #555; line-height: 1.6;">
-          ${appFunnel.newJobs > 0 ? `💼 새 채용공고 <strong>${appFunnel.newJobs}건</strong> ` : ''}
-          ${appFunnel.newRealEstate > 0 ? `🏠 새 부동산 매물 <strong>${appFunnel.newRealEstate}건</strong>` : ''}
-          이 등록되었습니다.
-        </p>
+        <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: #c2410c;">📲 오늘 (24시간) 베트남 한인 사회 새 소식</p>
+        <p style="margin: 0 0 10px 0; font-size: 13px; color: #555; line-height: 1.6;">${parts.join(' · ')}이 등록되었습니다.</p>
         <a href="${appBannerUrl}" target="_blank" style="display: inline-block; padding: 8px 16px; background: #f97316; color: #fff; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 700;">앱에서 자세히 보기 →</a>
       </div>
     `;
@@ -122,7 +122,7 @@ async function main() {
   });
 
   // 미리보기에서는 appFunnel 모의 데이터 (실제 발송과 동일한 시각 확인)
-  const appFunnel = { newJobs: 3, newRealEstate: 2, jobsSample: [] };
+  const appFunnel = { newJobs: 3, newRealEstate: 2, newItems: 5, jobsSample: [] };
 
   const todayString = new Date().toLocaleDateString('ko-KR', {
     year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short',

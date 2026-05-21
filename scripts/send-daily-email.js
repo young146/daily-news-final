@@ -8,26 +8,29 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// 최근 24시간 신규 채용/부동산 가져오기 (메인 깔때기 단계 1 보강)
+// 최근 24시간 신규 채용/부동산/중고 가져오기 (메인 깔때기 단계 1 보강)
+// 3채널 동기화: 환영화면 + 비회원 뉴스탭 카드 + 이메일 모두 같은 데이터 소스
 // 실패해도 이메일 전체 흐름을 막지 않는다 (try/catch + fallback)
 async function fetchRecentJobsAndRealEstate() {
   try {
     const db = getFirestore();
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    const [jobsSnap, realEstateSnap] = await Promise.all([
+    const [jobsSnap, realEstateSnap, itemsSnap] = await Promise.all([
       db.collection('Jobs').where('createdAt', '>', since).limit(5).get().catch(() => null),
       db.collection('RealEstate').where('createdAt', '>', since).limit(5).get().catch(() => null),
+      db.collection('XinChaoDanggn').where('createdAt', '>', since).limit(5).get().catch(() => null),
     ]);
 
     return {
       newJobs: jobsSnap ? jobsSnap.size : 0,
       newRealEstate: realEstateSnap ? realEstateSnap.size : 0,
+      newItems: itemsSnap ? itemsSnap.size : 0,
       jobsSample: jobsSnap ? jobsSnap.docs.slice(0, 3).map(d => ({ id: d.id, ...d.data() })) : [],
     };
   } catch (e) {
-    console.warn('[이메일] 신규 채용/부동산 fetch 실패 (섹션 생략):', e.message);
-    return { newJobs: 0, newRealEstate: 0, jobsSample: [] };
+    console.warn('[이메일] 신규 채용/부동산/중고 fetch 실패 (섹션 생략):', e.message);
+    return { newJobs: 0, newRealEstate: 0, newItems: 0, jobsSample: [] };
   }
 }
 
@@ -99,19 +102,21 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
     });
   }
 
-  // 깔때기 단계 1 보강: 최근 24시간 새 채용·부동산 알림 (앱 가치 어필)
-  // 마케팅 문서 §3 액션 5 의 *현실적 구현* — 개인별 매칭 X, 일괄 신규 N건 노출
-  if (appFunnel && (appFunnel.newJobs > 0 || appFunnel.newRealEstate > 0)) {
+  // 깔때기 단계 1 보강: 최근 24시간 새 채용·부동산·중고 알림 (3채널 동기화)
+  // 환영화면(가입 후) + 비회원 뉴스탭 카드 + 이메일 = 같은 메시지 노출로 인지 일관성
+  if (appFunnel && (appFunnel.newJobs > 0 || appFunnel.newRealEstate > 0 || appFunnel.newItems > 0)) {
     const appBannerUrl = 'https://chaovietnam-login.web.app/go/app?utm_source=email&utm_medium=newsletter&utm_content=daily_app_funnel';
+    const parts = [];
+    if (appFunnel.newJobs > 0) parts.push(`💼 새 채용 <strong>${appFunnel.newJobs}건</strong>`);
+    if (appFunnel.newRealEstate > 0) parts.push(`🏠 새 매물 <strong>${appFunnel.newRealEstate}건</strong>`);
+    if (appFunnel.newItems > 0) parts.push(`🛒 새 물품 <strong>${appFunnel.newItems}건</strong>`);
     html += `
       <div style="margin: 30px 0; padding: 16px 18px; background: linear-gradient(135deg, #fff8f0 0%, #fef3e2 100%); border-left: 4px solid #f97316; border-radius: 8px;">
         <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: #c2410c;">
-          📲 오늘 베트남 한인 사회 새 소식
+          📲 오늘 (24시간) 베트남 한인 사회 새 소식
         </p>
         <p style="margin: 0 0 10px 0; font-size: 13px; color: #555; line-height: 1.6;">
-          ${appFunnel.newJobs > 0 ? `💼 새 채용공고 <strong>${appFunnel.newJobs}건</strong> ` : ''}
-          ${appFunnel.newRealEstate > 0 ? `🏠 새 부동산 매물 <strong>${appFunnel.newRealEstate}건</strong>` : ''}
-          이 등록되었습니다.
+          ${parts.join(' · ')}이 등록되었습니다.
         </p>
         <a href="${appBannerUrl}" target="_blank" style="display: inline-block; padding: 8px 16px; background: #f97316; color: #fff; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 700;">
           앱에서 자세히 보기 →
