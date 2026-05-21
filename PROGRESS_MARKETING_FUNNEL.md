@@ -70,8 +70,17 @@
 **진행 상태 (2026-05-21):**
 - ✅ **B 완료** — `SignupScreen.js`: name 필수→선택, 닉네임 의미로 단일화. displayName 입력란 제거. 실명은 추후 프로필 완성에서.
 - ✅ **A v1 완료** — `App.js:1644` "프로필 작성하세요" 잔소리 → "환영 + 가치 명확화 + 1분 설정". 8초→3초 단축. (v2: 전용 환영 화면 + 실제 콘텐츠 미리보기는 다음 세션)
-- ⏳ **C 다음** — 비회원 액션(알림 신청 등)에 가입 유도 모달. 1순위는 *알림 신청* 액션 (retention 핵심)
+- ✅ **C 진행 중 (1차 완료)** — 재사용 helper `hooks/useRequireAuth.js` 도입. 일관된 가입 유도 모달.
+  - `NotificationSettingScreen.js`: 알림 토글 silent fail → 가입 유도 (액션 라벨 "알림 받기")
+  - `ItemDetailScreen.js:handleChat`: 채팅 silent return → 가입 유도 ("판매자와 채팅")
+  - 다음 라운드: 메시지 전송(`ChatRoomScreen.js`), 댓글, 게시물 작성 등 점진 적용
 - ⏭️ D 후순위 (edge case)
+
+**작업 C 설계 노트 (다른 개발자 인수인계용):**
+- 비회원 처리 패턴이 *4가지* 공존하던 상태 → `useRequireAuth` hook 으로 통일
+- 새 액션 보강 시 표준 패턴: `if (!requireAuth('액션명')) return;`
+- 메시지 톤: 부정형 X, 가치 중심 ("X 받으려면 가입 필요"), 시간 약속 ("30초")
+- 메인 라인 안 작업. 트래픽 vs 정보 균형 원칙 구현체 ([[project_traffic_vs_info_balance]])
 
 ---
 
@@ -99,7 +108,9 @@
 
 ## 🪵 작업 로그 (최신순)
 
-- `2026-05-21` — **작업 B 완료** + **작업 A v1 완료** — 닉네임 우선 가입 (SignupScreen.js) + 가입 후 환영/가치 명확화 (App.js, 8→3초). EAS update 필요. 작업 C(비회원 액션 가입 유도)는 다음 세션.
+- `2026-05-21` — **작업 C 1차 완료** — `useRequireAuth` helper hook 도입 + 알림 설정 토글 + 채팅 시작에 가입 유도 모달 박음. 비회원 액션 silent fail/return 패턴 제거. 모두 OTA-safe (native 추가 X).
+- `2026-05-21` — **defensive load + 빌드/OTA 가이드 + 미빌드 추적표 도입** — `lib/analytics.js` 동적 require 로 변경. `PROGRESS_BUILD_PENDING.md` 신규. `CLAUDE.md/AGENTS.md/GEMINI.md` 의사결정 가이드 추가. EAS Update production 1차 발송 (group `9466e6ec-...`).
+- `2026-05-21` — **작업 B 완료** + **작업 A v1 완료** — 닉네임 우선 가입 (SignupScreen.js) + 가입 후 환영/가치 명확화 (App.js, 8→3초).
 - `2026-05-21` — **단계 2 코드 진단 완료**. 70% 누수 가설 도출: ①비회원 모드 기본 (100% 접근), ②가입 후 aha moment 부재. 보강 작업 후보 A~D 우선순위 정리.
 - `2026-05-21` — **단계 1 보강**: 이메일 상단 1줄 배너 추가. "왜 앱인가" 메시지로 본문만 읽고 나가는 사용자도 잡음.
 - `2026-05-21` — **점프 사고 → 진행표 도입**. jobs-crm 매일 매칭 이메일 작업 시작했다가 사용자 지적. 메인 깔때기 가드레일 작성으로 재발 차단.
