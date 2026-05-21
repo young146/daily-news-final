@@ -3,7 +3,12 @@
 > **목적**: 마케팅 작업이 메인 깔때기 어디에 위치하는지 *항상* 추적해서 길 잃지 않게 한다.
 > 매 작업 시작 시 이 파일을 열고 "지금 어디서 무엇을 하는가" 1줄 확인 후 진행.
 >
-> 전략 문서: [씬짜오 디지털 마케팅 활성화 방안.md](../chao-vn-app/chao-vn-app/씬짜오%20디지털%20마케팅%20활성화%20방안.md) (작업 디렉토리 외부)
+> **관련 문서:**
+> - 전략: [씬짜오 디지털 마케팅 활성화 방안.md](../../chao-vn-app/chao-vn-app/씬짜오%20디지털%20마케팅%20활성화%20방안.md)
+> - 측정 인프라 진행: [PROGRESS_MEASUREMENT_INFRA.md](../../chao-vn-app/chao-vn-app/PROGRESS_MEASUREMENT_INFRA.md)
+> - **빌드 미수 추적**: [PROGRESS_BUILD_PENDING.md](../../chao-vn-app/chao-vn-app/PROGRESS_BUILD_PENDING.md) — *OTA 발송 전 반드시 확인*
+> - 에이전트 작업 지침: [CLAUDE.md](../../chao-vn-app/chao-vn-app/CLAUDE.md) — 빌드 vs OTA 의사결정 가이드 포함
+>
 > 시작: 2026-05-21
 > 최종 갱신: 2026-05-21
 
