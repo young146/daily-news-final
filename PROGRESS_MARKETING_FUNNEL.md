@@ -108,6 +108,7 @@
 
 ## 🪵 작업 로그 (최신순)
 
+- `2026-05-21` — **PR 검토 후 위험 패치** — `남의 코드 시각`으로 변경 전체 재검토. useRequireAuth optional chaining 안전화 + WelcomeAfterSignupScreen logEvent try/catch + ProfileScreen pickImage 가드 + LoginScreen i18n defaultValue 통일. @babel/parser 16개 파일 syntax 검증 통과. ChatList 비회원 화면에 가입 버튼 추가 (MyItems/MyFavorites는 이미 충분).
 - `2026-05-21` — **단계 1 추가 보강** — 이메일에 "오늘의 새 채용·부동산 N건" 섹션 추가. Firestore Jobs/RealEstate 24h 카운트 → 본문 + "앱에서 보기" CTA. lib/firebase-admin.js getFirestore() export 추가. fail-safe (실패 시 섹션만 생략).
 - `2026-05-21` — **작업 A v2 + 소셜 통일 완료** — WelcomeAfterSignupScreen 신규 (풀스크린 환영 + 4 카테고리 + 푸시 알림 통합). 이메일/Google/Apple/Kakao 4개 가입 경로 모두 환영 화면 경유. isNewSignup flag로 분기. RootNavigator "환영" 스택 등록.
 - `2026-05-21` — **작업 C 2차 완료** — 4곳 추가 통일 (ChatRoom 메시지·찜·게시물·리뷰). 4가지 공존 패턴 → useRequireAuth hook 단일화.
