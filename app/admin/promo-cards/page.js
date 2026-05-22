@@ -16,6 +16,20 @@ const stripHtml = (html) => {
     return html.replace(/<[^>]*>?/gm, '');
 };
 
+const WEEKDAY_LIST = [
+    { iso: 1, label: '월' }, { iso: 2, label: '화' }, { iso: 3, label: '수' },
+    { iso: 4, label: '목' }, { iso: 5, label: '금' }, { iso: 6, label: '토' }, { iso: 7, label: '일' },
+];
+
+// 카드가 *명시적으로* 특정 ISO 요일(1=월~7=일)에 지정되었는지.
+// "매일 발송"(weekdays 비어있음) 카드는 어떤 요일에도 잡히지 않음.
+// UI의 요일별 보기 — 운영자가 의도적으로 요일을 박은 카드만 노출.
+const hasExplicitWeekday = (card, iso) => {
+    const w = (card.weekdays || '').trim();
+    if (!w) return false;
+    return w.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)).includes(iso);
+};
+
 // URL을 자동으로 클릭 가능한 링크로 변환
 const linkify = (text) => {
     if (!text) return null;
@@ -42,7 +56,7 @@ export default function PromoCardsPage() {
     const emptyForm = { title: "", description: "", imageUrl: "", videoUrl: "", linkUrl: "", isActive: true, sortOrder: 0, kind: "ad", category: "", weekdays: "" };
     const [form, setForm] = useState(emptyForm);
     const [filter, setFilter] = useState("all"); // "all" | "ad" | "self"
-    const [statusFilter, setStatusFilter] = useState("all"); // "all" | "on" | "off"
+    const [statusFilter, setStatusFilter] = useState("all"); // "all" | "on" | "off" | "wd1" ~ "wd7"
     const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => { fetchCards(); }, []);
@@ -306,10 +320,13 @@ export default function PromoCardsPage() {
                 {(() => {
                     const adCount = cards.filter((c) => (c.kind || "ad") === "ad").length;
                     const selfCount = cards.filter((c) => c.kind === "self").length;
-                    // 3단계 상태: 노출중(ON + 오늘 요일 OK) / 휴면(ON but 오늘 요일 X) / OFF
+                    // 상태: 노출중(ON + 오늘 요일 OK) / OFF + 요일별 활성 카드 수
                     const liveCount = cards.filter((c) => c.isActive && matchesTodayWeekday(c)).length;
-                    const dormantCount = cards.filter((c) => c.isActive && !matchesTodayWeekday(c)).length;
                     const offCount = cards.filter((c) => !c.isActive).length;
+                    const weekdayCounts = WEEKDAY_LIST.reduce((acc, w) => {
+                        acc[w.iso] = cards.filter((c) => c.isActive && hasExplicitWeekday(c, w.iso)).length;
+                        return acc;
+                    }, {});
                     const tabStyle = (active) => ({ padding: "8px 16px", borderRadius: "8px", border: active ? "2px solid #f97316" : "1px solid #e5e7eb", background: active ? "#fff7ed" : "white", color: active ? "#c2410c" : "#374151", fontWeight: active ? "bold" : "normal", fontSize: "13px", cursor: "pointer" });
                     const statusStyle = (active, color) => ({ padding: "8px 14px", borderRadius: "8px", border: active ? `2px solid ${color}` : "1px solid #e5e7eb", background: active ? "#f9fafb" : "white", color: active ? color : "#374151", fontWeight: active ? "bold" : "normal", fontSize: "13px", cursor: "pointer" });
                     return (
@@ -337,12 +354,23 @@ export default function PromoCardsPage() {
                                 <button onClick={() => setFilter("ad")} style={tabStyle(filter === "ad")}>💰 광고주 ({adCount})</button>
                                 <button onClick={() => setFilter("self")} style={tabStyle(filter === "self")}>🏷️ 자체 홍보 ({selfCount})</button>
                             </div>
-                            {/* 상태 필터 — 오늘 기준 3단계 */}
-                            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                            {/* 상태 필터 — 노출중/OFF + 요일별 활성 카드 */}
+                            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
                                 <button onClick={() => setStatusFilter("all")} style={statusStyle(statusFilter === "all", "#374151")}>모든 상태</button>
                                 <button onClick={() => setStatusFilter("on")} style={statusStyle(statusFilter === "on", "#16a34a")}>● 노출중 ({liveCount})</button>
-                                <button onClick={() => setStatusFilter("dormant")} style={statusStyle(statusFilter === "dormant", "#6b7280")}>💤 휴면 ({dormantCount})</button>
                                 <button onClick={() => setStatusFilter("off")} style={statusStyle(statusFilter === "off", "#dc2626")}>● OFF ({offCount})</button>
+                                <span style={{ width: "1px", height: "24px", background: "#e5e7eb", margin: "0 4px" }} />
+                                <span style={{ fontSize: "12px", color: "#6b7280", marginRight: "4px" }}>요일별 활성:</span>
+                                {WEEKDAY_LIST.map((w) => (
+                                    <button
+                                        key={w.iso}
+                                        onClick={() => setStatusFilter(`wd${w.iso}`)}
+                                        style={statusStyle(statusFilter === `wd${w.iso}`, "#2563eb")}
+                                        title={`${w.label}요일이 명시적으로 지정된 활성 카드 (매일 발송 카드는 제외)`}
+                                    >
+                                        {w.label} ({weekdayCounts[w.iso]})
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     );
@@ -351,10 +379,13 @@ export default function PromoCardsPage() {
                 {(() => {
                     const filtered = cards.filter((c) => {
                         if (filter !== "all" && (c.kind || "ad") !== filter) return false;
-                        // 상태 필터 — 오늘 기준 3단계
+                        // 상태 필터 — 노출중/OFF + 요일별
                         if (statusFilter === "on" && !(c.isActive && matchesTodayWeekday(c))) return false;
-                        if (statusFilter === "dormant" && !(c.isActive && !matchesTodayWeekday(c))) return false;
                         if (statusFilter === "off" && c.isActive) return false;
+                        if (/^wd[1-7]$/.test(statusFilter)) {
+                            const iso = parseInt(statusFilter.slice(2), 10);
+                            if (!(c.isActive && hasExplicitWeekday(c, iso))) return false;
+                        }
                         if (searchTerm.trim()) {
                             const q = searchTerm.toLowerCase();
                             const hay = `${c.title || ""} ${c.description || ""} ${c.linkUrl || ""}`.toLowerCase();
