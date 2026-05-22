@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getClientStorage } from "@/lib/firebase-client";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { autoLinkHtml } from "@/lib/html-utils";
+import { matchesTodayWeekday } from "@/lib/promo-card-filters";
 import dynamic from 'next/dynamic';
 import 'react-quill-new/dist/quill.snow.css';
 
@@ -305,7 +306,9 @@ export default function PromoCardsPage() {
                 {(() => {
                     const adCount = cards.filter((c) => (c.kind || "ad") === "ad").length;
                     const selfCount = cards.filter((c) => c.kind === "self").length;
-                    const onCount = cards.filter((c) => c.isActive).length;
+                    // 3단계 상태: 노출중(ON + 오늘 요일 OK) / 휴면(ON but 오늘 요일 X) / OFF
+                    const liveCount = cards.filter((c) => c.isActive && matchesTodayWeekday(c)).length;
+                    const dormantCount = cards.filter((c) => c.isActive && !matchesTodayWeekday(c)).length;
                     const offCount = cards.filter((c) => !c.isActive).length;
                     const tabStyle = (active) => ({ padding: "8px 16px", borderRadius: "8px", border: active ? "2px solid #f97316" : "1px solid #e5e7eb", background: active ? "#fff7ed" : "white", color: active ? "#c2410c" : "#374151", fontWeight: active ? "bold" : "normal", fontSize: "13px", cursor: "pointer" });
                     const statusStyle = (active, color) => ({ padding: "8px 14px", borderRadius: "8px", border: active ? `2px solid ${color}` : "1px solid #e5e7eb", background: active ? "#f9fafb" : "white", color: active ? color : "#374151", fontWeight: active ? "bold" : "normal", fontSize: "13px", cursor: "pointer" });
@@ -334,10 +337,11 @@ export default function PromoCardsPage() {
                                 <button onClick={() => setFilter("ad")} style={tabStyle(filter === "ad")}>💰 광고주 ({adCount})</button>
                                 <button onClick={() => setFilter("self")} style={tabStyle(filter === "self")}>🏷️ 자체 홍보 ({selfCount})</button>
                             </div>
-                            {/* 상태 필터 */}
+                            {/* 상태 필터 — 오늘 기준 3단계 */}
                             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                                 <button onClick={() => setStatusFilter("all")} style={statusStyle(statusFilter === "all", "#374151")}>모든 상태</button>
-                                <button onClick={() => setStatusFilter("on")} style={statusStyle(statusFilter === "on", "#16a34a")}>● ON ({onCount})</button>
+                                <button onClick={() => setStatusFilter("on")} style={statusStyle(statusFilter === "on", "#16a34a")}>● 노출중 ({liveCount})</button>
+                                <button onClick={() => setStatusFilter("dormant")} style={statusStyle(statusFilter === "dormant", "#6b7280")}>💤 휴면 ({dormantCount})</button>
                                 <button onClick={() => setStatusFilter("off")} style={statusStyle(statusFilter === "off", "#dc2626")}>● OFF ({offCount})</button>
                             </div>
                         </div>
@@ -347,7 +351,9 @@ export default function PromoCardsPage() {
                 {(() => {
                     const filtered = cards.filter((c) => {
                         if (filter !== "all" && (c.kind || "ad") !== filter) return false;
-                        if (statusFilter === "on" && !c.isActive) return false;
+                        // 상태 필터 — 오늘 기준 3단계
+                        if (statusFilter === "on" && !(c.isActive && matchesTodayWeekday(c))) return false;
+                        if (statusFilter === "dormant" && !(c.isActive && !matchesTodayWeekday(c))) return false;
                         if (statusFilter === "off" && c.isActive) return false;
                         if (searchTerm.trim()) {
                             const q = searchTerm.toLowerCase();
@@ -390,9 +396,21 @@ export default function PromoCardsPage() {
                                 {filtered.map((card) => {
                             const thumb = getThumb(card);
                             const isSelf = card.kind === "self";
+                            // 오늘 기준 노출 상태 — 3단계
+                            const isDormant = card.isActive && !matchesTodayWeekday(card);
+                            const isLive = card.isActive && !isDormant;
+                            const status = !card.isActive ? "off" : (isLive ? "on" : "dormant");
+                            const statusBadge = {
+                                on:      { bg: "#dcfce7", color: "#16a34a", border: "#86efac", label: "● 노출중" },
+                                dormant: { bg: "#f3f4f6", color: "#6b7280", border: "#d1d5db", label: "💤 오늘 휴면" },
+                                off:     { bg: "#fee2e2", color: "#dc2626", border: "#fca5a5", label: "● OFF" },
+                            }[status];
+                            const cardVisuals = isLive
+                                ? { border: "2px solid #fed7aa", bg: "#fff", shadow: "0 2px 8px rgba(249,115,22,0.12)", opacity: 1 }
+                                : { border: "2px solid #e5e7eb", bg: "#f9fafb", shadow: "none", opacity: 0.75 };
                             return (
-                                <div key={card.id} style={{ borderRadius: "12px", border: card.isActive ? "2px solid #fed7aa" : "2px solid #e5e7eb", overflow: "hidden", background: card.isActive ? "#fff" : "#f9fafb", boxShadow: card.isActive ? "0 2px 8px rgba(249,115,22,0.12)" : "none", opacity: card.isActive ? 1 : 0.75, position: "relative" }}>
-                                    {/* ON/OFF 배지 + 요일 (우상단, 가로 배치) */}
+                                <div key={card.id} style={{ borderRadius: "12px", border: cardVisuals.border, overflow: "hidden", background: cardVisuals.bg, boxShadow: cardVisuals.shadow, opacity: cardVisuals.opacity, position: "relative" }}>
+                                    {/* 상태 배지 + 요일 (우상단, 가로 배치) */}
                                     <div style={{ position: "absolute", top: "10px", right: "10px", zIndex: 2, display: "flex", gap: "6px", alignItems: "center" }}>
                                         {card.weekdays && (() => {
                                             const dayLabels = { 1: "월", 2: "화", 3: "수", 4: "목", 5: "금", 6: "토", 7: "일" };
@@ -404,8 +422,8 @@ export default function PromoCardsPage() {
                                                 </div>
                                             );
                                         })()}
-                                        <div style={{ padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "bold", background: card.isActive ? "#dcfce7" : "#fee2e2", color: card.isActive ? "#16a34a" : "#dc2626", border: `1px solid ${card.isActive ? "#86efac" : "#fca5a5"}` }}>
-                                            {card.isActive ? "● ON" : "● OFF"}
+                                        <div style={{ padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "bold", background: statusBadge.bg, color: statusBadge.color, border: `1px solid ${statusBadge.border}` }}>
+                                            {statusBadge.label}
                                         </div>
                                     </div>
                                     {/* 자체 홍보 배지 (좌상단, 광고주는 표시 X) */}
