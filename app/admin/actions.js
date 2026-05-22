@@ -5,6 +5,7 @@ import { translateNewsItem, translateText } from "@/lib/translator";
 import { publishToMainSite, deleteWordPressPost } from "@/lib/publisher";
 import { postToSNS } from "@/lib/sns";
 import { sendNewsletterWithFallback } from "@/lib/email-service";
+import { filterCardsForToday } from "@/lib/promo-card-filters";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -768,11 +769,12 @@ export async function sendDailyEmailAction(isTest = false, customEmail = null) {
     const otherNewsItems = recentNews.filter(n => !n.isTopNews);
     const orderedItems = [...topNewsItems, ...otherNewsItems];
 
-    // 활성 홍보카드
-    const promoCards = await prisma.promoCard.findMany({
+    // 활성 홍보카드 — 요일 필터 적용 (lib/promo-card-filters.js)
+    const allPromoCards = await prisma.promoCard.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: 'asc' }
     });
+    const promoCards = filterCardsForToday(allPromoCards);
 
     // HTML 생성 (route.js의 로직과 동일)
     const htmlContent = buildEmailHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards);

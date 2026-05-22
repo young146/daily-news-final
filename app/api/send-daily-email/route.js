@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { sendNewsletterWithFallback } from '../../../lib/email-service.js';
+import { filterCardsForToday } from '@/lib/promo-card-filters';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // Vercel Pro: 최대 5분 (대량 발송용)
@@ -92,11 +93,12 @@ export async function POST(request) {
     const otherNewsItems = recentNews.filter(n => !n.isTopNews);
     const orderedItems = [...topNewsItems, ...otherNewsItems];
 
-    // Fetch active promo cards
-    const promoCards = await prisma.promoCard.findMany({
+    // Fetch active promo cards — 요일 필터 적용 (lib/promo-card-filters.js)
+    const allPromoCards = await prisma.promoCard.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: 'asc' }
     });
+    const promoCards = filterCardsForToday(allPromoCards);
 
     // Build date string
     const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
