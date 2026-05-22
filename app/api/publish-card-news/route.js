@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { after } from "next/server";
 import {
   publishCardNewsToWordPress,
   uploadImageToWordPress,
@@ -316,61 +317,72 @@ export async function POST(request) {
       );
     }
 
-    // 6. 페이스북 자동 게시 (실패해도 카드뉴스 발행 성공은 보존)
+    // 6. 페이스북 자동 게시 — fire-and-forget (응답 후 백그라운드 진행)
+    //    사용자 체감: WordPress 카드 발행 즉시 응답 (~5초) → 페북은 백그라운드 (~30~60초)
+    //    이전: await 박혀 페북 완료까지 ~2~3분 대기 + 120초 timeout 시 false negative
     //    사용자가 명시적으로 뉴스를 선택한 경우(body.topNewsId) isSentSNS 무시
     const skipSNSCheck = !!body.topNewsId;
-    let facebookResult = null;
-    if ((skipSNSCheck || !topNews.isSentSNS) && process.env.PUBLISH_API_KEY && result.imageUrl) {
-      try {
-        let baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://daily-news-final.vercel.app";
-        if (baseUrl && !baseUrl.startsWith("http")) baseUrl = "https://" + baseUrl;
-        const [selfR, adR] = await Promise.all([
-          fetch(`${baseUrl}/api/promo-cards/active?kind=self`),
-          fetch(`${baseUrl}/api/promo-cards/active?kind=ad`),
-        ]);
-        const selfCards = (await selfR.json()).cards || [];
-        const adCards = (await adR.json()).cards || [];
-        const promos = [...selfCards, ...adCards]
-          .filter(c => c.imageUrl)
-          .map(c => ({ imageUrl: c.imageUrl, title: c.title, linkUrl: c.linkUrl || "" }));
+    const shouldRunFacebook = (skipSNSCheck || !topNews.isSentSNS)
+      && !!process.env.PUBLISH_API_KEY
+      && !!result.imageUrl;
 
-        const fbBody = {
-          news: {
-            imageUrl: result.imageUrl,
-            caption: `🗞 씬짜오 데일리뉴스 — ${dateStr}\n${title}\n오늘의 뉴스 전체 보기 ↓`,
-            link: result.terminalUrl || "https://chaovietnam.co.kr/daily-news-terminal/",
-          },
-          promos,
-        };
+    if (shouldRunFacebook) {
+      const fbCtx = {
+        topNewsId: topNews.id,
+        imageUrl: result.imageUrl,
+        terminalUrl: result.terminalUrl,
+        title,
+        dateStr,
+      };
+      // after() — 응답 송신 후 Vercel 런타임이 보장하는 백그라운드 실행 슬롯
+      after(async () => {
+        try {
+          let baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://daily-news-final.vercel.app";
+          if (baseUrl && !baseUrl.startsWith("http")) baseUrl = "https://" + baseUrl;
+          const [selfR, adR] = await Promise.all([
+            fetch(`${baseUrl}/api/promo-cards/active?kind=self`),
+            fetch(`${baseUrl}/api/promo-cards/active?kind=ad`),
+          ]);
+          const selfCards = (await selfR.json()).cards || [];
+          const adCards = (await adR.json()).cards || [];
+          const promos = [...selfCards, ...adCards]
+            .filter(c => c.imageUrl)
+            .map(c => ({ imageUrl: c.imageUrl, title: c.title, linkUrl: c.linkUrl || "" }));
 
-        const fbRes = await fetch(
-          "https://asia-northeast3-chaovietnam-login.cloudfunctions.net/publishToFacebookPage",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: "Bearer " + process.env.PUBLISH_API_KEY },
-            body: JSON.stringify(fbBody),
-            signal: AbortSignal.timeout(120000), // 2분 초과 시 포기 (WordPress 카드는 이미 성공)
+          const fbBody = {
+            news: {
+              imageUrl: fbCtx.imageUrl,
+              caption: `🗞 씬짜오 데일리뉴스 — ${fbCtx.dateStr}\n${fbCtx.title}\n오늘의 뉴스 전체 보기 ↓`,
+              link: fbCtx.terminalUrl || "https://chaovietnam.co.kr/daily-news-terminal/",
+            },
+            promos,
+          };
+
+          const fbRes = await fetch(
+            "https://asia-northeast3-chaovietnam-login.cloudfunctions.net/publishToFacebookPage",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: "Bearer " + process.env.PUBLISH_API_KEY },
+              body: JSON.stringify(fbBody),
+              signal: AbortSignal.timeout(290000), // Cloud Function timeout(300s) 직전까지 대기
+            }
+          );
+          const fbData = await fbRes.json();
+          if (fbData.ok) {
+            await prisma.newsItem.update({
+              where: { id: fbCtx.topNewsId },
+              data: { isSentSNS: true },
+            });
+            console.log("[CardNews API] ✅ Facebook posted (background):", fbData.permalink);
+          } else {
+            console.warn("[CardNews API] ⚠️ Facebook post failed (background):", fbData.error);
           }
-        );
-        const fbData = await fbRes.json();
-        if (fbData.ok) {
-          facebookResult = { ok: true, postId: fbData.postId, permalink: fbData.permalink };
-          await prisma.newsItem.update({
-            where: { id: topNews.id },
-            data: { isSentSNS: true },
-          });
-          console.log("[CardNews API] ✅ Facebook posted:", fbData.permalink);
-        } else {
-          facebookResult = { ok: false, error: fbData.error || "unknown" };
-          console.warn("[CardNews API] ⚠️ Facebook post failed:", fbData.error);
+        } catch (fbErr) {
+          console.warn("[CardNews API] ⚠️ Facebook post error (background):", fbErr.message);
         }
-      } catch (fbErr) {
-        facebookResult = { ok: false, error: fbErr.message };
-        console.warn("[CardNews API] ⚠️ Facebook post error (non-blocking):", fbErr.message);
-      }
+      });
     } else if (topNews.isSentSNS) {
       console.log("[CardNews API] Facebook skipped (already sent for this topNews)");
-      facebookResult = { ok: false, skipped: "already_sent" };
     }
 
     return new Response(
@@ -378,7 +390,10 @@ export async function POST(request) {
         success: true,
         terminalUrl: result.terminalUrl,
         imageUrl: result.imageUrl,
-        facebook: facebookResult,
+        // 페북 게시는 백그라운드 진행 중 → 결과는 페북 페이지에서 직접 확인
+        facebook: shouldRunFacebook
+          ? { ok: null, pending: true, message: "백그라운드 게시 진행 중" }
+          : (topNews.isSentSNS ? { ok: false, skipped: "already_sent" } : null),
       }),
       { headers: { "Content-Type": "application/json" } }
     );
