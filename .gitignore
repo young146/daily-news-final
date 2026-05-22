@@ -53,3 +53,24 @@ bounced-list.txt
 # 로그/디버그 출력 파일
 bounce-logs.txt
 bounce_debug_output.txt
+
+# KOTRA/진출업체 디렉토리 작업 — 데이터·산출물만 제외, *코드(.py, .md)는 git 에 올림*
+# 원본 데이터 (큰 xlsx, OneDrive 등 별도 보관)
+*.xlsx
+# 스크래퍼 산출물 (kocham_*.csv/log/html/json) — 스크래퍼 재실행으로 재생성 가능
+kocham_*.csv
+kocham_*.log
+kocham_*.html
+kocham_*.json
+# 디렉토리 미리보기 (자동 생성)
+company_directory_preview.html
+company_directory_preview_data.json
+# subscriber/CRM export 결과 (재실행으로 재생성)
+subscribers_export.csv
+wp_companies_import.csv
+# 파이썬 바이트코드 캐시
+__pycache__/
+
+# Claude 스케줄러 락파일 (로컬 전용)
+.claude/scheduled_tasks.lock
+
