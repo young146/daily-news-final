@@ -24,7 +24,7 @@ export async function GET(request) {
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { title, description, imageUrl, videoUrl, linkUrl, isActive, sortOrder, kind, category, weekdays } = body;
+        const { title, description, imageUrl, imageUrlFacebook, videoUrl, linkUrl, isActive, sortOrder, kind, category, weekdays, channels } = body;
 
         if (!title || !linkUrl) {
             return NextResponse.json({ error: '제목과 링크 URL은 필수입니다.' }, { status: 400 });
@@ -35,6 +35,7 @@ export async function POST(request) {
                 title,
                 description: description || null,
                 imageUrl: imageUrl || null,
+                imageUrlFacebook: imageUrlFacebook || null,
                 videoUrl: videoUrl || null,
                 linkUrl,
                 isActive: isActive !== false,
@@ -42,6 +43,7 @@ export async function POST(request) {
                 kind: kind === 'self' ? 'self' : 'ad',
                 category: category || null,
                 weekdays: (weekdays && weekdays.trim()) ? weekdays.trim() : null,
+                channels: (channels && channels.trim()) ? channels.trim() : null,
             },
         });
 

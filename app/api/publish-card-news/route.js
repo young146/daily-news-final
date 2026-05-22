@@ -339,15 +339,20 @@ export async function POST(request) {
         try {
           let baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://daily-news-final.vercel.app";
           if (baseUrl && !baseUrl.startsWith("http")) baseUrl = "https://" + baseUrl;
+          // 페북 채널 필터 — channels 에 "facebook" 포함된 카드 또는 channels 미지정 카드.
+          // 사용자가 admin 에서 "이 카드는 이메일 전용" 으로 설정한 카드는 자동 제외됨.
           const [selfR, adR] = await Promise.all([
-            fetch(`${baseUrl}/api/promo-cards/active?kind=self`),
-            fetch(`${baseUrl}/api/promo-cards/active?kind=ad`),
+            fetch(`${baseUrl}/api/promo-cards/active?kind=self&channel=facebook`),
+            fetch(`${baseUrl}/api/promo-cards/active?kind=ad&channel=facebook`),
           ]);
           const selfCards = (await selfR.json()).cards || [];
           const adCards = (await adR.json()).cards || [];
+          // 페북용 이미지(imageUrlFacebook)가 있으면 우선 사용. 없으면 기본 imageUrl 로 폴백.
+          // 광고주 원본은 보통 앱/웹 배너 비율이라 페북 그리드에 잘 안 어울리므로
+          // admin 에서 페북 전용 이미지를 별도 업로드 권장.
           const promos = [...selfCards, ...adCards]
-            .filter(c => c.imageUrl)
-            .map(c => ({ imageUrl: c.imageUrl, title: c.title, linkUrl: c.linkUrl || "" }));
+            .filter(c => c.imageUrlFacebook || c.imageUrl)
+            .map(c => ({ imageUrl: c.imageUrlFacebook || c.imageUrl, title: c.title, linkUrl: c.linkUrl || "" }));
 
           const fbBody = {
             news: {

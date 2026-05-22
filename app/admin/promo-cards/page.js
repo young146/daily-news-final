@@ -52,8 +52,9 @@ export default function PromoCardsPage() {
     const [message, setMessage] = useState(null);
     const [previewCard, setPreviewCard] = useState(null);
     const fileInputRef = useRef(null);
+    const fileInputRefFb = useRef(null);
 
-    const emptyForm = { title: "", description: "", imageUrl: "", videoUrl: "", linkUrl: "", isActive: true, sortOrder: 0, kind: "ad", category: "", weekdays: "" };
+    const emptyForm = { title: "", description: "", imageUrl: "", imageUrlFacebook: "", videoUrl: "", linkUrl: "", isActive: true, sortOrder: 0, kind: "ad", category: "", weekdays: "", channels: "" };
     const [form, setForm] = useState(emptyForm);
     const [filter, setFilter] = useState("all"); // "all" | "ad" | "self"
     const [statusFilter, setStatusFilter] = useState("all"); // "all" | "on" | "off" | "wd1" ~ "wd7"
@@ -79,23 +80,25 @@ export default function PromoCardsPage() {
     const openNewForm = () => { setEditingCard(null); setForm(emptyForm); setShowForm(true); window.scrollTo({ top: 0, behavior: "smooth" }); };
     const openEditForm = (card) => {
         setEditingCard(card);
-        setForm({ title: card.title, description: card.description || "", imageUrl: card.imageUrl || "", videoUrl: card.videoUrl || "", linkUrl: card.linkUrl, isActive: card.isActive, sortOrder: card.sortOrder, kind: card.kind || "ad", category: card.category || "", weekdays: card.weekdays || "" });
+        setForm({ title: card.title, description: card.description || "", imageUrl: card.imageUrl || "", imageUrlFacebook: card.imageUrlFacebook || "", videoUrl: card.videoUrl || "", linkUrl: card.linkUrl, isActive: card.isActive, sortOrder: card.sortOrder, kind: card.kind || "ad", category: card.category || "", weekdays: card.weekdays || "", channels: card.channels || "" });
         setShowForm(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
     const cancelForm = () => { setShowForm(false); setEditingCard(null); setForm(emptyForm); };
 
-    const handleImageUpload = async (file) => {
+    // 이미지 업로드 — target 으로 어느 필드(imageUrl 또는 imageUrlFacebook)에 저장할지 지정
+    const handleImageUpload = async (file, target = 'imageUrl') => {
         if (!file) return;
         setUploading(true);
         try {
             const storage = getClientStorage();
-            const fileName = `form_uploads/promo/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+            const subDir = target === 'imageUrlFacebook' ? 'promo_fb' : 'promo';
+            const fileName = `form_uploads/${subDir}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
             const storageRef = ref(storage, fileName);
             await uploadBytes(storageRef, file);
             const url = await getDownloadURL(storageRef);
-            setForm((f) => ({ ...f, imageUrl: url }));
-            showMsg("✅ 이미지 업로드 완료!");
+            setForm((f) => ({ ...f, [target]: url }));
+            showMsg(target === 'imageUrlFacebook' ? "✅ 페이스북용 이미지 업로드 완료!" : "✅ 이미지 업로드 완료!");
         } catch (e) { showMsg("이미지 업로드 오류: " + e.message, "error"); }
         finally { setUploading(false); }
     };
@@ -200,6 +203,30 @@ export default function PromoCardsPage() {
                                 )}
                             </div>
                         </div>
+
+                        {/* 📘 페이스북 전용 이미지 (선택) — 비우면 기본 이미지 사용 */}
+                        <div style={{ background: "#eff6ff", padding: "14px", borderRadius: "8px", border: "1px solid #bfdbfe" }}>
+                            <label style={lbl}>📘 페이스북 전용 이미지 <span style={{ color: "#9ca3af", fontWeight: "normal" }}>(선택)</span></label>
+                            <p style={{ fontSize: "12px", color: "#1e40af", marginTop: "-2px", marginBottom: "8px", lineHeight: "1.5" }}>
+                                광고주 원본 이미지는 보통 앱/웹 배너 비율이라 페북 그리드(1200×630)에 안 어울립니다.
+                                페북용 디자인을 별도 업로드하면 페북 발송 시에만 이 이미지가 사용됩니다.
+                                <strong> 비우면 기본 이미지 그대로 사용</strong> (옛 카드 호환).
+                            </p>
+                            <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                                <div style={{ flex: 1 }}>
+                                    <input type="text" value={form.imageUrlFacebook} onChange={(e) => setForm((f) => ({ ...f, imageUrlFacebook: e.target.value }))} placeholder="페북용 이미지 URL (업로드 후 자동 입력)" style={inp} />
+                                    <input ref={fileInputRefFb} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleImageUpload(e.target.files[0], 'imageUrlFacebook')} />
+                                    <button type="button" onClick={() => fileInputRefFb.current?.click()} disabled={uploading}
+                                        style={{ marginTop: "8px", padding: "8px 16px", background: uploading ? "#9ca3af" : "#2563eb", color: "white", border: "none", borderRadius: "6px", cursor: uploading ? "not-allowed" : "pointer", fontSize: "13px" }}>
+                                        {uploading ? "⏳ 업로드 중..." : "📁 페북용 이미지 파일 선택"}
+                                    </button>
+                                </div>
+                                {form.imageUrlFacebook && (
+                                    <img src={form.imageUrlFacebook} alt="페북용 미리보기" style={{ width: "120px", height: "80px", objectFit: "cover", borderRadius: "8px", border: "2px solid #bfdbfe" }} onError={(e) => { e.target.style.display = "none"; }} />
+                                )}
+                            </div>
+                        </div>
+
                         <div>
                             <label style={lbl}>🎬 동영상 URL <span style={{ color: "#9ca3af", fontWeight: "normal" }}>(선택 — YouTube 링크)</span></label>
                             <input type="text" value={form.videoUrl} onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))} placeholder="예: https://www.youtube.com/watch?v=xxxxx" style={inp} />
@@ -293,6 +320,49 @@ export default function PromoCardsPage() {
                                 {form.weekdays ? `선택된 요일: ${form.weekdays}` : "선택 없음 = 매일 발송 (모든 요일)"}
                             </span>
                         </div>
+
+                        {/* 📡 발송 채널 선택 (비워두면 모든 채널 노출 — 옛 카드 호환) */}
+                        <div>
+                            <label style={lbl}>📡 발송 채널</label>
+                            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "6px" }}>
+                                {[
+                                    { id: "email",    label: "📧 이메일",       color: "#16a34a", bg: "#dcfce7", border: "#86efac" },
+                                    { id: "facebook", label: "📘 페이스북",     color: "#2563eb", bg: "#dbeafe", border: "#93c5fd" },
+                                    { id: "cardnews", label: "📰 카드뉴스 팝업", color: "#c2410c", bg: "#fed7aa", border: "#fdba74" },
+                                ].map(({ id, label, color, bg, border }) => {
+                                    const selected = (form.channels || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+                                    const isChecked = selected.includes(id);
+                                    return (
+                                        <label key={id} style={{
+                                            display: "flex", alignItems: "center", gap: "6px",
+                                            cursor: "pointer", padding: "6px 12px", borderRadius: "6px",
+                                            background: isChecked ? bg : "#f9fafb",
+                                            border: isChecked ? `1px solid ${border}` : "1px solid #e5e7eb",
+                                            fontSize: "13px", fontWeight: "600",
+                                            color: isChecked ? color : "#6b7280",
+                                        }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={isChecked}
+                                                onChange={(e) => {
+                                                    const cur = (form.channels || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+                                                    const next = e.target.checked
+                                                        ? Array.from(new Set([...cur, id]))
+                                                        : cur.filter(c => c !== id);
+                                                    setForm(f => ({ ...f, channels: next.join(",") }));
+                                                }}
+                                                style={{ width: "14px", height: "14px" }}
+                                            />
+                                            {label}
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                            <span style={{ fontSize: "12px", color: "#9ca3af" }}>
+                                {form.channels ? `선택된 채널: ${form.channels}` : "선택 없음 = 모든 채널 노출 (이메일·페북·카드뉴스 — 옛 카드 호환 기본값)"}
+                            </span>
+                        </div>
+
                         <div style={{ display: "flex", gap: "12px", paddingTop: "8px" }}>
                             <button onClick={handleSave} disabled={saving}
                                 style={{ flex: 1, padding: "12px", background: saving ? "#9ca3af" : "#f97316", color: "white", border: "none", borderRadius: "8px", cursor: saving ? "not-allowed" : "pointer", fontWeight: "bold", fontSize: "15px" }}>

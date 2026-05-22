@@ -21,7 +21,7 @@ export async function PUT(request, context) {
         const { id: rawId } = await context.params;
         const id = parseInt(rawId);
         const body = await request.json();
-        const { title, description, imageUrl, videoUrl, linkUrl, isActive, sortOrder, kind, category, weekdays } = body;
+        const { title, description, imageUrl, imageUrlFacebook, videoUrl, linkUrl, isActive, sortOrder, kind, category, weekdays, channels } = body;
 
         const card = await prisma.promoCard.update({
             where: { id },
@@ -29,6 +29,7 @@ export async function PUT(request, context) {
                 ...(title !== undefined && { title }),
                 ...(description !== undefined && { description }),
                 ...(imageUrl !== undefined && { imageUrl }),
+                ...(imageUrlFacebook !== undefined && { imageUrlFacebook: imageUrlFacebook || null }),
                 ...(videoUrl !== undefined && { videoUrl }),
                 ...(linkUrl !== undefined && { linkUrl }),
                 ...(isActive !== undefined && { isActive }),
@@ -36,6 +37,7 @@ export async function PUT(request, context) {
                 ...(kind !== undefined && { kind: kind === 'self' ? 'self' : 'ad' }),
                 ...(category !== undefined && { category: category || null }),
                 ...(weekdays !== undefined && { weekdays: (weekdays && weekdays.trim()) ? weekdays.trim() : null }),
+                ...(channels !== undefined && { channels: (channels && channels.trim()) ? channels.trim() : null }),
             },
         });
 

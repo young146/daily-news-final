@@ -82,7 +82,10 @@ model PromoCard {
   id          Int      @id @default(autoincrement())
   title       String                    // 카드 제목
   description String?  @db.Text         // 홍보 문구/설명
-  imageUrl    String?                   // Firebase Storage 이미지 URL
+  imageUrl    String?                   // 기본 이미지 — 이메일/앱/웹/카드뉴스용 (광고주 원본 디자인)
+  // 페이스북 전용 이미지 (선택) — 비워두면 imageUrl 사용
+  // 광고주 원본은 보통 앱/웹 배너 비율이라 페북 그리드에 안 어울림. 페북용 디자인 별도 업로드 슬롯.
+  imageUrlFacebook String?
   videoUrl    String?                   // YouTube 등 동영상 URL (선택)
   linkUrl     String                    // 클릭 시 이동 링크
   isActive    Boolean  @default(true)   // ON/OFF
@@ -95,6 +98,11 @@ model PromoCard {
   //   - null 또는 빈 문자열 = 모든 요일 발송 (default, 옛 카드 호환)
   //   - 광고주 약속에 따라 "주 1회" = 특정 요일 1개만 설정
   weekdays    String?
+  // 발송 채널 (CSV 형식 예: "email,facebook,cardnews")
+  //   - null 또는 빈 문자열 = 모든 채널 노출 (default, 옛 카드 호환)
+  //   - 이메일/페북/카드뉴스 팝업 채널별로 카드 별도 관리
+  //   - 페북은 4장 게시 그리드 제약(뉴스 풀폭 보장)으로 보통 2개 안쪽으로 운영
+  channels    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

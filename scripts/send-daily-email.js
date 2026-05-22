@@ -196,13 +196,13 @@ export async function sendDailyDigest(isTest = false) {
       return;
     }
 
-    // 활성 홍보카드 DB에서 로드 + 요일 필터 (lib/promo-card-filters.js 공통 로직)
+    // 활성 홍보카드 DB에서 로드 + 요일 + 채널(email) 필터 (lib/promo-card-filters.js 공통 로직)
     console.log('Fetching active promo cards...');
     const allPromoCards = await prisma.promoCard.findMany({
       where: { isActive: true },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
-    const promoCards = filterCardsForToday(allPromoCards);
+    const promoCards = filterCardsForToday(allPromoCards, new Date(), 'email');
     const dow = getVietnamIsoWeekday();
     console.log(`Found ${allPromoCards.length} active promo cards, ${promoCards.length} for today (요일=${dow}).`);
 

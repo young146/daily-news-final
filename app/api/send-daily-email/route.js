@@ -93,12 +93,12 @@ export async function POST(request) {
     const otherNewsItems = recentNews.filter(n => !n.isTopNews);
     const orderedItems = [...topNewsItems, ...otherNewsItems];
 
-    // Fetch active promo cards — 요일 필터 적용 (lib/promo-card-filters.js)
+    // Fetch active promo cards — 요일 + 채널(email) 필터 적용 (lib/promo-card-filters.js)
     const allPromoCards = await prisma.promoCard.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: 'asc' }
     });
-    const promoCards = filterCardsForToday(allPromoCards);
+    const promoCards = filterCardsForToday(allPromoCards, new Date(), 'email');
 
     // Build date string
     const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
