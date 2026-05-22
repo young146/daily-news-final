@@ -19,6 +19,8 @@ export async function GET(req) {
         const where = { ...baseWhere };
         if (status === 'active') where.isActive = true;
         if (status === 'inactive') where.isActive = false;
+        if (status === 'customer') where.isCustomer = true;
+        if (status === 'general') where.isCustomer = false;
 
         const [subscribers, total] = await Promise.all([
             prisma.subscriber.findMany({
@@ -43,16 +45,22 @@ export async function POST(req) {
     try {
         const body = await req.json();
 
-        // Bulk import: { subscribers: [{email, company, name, phone}, ...] }
+        // Bulk import: { subscribers: [{email, company, name, phone, isCustomer?}, ...], defaultIsCustomer?: boolean }
         if (body.subscribers) {
-            let added = 0, skipped = 0;
+            const defaultIsCustomer = body.defaultIsCustomer === true;
+            let added = 0, updated = 0, skipped = 0, promotedToCustomer = 0;
             for (const item of body.subscribers) {
                 const { company, name, phone } = item;
                 const email = item.email ? item.email.trim() : null;
                 if (!email || !email.includes("@")) { skipped++; continue; }
+                // 명시적 isCustomer 우선, 없으면 일괄 default. 모두 미지정이면 false.
+                const isCustomer = (item.isCustomer === true) || (item.isCustomer === undefined && defaultIsCustomer);
                 try {
                     const existing = await prisma.subscriber.findUnique({ where: { email } });
                     if (existing) {
+                        // 기존 row: isCustomer 는 한 번 true 되면 유지 (downgrade 방지)
+                        const nextIsCustomer = existing.isCustomer || isCustomer;
+                        const justPromoted = !existing.isCustomer && nextIsCustomer;
                         await prisma.subscriber.update({
                             where: { email },
                             data: {
@@ -60,12 +68,14 @@ export async function POST(req) {
                                 company: company || existing.company,
                                 name: name || existing.name,
                                 phone: phone || existing.phone,
+                                isCustomer: nextIsCustomer,
                             }
                         });
-                        skipped++;
+                        if (justPromoted) promotedToCustomer++;
+                        else updated++;
                     } else {
                         await prisma.subscriber.create({
-                            data: { email, company, name, phone, isActive: true }
+                            data: { email, company, name, phone, isActive: true, isCustomer }
                         });
                         added++;
                     }
@@ -74,7 +84,10 @@ export async function POST(req) {
                     skipped++;
                 }
             }
-            return NextResponse.json({ message: `완료! 추가: ${added}명, 중복: ${skipped}명`, added, skipped });
+            return NextResponse.json({
+                message: `완료! 신규: ${added}, 업데이트: ${updated}, 고객 승격: ${promotedToCustomer}, 스킵: ${skipped}`,
+                added, updated, promotedToCustomer, skipped,
+            });
         }
 
         // Single add

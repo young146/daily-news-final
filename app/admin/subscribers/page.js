@@ -377,6 +377,8 @@ export default function SubscribersPage() {
                         <option value="all">모든 상태</option>
                         <option value="active">활성 (ON)</option>
                         <option value="inactive">비활성 (OFF)</option>
+                        <option value="customer">🏷️ CRM 고객만</option>
+                        <option value="general">일반 구독자만</option>
                     </select>
                     <input
                         type="text" value={searchInput}
@@ -423,7 +425,14 @@ export default function SubscribersPage() {
                                                 className="rounded border-gray-300 text-blue-600 cursor-pointer" />
                                         </td>
                                         <td className="px-4 py-3 whitespace-nowrap text-gray-700 text-sm">{s.company || '-'}</td>
-                                        <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900 text-sm">{s.email}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900 text-sm">
+                                            <span>{s.email}</span>
+                                            {s.isCustomer && (
+                                                <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200" title="CRM 거래 고객 — 자체 홍보 카드 발송 대상">
+                                                    고객
+                                                </span>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3 whitespace-nowrap text-gray-700 text-sm">{s.name || '-'}</td>
                                         <td className="px-4 py-3 whitespace-nowrap text-gray-700 text-sm">{s.phone || '-'}</td>
                                         <td className="px-4 py-3 whitespace-nowrap">

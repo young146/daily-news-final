@@ -71,7 +71,11 @@ model Subscriber {
   name      String?
   phone     String?
   isActive  Boolean  @default(true)
+  // CRM 거래 고객(광고주) 여부. 데일리 뉴스는 전체 발송, 홍보 카드는 isCustomer=true 만 발송.
+  isCustomer Boolean @default(false)
   createdAt DateTime @default(now())
+
+  @@index([isCustomer])
 }
 
 model PromoCard {
