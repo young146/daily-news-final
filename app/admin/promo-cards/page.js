@@ -326,9 +326,8 @@ export default function PromoCardsPage() {
                             <label style={lbl}>📡 발송 채널</label>
                             <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "6px" }}>
                                 {[
-                                    { id: "email",    label: "📧 이메일",       color: "#16a34a", bg: "#dcfce7", border: "#86efac" },
-                                    { id: "facebook", label: "📘 페이스북",     color: "#2563eb", bg: "#dbeafe", border: "#93c5fd" },
-                                    { id: "cardnews", label: "📰 카드뉴스 팝업", color: "#c2410c", bg: "#fed7aa", border: "#fdba74" },
+                                    { id: "email",    label: "📧 이메일",   color: "#16a34a", bg: "#dcfce7", border: "#86efac" },
+                                    { id: "facebook", label: "📘 페이스북", color: "#2563eb", bg: "#dbeafe", border: "#93c5fd" },
                                 ].map(({ id, label, color, bg, border }) => {
                                     const selected = (form.channels || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
                                     const isChecked = selected.includes(id);
@@ -359,7 +358,7 @@ export default function PromoCardsPage() {
                                 })}
                             </div>
                             <span style={{ fontSize: "12px", color: "#9ca3af" }}>
-                                {form.channels ? `선택된 채널: ${form.channels}` : "선택 없음 = 모든 채널 노출 (이메일·페북·카드뉴스 — 옛 카드 호환 기본값)"}
+                                {form.channels ? `선택된 채널: ${form.channels}` : "선택 없음 = 모든 채널 노출 (이메일+페북 — 옛 카드 호환 기본값)"}
                             </span>
                         </div>
 
@@ -511,8 +510,23 @@ export default function PromoCardsPage() {
                                 : { border: "2px solid #e5e7eb", bg: "#f9fafb", shadow: "none", opacity: 0.75 };
                             return (
                                 <div key={card.id} style={{ borderRadius: "12px", border: cardVisuals.border, overflow: "hidden", background: cardVisuals.bg, boxShadow: cardVisuals.shadow, opacity: cardVisuals.opacity, position: "relative" }}>
-                                    {/* 상태 배지 + 요일 (우상단, 가로 배치) */}
+                                    {/* 채널 + 요일 + 상태 배지 (우상단, 가로 배치) */}
                                     <div style={{ position: "absolute", top: "10px", right: "10px", zIndex: 2, display: "flex", gap: "6px", alignItems: "center" }}>
+                                        {card.channels && (() => {
+                                            const cfg = {
+                                                email:    { icon: "📧", bg: "#dcfce7", color: "#16a34a", border: "#86efac", title: "이메일" },
+                                                facebook: { icon: "📘", bg: "#dbeafe", color: "#2563eb", border: "#93c5fd", title: "페이스북" },
+                                            };
+                                            const chans = card.channels.split(",").map(s => s.trim().toLowerCase()).filter(c => cfg[c]);
+                                            if (chans.length === 0) return null;
+                                            return chans.map(ch => (
+                                                <div key={ch}
+                                                    title={cfg[ch].title}
+                                                    style={{ padding: "3px 8px", borderRadius: "20px", fontSize: "12px", fontWeight: "bold", background: cfg[ch].bg, color: cfg[ch].color, border: `1px solid ${cfg[ch].border}` }}>
+                                                    {cfg[ch].icon}
+                                                </div>
+                                            ));
+                                        })()}
                                         {card.weekdays && (() => {
                                             const dayLabels = { 1: "월", 2: "화", 3: "수", 4: "목", 5: "금", 6: "토", 7: "일" };
                                             const days = card.weekdays.split(",").map(s => dayLabels[parseInt(s.trim(), 10)]).filter(Boolean);
