@@ -3,6 +3,10 @@
         {
             "path": "/api/cron/crawl",
             "schedule": "0 23 * * *"
+        },
+        {
+            "path": "/api/cron/sync-crm-customers",
+            "schedule": "0 21 * * *"
         }
     ],
     "functions": {
