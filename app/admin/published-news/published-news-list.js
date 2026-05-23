@@ -327,11 +327,11 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
       )}
 
       {/* ─── 이메일 발송 패널 ─── */}
-      <div className="bg-white rounded-lg shadow-md border-2 border-orange-300 mb-5">
-        <div className="p-5 bg-orange-50 border-b-2 border-orange-200 flex items-center justify-between flex-wrap gap-3">
+      <div className="bg-white rounded-xl shadow-md border-2 border-orange-300 mb-8">
+        <div className="p-7 bg-orange-50 border-b-2 border-orange-200 flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h2 className="text-xl font-bold text-orange-800">💌 오늘의 이메일 뉴스레터</h2>
-            <p className="text-sm text-gray-700 mt-1">아래 카드들이 이메일에 함께 발송됩니다 · 구독자 <strong className="text-orange-700">{subscriberCount.toLocaleString()}명</strong></p>
+            <h2 className="text-2xl font-bold text-orange-800">💌 오늘의 이메일 뉴스레터</h2>
+            <p className="text-base text-gray-800 mt-2 font-semibold">아래 카드들이 이메일에 함께 발송됩니다 · 구독자 <strong className="text-orange-700">{subscriberCount.toLocaleString()}명</strong></p>
           </div>
           {/* 버튼 영역 */}
           {confirmSend ? (
@@ -404,8 +404,8 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
           )}
         </div>
         {/* 🧪 테스트 발송 대상 이메일 관리 */}
-        <div className="px-5 py-4 border-t-2 border-orange-100 bg-green-50">
-          <p className="text-base font-bold text-green-800 mb-2">🧪 테스트 발송 수신자 목록 ({testEmails.length}명)</p>
+        <div className="px-7 py-5 border-t-2 border-orange-100 bg-green-50">
+          <p className="text-base font-bold text-green-800 mb-3">🧪 테스트 발송 수신자 목록 ({testEmails.length}명)</p>
           {testEmails.length > 0 ? (
             <div className="flex flex-wrap gap-2 mb-3">
               {testEmails.map(t => (
@@ -446,7 +446,7 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
           </div>
         </div>
         {/* 이메일에 포함되는 카드 미리보기 */}
-        <div className="p-5 flex gap-3 flex-wrap">
+        <div className="p-7 flex gap-4 flex-wrap">
           {/* 뉴스 카드 */}
           <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border-2 border-blue-200 flex-1 min-w-[220px]">
             <span className="text-3xl">📰</span>
@@ -482,29 +482,29 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
             })
           )}
         </div>
-        <div className="px-5 pb-4 text-right">
-          <a href="/admin/promo-cards" className="text-sm text-blue-600 underline hover:text-orange-600 font-medium">홍보카드 관리 (ON/OFF 변경) →</a>
+        <div className="px-7 pb-5 text-right">
+          <a href="/admin/promo-cards" className="text-base text-blue-700 underline hover:text-orange-700 font-semibold">홍보카드 관리 (ON/OFF 변경) →</a>
         </div>
       </div>
 
       {/* ─── 페이스북 4페이지 게시 패널 ─── */}
-      <div className="bg-white rounded-lg shadow-md border-2 border-blue-300 mb-5">
-        <div className="p-5 bg-blue-50 border-b-2 border-blue-200">
-          <h2 className="text-xl font-bold text-blue-800">📘 페이스북 4페이지 게시</h2>
-          <p className="text-sm text-gray-700 mt-1">
+      <div className="bg-white rounded-xl shadow-md border-2 border-blue-300 mb-8">
+        <div className="p-7 bg-blue-50 border-b-2 border-blue-200">
+          <h2 className="text-2xl font-bold text-blue-800">📘 페이스북 4페이지 게시</h2>
+          <p className="text-base text-gray-800 mt-2 font-semibold">
             {fbReadyState.length === 0
               ? "오늘 페북 카드로 준비된 뉴스가 없습니다 — '전령카드 확인하기' 에서 페이스북 카드 준비를 먼저 실행하세요"
               : <>준비됨 <strong className="text-blue-700">{fbReadyState.length}건</strong> · 페북 채널 활성 광고 <strong className="text-blue-700">{fbPromoCards.length}장</strong> 함께 게시됨</>}
           </p>
           {fbReadyState.length > 0 && (
-            <div className="mt-3 p-3 bg-yellow-50 border-2 border-yellow-400 rounded-md text-sm text-yellow-900 leading-relaxed">
-              ⚠️ <strong className="text-base">발송 흐름</strong>: 아래 미리보기 확인 → <strong>"📘 페이스북 4페이지 게시"</strong> 클릭 → <strong>확인 다이얼로그의 "✅ 게시"</strong> 클릭 시 <strong className="text-red-700">실제 4개 페이지에 즉시 발송</strong>됩니다 (되돌릴 수 없음). 미리보기와 광고 자리를 충분히 확인하세요.
+            <div className="mt-4 p-4 bg-yellow-50 border-2 border-yellow-400 rounded-lg text-base text-yellow-900 leading-loose">
+              ⚠️ <strong className="text-lg">발송 흐름</strong>: 아래 미리보기 확인 → <strong>"📘 페이스북 4페이지 게시"</strong> 클릭 → <strong>확인 다이얼로그의 "✅ 게시"</strong> 클릭 시 <strong className="text-red-700">실제 4개 페이지에 즉시 발송</strong>됩니다 (되돌릴 수 없음). 미리보기와 광고 자리를 충분히 확인하세요.
             </div>
           )}
         </div>
 
         {fbReadyState.length > 0 && (
-          <div className="p-4 space-y-4">
+          <div className="p-7 space-y-7">
             {fbReadyState.map(news => {
               const result = fbResults[news.id];
               const permalink = result?.permalink || news.facebookPermalink;
@@ -512,9 +512,9 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
               const isConfirming = fbConfirmId === news.id;
 
               return (
-                <div key={news.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                <div key={news.id} className="border-2 border-gray-300 rounded-xl overflow-hidden shadow-sm">
                   {/* 뉴스 제목 + 상태 배지 */}
-                  <div className="p-4 bg-gray-50 border-b-2 border-gray-200 flex items-center justify-between gap-3">
+                  <div className="p-5 bg-gray-50 border-b-2 border-gray-200 flex items-center justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <p className="text-base font-bold text-gray-900 truncate">
                         {news.translatedTitle || news.title}
@@ -535,29 +535,29 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
                   </div>
 
                   {/* 페북 그리드 미리보기 (큰 위 1 + 작은 아래 2) + 카드 식별 정보 */}
-                  <div className="p-5 bg-gradient-to-b from-gray-50 to-white">
-                    <p className="text-sm font-bold text-gray-700 mb-3">📐 페이스북 그리드 미리보기 (실제 게시 모양)</p>
-                    <div style={{ maxWidth: '500px', margin: '0 auto', display: 'grid', gap: '4px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                  <div className="p-7 bg-gradient-to-b from-gray-50 to-white">
+                    <p className="text-base font-bold text-gray-800 mb-4">📐 페이스북 그리드 미리보기 (실제 게시 모양)</p>
+                    <div style={{ maxWidth: '600px', margin: '0 auto', display: 'grid', gap: '5px', borderRadius: '10px', overflow: 'hidden', border: '2px solid #d1d5db' }}>
                       {/* 큰 위 1장 — 뉴스카드 */}
                       <img
                         src={news.cardImageUrl}
                         alt="뉴스카드"
-                        style={{ width: '100%', height: '262px', objectFit: 'cover', display: 'block' }}
+                        style={{ width: '100%', height: '314px', objectFit: 'cover', display: 'block' }}
                       />
                       {/* 작은 아래 2장 — 페북 광고 */}
                       {fbPromoCards.length > 0 ? (
-                        <div style={{ display: 'grid', gridTemplateColumns: fbPromoCards.length === 1 ? '1fr' : '1fr 1fr', gap: '4px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: fbPromoCards.length === 1 ? '1fr' : '1fr 1fr', gap: '5px' }}>
                           {fbPromoCards.slice(0, 2).map(card => (
                             <img
                               key={card.id}
                               src={card.imageUrlFacebook || card.imageUrl}
                               alt={card.title}
-                              style={{ width: '100%', height: '131px', objectFit: 'cover', display: 'block' }}
+                              style={{ width: '100%', height: '157px', objectFit: 'cover', display: 'block' }}
                             />
                           ))}
                         </div>
                       ) : (
-                        <div className="p-3 bg-gray-100 text-center text-xs text-gray-500">
+                        <div className="p-4 bg-gray-100 text-center text-base text-gray-700 font-semibold">
                           페북 채널 활성 광고 없음 — 뉴스카드만 게시됩니다
                         </div>
                       )}
@@ -565,11 +565,11 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
 
                     {/* 광고 카드 식별 정보 + 변경 안내 */}
                     {fbPromoCards.length > 0 && (
-                      <div style={{ maxWidth: '500px', margin: '12px auto 0' }}>
-                        <p className="text-sm font-bold text-gray-800 mb-2">📋 본문 carousel 에 들어가는 광고 ({Math.min(2, fbPromoCards.length)}개)</p>
-                        <div className="grid grid-cols-1 gap-1.5">
+                      <div style={{ maxWidth: '600px', margin: '18px auto 0' }}>
+                        <p className="text-base font-bold text-gray-800 mb-3">📋 본문 carousel 에 들어가는 광고 ({Math.min(2, fbPromoCards.length)}개)</p>
+                        <div className="grid grid-cols-1 gap-2">
                           {fbPromoCards.slice(0, 2).map((card, idx) => (
-                            <div key={card.id} className="flex items-center gap-2.5 px-3 py-2.5 bg-white border-2 border-gray-200 rounded-md text-sm">
+                            <div key={card.id} className="flex items-center gap-3 px-4 py-3 bg-white border-2 border-gray-200 rounded-lg text-base">
                               <span className="text-gray-500 font-mono font-bold text-base">#{idx + 2}</span>
                               <span className={`text-xs font-bold px-2 py-1 rounded ${card.kind === 'self' ? 'bg-blue-100 text-blue-800 border border-blue-300' : 'bg-green-100 text-green-800 border border-green-300'}`}>
                                 {card.kind === 'self' ? '자체' : '광고주'}
@@ -604,23 +604,23 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
                         )}
 
                         {/* 광고 변경 안내 + 빠른 링크 */}
-                        <div className="mt-3 p-3 bg-blue-50 border-2 border-blue-300 rounded-md text-sm text-blue-900 leading-relaxed">
-                          🎯 <strong className="text-base">광고 카드 변경 방법</strong>: 아래 링크 → 카드 편집에서 <strong>채널 체크박스(📘 페북)</strong> / <strong>정렬 순서</strong> / <strong>활성화(ON/OFF)</strong> 조정 후 이 페이지 새로고침. 카드 순서는 sortOrder 낮을수록 앞.
+                        <div className="mt-5 p-5 bg-blue-50 border-2 border-blue-300 rounded-lg text-base text-blue-900 leading-loose">
+                          🎯 <strong className="text-lg">광고 카드 변경 방법</strong>: 아래 링크 → 카드 편집에서 <strong>채널 체크박스(📘 페북)</strong> / <strong>정렬 순서</strong> / <strong>활성화(ON/OFF)</strong> 조정 후 이 페이지 새로고침. 카드 순서는 sortOrder 낮을수록 앞.
                           <a href="/admin/promo-cards" target="_blank" rel="noopener noreferrer"
-                             className="block mt-2 text-center bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-md font-bold text-base transition-colors shadow-sm">
+                             className="block mt-3 text-center bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold text-base transition-colors shadow-sm">
                             🎯 홍보카드 관리 페이지 열기 (새 탭)
                           </a>
                         </div>
                       </div>
                     )}
 
-                    <p className="text-sm text-gray-600 text-center mt-3 font-medium">
+                    <p className="text-base text-gray-700 text-center mt-5 font-semibold">
                       ⓘ 페북이 자동으로 그리드로 배치합니다. 클릭 시 갤러리에서 풀사이즈 노출.
                     </p>
                   </div>
 
                   {/* 게시 버튼 또는 결과 */}
-                  <div className="p-4 bg-white border-t-2 border-gray-200">
+                  <div className="p-6 bg-white border-t-2 border-gray-200">
                     {isPosted ? (
                       <div className="flex items-center gap-2">
                         {permalink && (

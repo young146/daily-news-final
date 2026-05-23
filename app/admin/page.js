@@ -172,18 +172,18 @@ export default async function AdminPage() {
   const Counter = ({ label, count, target, href }) => {
     const content = (
       <div
-        className={`px-2 py-1.5 rounded-md border flex flex-col items-center justify-center min-w-[100px] ${
+        className={`px-4 py-3 rounded-lg border-2 flex flex-col items-center justify-center min-w-[120px] shadow-sm ${
           count < target
-            ? "bg-red-50 border-red-200 text-red-700"
-            : "bg-green-50 border-green-200 text-green-700"
+            ? "bg-red-50 border-red-400 text-red-800"
+            : "bg-green-50 border-green-400 text-green-800"
         }`}
       >
-        <div className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-0.5">
+        <div className="text-xs font-bold uppercase tracking-wider mb-1.5">
           {label}
         </div>
-        <div className="text-lg font-bold leading-none">
+        <div className="text-2xl font-bold leading-none">
           {count}{" "}
-          <span className="text-xs font-normal text-gray-400">/ {target}</span>
+          <span className="text-base font-semibold text-gray-700">/ {target}</span>
         </div>
       </div>
     );
@@ -192,27 +192,27 @@ export default async function AdminPage() {
   };
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <div className="flex gap-2">
+    <div className="p-7 max-w-[1600px] mx-auto">
+      <div className="flex justify-between items-center mb-7 flex-wrap gap-4">
+        <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+        <div className="flex gap-3 flex-wrap">
           <ManualNewsButton />
           <CrawlNewsButton />
           <Link
             href="/admin/card-news"
-            className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition flex items-center gap-2"
+            className="bg-purple-600 text-white px-5 py-3 rounded-lg hover:bg-purple-700 transition flex items-center gap-2 font-bold text-base shadow-sm"
           >
             📮 전령카드 확인하기
           </Link>
           <Link
             href="/admin/stats"
-            className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition flex items-center gap-2"
+            className="bg-indigo-600 text-white px-5 py-3 rounded-lg hover:bg-indigo-700 transition flex items-center gap-2 font-bold text-base shadow-sm"
           >
             📊 통계
           </Link>
           <Link
             href="/admin/settings"
-            className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 transition flex items-center gap-2"
+            className="bg-gray-700 text-white px-5 py-3 rounded-lg hover:bg-gray-800 transition flex items-center gap-2 font-bold text-base shadow-sm"
           >
             ⚙️ 설정
           </Link>
@@ -220,8 +220,8 @@ export default async function AdminPage() {
       </div>
 
       {/* Status Dashboard (Sticky) */}
-      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm py-3 mb-6 -mx-6 px-6 border-b border-gray-200">
-        <div className="flex justify-between gap-2 overflow-x-auto">
+      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm shadow-md py-5 mb-7 -mx-7 px-7 border-b-2 border-gray-300">
+        <div className="flex justify-between gap-3 overflow-x-auto">
           <Counter label="탑뉴스" count={topCount} target={2} />
           <Counter label="Society" count={socCount} target={4} />
           <Counter label="Economy" count={ecoCount} target={4} />
@@ -243,11 +243,11 @@ export default async function AdminPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-2 gap-7">
         {/* Left Column: Selection Park */}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-bold text-gray-700">Collected News</h2>
+            <h2 className="text-xl font-bold text-gray-900">Collected News</h2>
           </div>
           <CollectedNewsList
             items={selectionPark}
