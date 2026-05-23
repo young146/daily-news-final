@@ -147,15 +147,15 @@ export default function PromoCardsPage() {
     return (
         <div style={{ padding: "20px", maxWidth: "1000px", margin: "0 auto" }}>
             {/* 헤더 */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px" }}>
                 <div>
-                    <h1 style={{ fontSize: "26px", fontWeight: "bold", margin: 0 }}>📣 홍보카드 관리</h1>
-                    <p style={{ color: "#6b7280", fontSize: "14px", marginTop: "4px" }}>뉴스 공유 시 함께 표시될 홍보카드를 관리합니다. 코드 수정 없이 언제든 변경 가능합니다.</p>
+                    <h1 style={{ fontSize: "30px", fontWeight: "800", margin: 0, color: "#111827" }}>📣 홍보카드 관리</h1>
+                    <p style={{ color: "#374151", fontSize: "15px", marginTop: "6px", fontWeight: "500" }}>뉴스 공유 시 함께 표시될 홍보카드를 관리합니다. 코드 수정 없이 언제든 변경 가능합니다.</p>
                 </div>
-                <div style={{ display: "flex", gap: "10px" }}>
-                    <Link href="/admin" style={{ padding: "8px 16px", background: "#6b7280", color: "white", borderRadius: "6px", textDecoration: "none", fontSize: "14px" }}>← 대시보드</Link>
+                <div style={{ display: "flex", gap: "12px" }}>
+                    <Link href="/admin" style={{ padding: "12px 20px", background: "#374151", color: "white", borderRadius: "8px", textDecoration: "none", fontSize: "15px", fontWeight: "700" }}>← 대시보드</Link>
                     {!showForm && (
-                        <button onClick={openNewForm} style={{ padding: "8px 16px", background: "#f97316", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold", fontSize: "14px" }}>
+                        <button onClick={openNewForm} style={{ padding: "12px 20px", background: "#ea580c", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: "700", fontSize: "15px", boxShadow: "0 2px 6px rgba(234,88,12,0.3)" }}>
                             + 새 홍보카드
                         </button>
                     )}
@@ -375,13 +375,13 @@ export default function PromoCardsPage() {
 
             {/* 카드 목록 (그리드 프리뷰) */}
             <div style={{ background: "white", borderRadius: "12px", padding: "24px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                    <h2 style={{ fontSize: "18px", fontWeight: "bold", margin: 0 }}>
-                        📋 보관된 홍보카드 <span style={{ fontSize: "14px", color: "#6b7280", fontWeight: "normal" }}>({cards.length}개)</span>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px", flexWrap: "wrap", gap: "10px" }}>
+                    <h2 style={{ fontSize: "22px", fontWeight: "800", margin: 0, color: "#111827" }}>
+                        📋 보관된 홍보카드 <span style={{ fontSize: "16px", color: "#374151", fontWeight: "700" }}>({cards.length}개)</span>
                     </h2>
-                    <div style={{ fontSize: "13px", color: "#6b7280" }}>
-                        <span style={{ color: "#16a34a", fontWeight: "bold" }}>● ON</span> = 표시중 &nbsp;
-                        <span style={{ color: "#dc2626", fontWeight: "bold" }}>● OFF</span> = 보관중
+                    <div style={{ fontSize: "15px", color: "#111827", fontWeight: "700" }}>
+                        <span style={{ color: "#15803d", fontWeight: "800" }}>● ON</span> = 표시중 &nbsp;
+                        <span style={{ color: "#b91c1c", fontWeight: "800" }}>● OFF</span> = 보관중
                     </div>
                 </div>
 
@@ -396,23 +396,23 @@ export default function PromoCardsPage() {
                         acc[w.iso] = cards.filter((c) => c.isActive && hasExplicitWeekday(c, w.iso)).length;
                         return acc;
                     }, {});
-                    const tabStyle = (active) => ({ padding: "8px 16px", borderRadius: "8px", border: active ? "2px solid #f97316" : "1px solid #e5e7eb", background: active ? "#fff7ed" : "white", color: active ? "#c2410c" : "#374151", fontWeight: active ? "bold" : "normal", fontSize: "13px", cursor: "pointer" });
-                    const statusStyle = (active, color) => ({ padding: "8px 14px", borderRadius: "8px", border: active ? `2px solid ${color}` : "1px solid #e5e7eb", background: active ? "#f9fafb" : "white", color: active ? color : "#374151", fontWeight: active ? "bold" : "normal", fontSize: "13px", cursor: "pointer" });
+                    const tabStyle = (active) => ({ padding: "10px 18px", borderRadius: "8px", border: active ? "2px solid #ea580c" : "2px solid #d1d5db", background: active ? "#fff7ed" : "white", color: active ? "#9a3412" : "#111827", fontWeight: "700", fontSize: "15px", cursor: "pointer" });
+                    const statusStyle = (active, color) => ({ padding: "10px 16px", borderRadius: "8px", border: active ? `2px solid ${color}` : "2px solid #d1d5db", background: active ? "#f3f4f6" : "white", color: active ? color : "#111827", fontWeight: "700", fontSize: "15px", cursor: "pointer" });
                     return (
                         <div style={{ marginBottom: "20px" }}>
                             {/* 검색창 */}
-                            <div style={{ position: "relative", marginBottom: "12px" }}>
+                            <div style={{ position: "relative", marginBottom: "14px" }}>
                                 <input
                                     type="text"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     placeholder="🔍 카드 제목·설명·링크로 검색…"
-                                    style={{ width: "100%", padding: "10px 14px", fontSize: "14px", border: "1px solid #d1d5db", borderRadius: "8px", boxSizing: "border-box" }}
+                                    style={{ width: "100%", padding: "12px 16px", fontSize: "16px", fontWeight: "500", color: "#111827", border: "2px solid #9ca3af", borderRadius: "8px", boxSizing: "border-box" }}
                                 />
                                 {searchTerm && (
                                     <button
                                         onClick={() => setSearchTerm("")}
-                                        style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", fontSize: "16px", color: "#9ca3af", cursor: "pointer" }}
+                                        style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", fontSize: "22px", color: "#374151", cursor: "pointer", fontWeight: "700" }}
                                         title="검색어 지우기"
                                     >×</button>
                                 )}
@@ -428,8 +428,8 @@ export default function PromoCardsPage() {
                                 <button onClick={() => setStatusFilter("all")} style={statusStyle(statusFilter === "all", "#374151")}>모든 상태</button>
                                 <button onClick={() => setStatusFilter("on")} style={statusStyle(statusFilter === "on", "#16a34a")}>● 노출중 ({liveCount})</button>
                                 <button onClick={() => setStatusFilter("off")} style={statusStyle(statusFilter === "off", "#dc2626")}>● OFF ({offCount})</button>
-                                <span style={{ width: "1px", height: "24px", background: "#e5e7eb", margin: "0 4px" }} />
-                                <span style={{ fontSize: "12px", color: "#6b7280", marginRight: "4px" }}>요일별 활성:</span>
+                                <span style={{ width: "2px", height: "28px", background: "#9ca3af", margin: "0 6px" }} />
+                                <span style={{ fontSize: "14px", color: "#111827", marginRight: "6px", fontWeight: "700" }}>요일별 활성:</span>
                                 {WEEKDAY_LIST.map((w) => (
                                     <button
                                         key={w.iso}
@@ -488,7 +488,7 @@ export default function PromoCardsPage() {
                     return (
                         <>
                             {(searchTerm || statusFilter !== "all" || filter !== "all") && (
-                                <p style={{ fontSize: "12px", color: "#6b7280", marginBottom: "12px" }}>
+                                <p style={{ fontSize: "14px", color: "#111827", marginBottom: "14px", fontWeight: "700" }}>
                                     📊 {filtered.length}건 / 전체 {cards.length}건 일치
                                 </p>
                             )}
@@ -511,18 +511,18 @@ export default function PromoCardsPage() {
                             return (
                                 <div key={card.id} style={{ borderRadius: "12px", border: cardVisuals.border, overflow: "hidden", background: cardVisuals.bg, boxShadow: cardVisuals.shadow, opacity: cardVisuals.opacity, position: "relative" }}>
                                     {/* 채널 + 요일 + 상태 배지 (우상단, 가로 배치) */}
-                                    <div style={{ position: "absolute", top: "10px", right: "10px", zIndex: 2, display: "flex", gap: "6px", alignItems: "center" }}>
+                                    <div style={{ position: "absolute", top: "12px", right: "12px", zIndex: 2, display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
                                         {card.channels && (() => {
                                             const cfg = {
-                                                email:    { icon: "📧", bg: "#dcfce7", color: "#16a34a", border: "#86efac", title: "이메일" },
-                                                facebook: { icon: "📘", bg: "#dbeafe", color: "#2563eb", border: "#93c5fd", title: "페이스북" },
+                                                email:    { icon: "📧", bg: "#dcfce7", color: "#15803d", border: "#22c55e", title: "이메일" },
+                                                facebook: { icon: "📘", bg: "#dbeafe", color: "#1d4ed8", border: "#3b82f6", title: "페이스북" },
                                             };
                                             const chans = card.channels.split(",").map(s => s.trim().toLowerCase()).filter(c => cfg[c]);
                                             if (chans.length === 0) return null;
                                             return chans.map(ch => (
                                                 <div key={ch}
                                                     title={cfg[ch].title}
-                                                    style={{ padding: "3px 8px", borderRadius: "20px", fontSize: "12px", fontWeight: "bold", background: cfg[ch].bg, color: cfg[ch].color, border: `1px solid ${cfg[ch].border}` }}>
+                                                    style={{ padding: "5px 10px", borderRadius: "20px", fontSize: "14px", fontWeight: "800", background: cfg[ch].bg, color: cfg[ch].color, border: `2px solid ${cfg[ch].border}` }}>
                                                     {cfg[ch].icon}
                                                 </div>
                                             ));
@@ -532,18 +532,18 @@ export default function PromoCardsPage() {
                                             const days = card.weekdays.split(",").map(s => dayLabels[parseInt(s.trim(), 10)]).filter(Boolean);
                                             if (days.length === 0) return null;
                                             return (
-                                                <div style={{ padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "bold", background: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d" }}>
+                                                <div style={{ padding: "5px 12px", borderRadius: "20px", fontSize: "13px", fontWeight: "800", background: "#fef3c7", color: "#78350f", border: "2px solid #f59e0b" }}>
                                                     📅 {days.join("·")}
                                                 </div>
                                             );
                                         })()}
-                                        <div style={{ padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "bold", background: statusBadge.bg, color: statusBadge.color, border: `1px solid ${statusBadge.border}` }}>
+                                        <div style={{ padding: "5px 12px", borderRadius: "20px", fontSize: "13px", fontWeight: "800", background: statusBadge.bg, color: statusBadge.color, border: `2px solid ${statusBadge.border}` }}>
                                             {statusBadge.label}
                                         </div>
                                     </div>
                                     {/* 자체 홍보 배지 (좌상단, 광고주는 표시 X) */}
                                     {isSelf && (
-                                        <div style={{ position: "absolute", top: "10px", left: "10px", zIndex: 2, padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "bold", background: "#dbeafe", color: "#1d4ed8", border: "1px solid #93c5fd" }}>
+                                        <div style={{ position: "absolute", top: "12px", left: "12px", zIndex: 2, padding: "5px 12px", borderRadius: "20px", fontSize: "13px", fontWeight: "800", background: "#dbeafe", color: "#1e40af", border: "2px solid #3b82f6" }}>
                                             🏷️ 자체{card.category ? ` · ${card.category}` : ""}
                                         </div>
                                     )}
@@ -554,15 +554,15 @@ export default function PromoCardsPage() {
                                         <div style={{ width: "100%", height: "120px", background: "linear-gradient(135deg, #fff7ed, #fed7aa)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "40px" }}>📣</div>
                                     )}
                                     {/* 카드 내용 */}
-                                    <div style={{ padding: "14px" }}>
-                                        <h3 style={{ fontSize: "15px", fontWeight: "bold", margin: "0 0 6px 0", color: "#1f2937", lineHeight: "1.4" }}>{card.title}</h3>
+                                    <div style={{ padding: "16px" }}>
+                                        <h3 style={{ fontSize: "17px", fontWeight: "800", margin: "0 0 8px 0", color: "#111827", lineHeight: "1.4" }}>{card.title}</h3>
                                         {card.description && (
-                                            <p style={{ fontSize: "13px", color: "#6b7280", margin: "0 0 8px 0", lineHeight: "1.5", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{stripHtml(card.description)}</p>
+                                            <p style={{ fontSize: "15px", color: "#374151", margin: "0 0 10px 0", lineHeight: "1.5", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", fontWeight: "500" }}>{stripHtml(card.description)}</p>
                                         )}
-                                        <a href={card.linkUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: "12px", color: "#3b82f6", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: "10px" }}>
+                                        <a href={card.linkUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: "14px", color: "#1d4ed8", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: "12px", fontWeight: "600" }}>
                                             🔗 {card.linkUrl}
                                         </a>
-                                        <div style={{ fontSize: "11px", color: "#9ca3af", marginBottom: "12px" }}>
+                                        <div style={{ fontSize: "13px", color: "#4b5563", marginBottom: "14px", fontWeight: "600" }}>
                                             순서: {card.sortOrder} | {new Date(card.createdAt).toLocaleDateString("ko-KR")} 등록
                                         </div>
                                         {/* 액션 버튼 4개 */}
@@ -633,6 +633,7 @@ export default function PromoCardsPage() {
     );
 }
 
-const lbl = { display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "6px" };
-const inp = { width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", outline: "none", boxSizing: "border-box" };
-const btn = (bg, color) => ({ padding: "6px 4px", background: bg, color, border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "bold", textAlign: "center" });
+// 디자인 규칙: 최소 폰트 14px, 색상 gray-700 이상, 굵은 폰트, 명확한 윤곽 (feedback-admin-ui-design-rules)
+const lbl = { display: "block", fontSize: "15px", fontWeight: "700", color: "#111827", marginBottom: "8px" };
+const inp = { width: "100%", padding: "12px 14px", border: "2px solid #9ca3af", borderRadius: "8px", fontSize: "16px", fontWeight: "500", color: "#111827", outline: "none", boxSizing: "border-box" };
+const btn = (bg, color) => ({ padding: "10px 8px", background: bg, color, border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700", textAlign: "center" });
