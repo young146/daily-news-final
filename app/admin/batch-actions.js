@@ -81,7 +81,7 @@ export function DeleteSelectedNewsButton({ id }) {
                 }
             }}
             disabled={isPending}
-            className="text-xs text-gray-400 hover:text-red-600 disabled:opacity-50"
+            className="text-lg font-bold text-gray-700 hover:text-red-700 disabled:opacity-50 px-2"
             title="삭제"
         >
             {isPending ? '...' : '🗑️'}
@@ -107,7 +107,7 @@ export function CardNewsToggle({ id, isCardNews }) {
                 });
             }}
             disabled={isPending}
-            className={`text-xs px-2 py-1 rounded border transition-colors ${optimisticIsCardNews ? 'bg-pink-100 border-pink-300 text-pink-700 font-bold' : 'bg-white border-gray-200 text-gray-400 hover:text-pink-500'}`}
+            className={`text-lg px-4 py-2 rounded-lg border-2 font-bold transition-colors ${optimisticIsCardNews ? 'bg-pink-100 border-pink-400 text-pink-800' : 'bg-white border-gray-400 text-gray-700 hover:text-pink-600'}`}
         >
             {optimisticIsCardNews ? '♥ Card News' : '♡ Card News'}
         </button>
@@ -246,14 +246,14 @@ Total Completed: ${completedItems.length} items
 
     // 버튼 렌더링 - 상황에 따라 여러 버튼 표시
     return (
-        <div className="flex flex-col gap-2 items-end">
+        <div className="flex flex-col gap-2.5 items-end">
             {/* 1. 번역 필요 시 번역 버튼 */}
             {needsTranslation && (
                 <button
                     type="button"
                     onClick={handleBackgroundTranslate}
                     disabled={isTranslating || isPending}
-                    className="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700 flex items-center gap-2 font-bold"
+                    className="bg-purple-600 text-white px-5 py-3 rounded-lg shadow-sm hover:bg-purple-700 flex items-center gap-2 font-bold text-lg"
                 >
                     {isTranslating ? '⏳ 번역 중... (페이지 이동 가능)' : `🚀 번역 & 요약 생성 (${itemsNeedingTranslation.length}개)`}
                 </button>
@@ -265,7 +265,7 @@ Total Completed: ${completedItems.length} items
                     type="button"
                     onClick={handleContinueReview}
                     disabled={isPending}
-                    className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2 font-bold"
+                    className="bg-blue-600 text-white px-5 py-3 rounded-lg shadow-sm hover:bg-blue-700 flex items-center gap-2 font-bold text-lg"
                 >
                     ▶ 리뷰 계속하기 ({completedItems.length}/{topNews.length} 완료)
                 </button>
@@ -277,10 +277,10 @@ Total Completed: ${completedItems.length} items
                     type="button"
                     onClick={handlePublish}
                     disabled={isPending}
-                    className={`px-4 py-2 rounded shadow flex items-center gap-2 font-bold ${
+                    className={`px-5 py-3 rounded-lg shadow-sm flex items-center gap-2 font-bold text-lg ${
                         !hasPendingReviews && !needsTranslation
                             ? 'bg-green-600 text-white hover:bg-green-700'
-                            : 'bg-green-100 text-green-800 border border-green-300 hover:bg-green-200'
+                            : 'bg-green-100 text-green-800 border-2 border-green-400 hover:bg-green-200'
                     }`}
                 >
                     {isPending ? '발행 중...' : `✨ ${completedItems.length}개 발행하기`}
@@ -289,7 +289,7 @@ Total Completed: ${completedItems.length} items
 
             {/* 4. 모든 작업 완료 상태 */}
             {!needsTranslation && !hasPendingReviews && !hasCompletedItems && (
-                <div className="text-gray-500 text-sm">
+                <div className="text-gray-700 text-base font-semibold">
                     선정된 뉴스가 없습니다
                 </div>
             )}

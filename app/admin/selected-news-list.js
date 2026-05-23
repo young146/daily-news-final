@@ -81,46 +81,46 @@ export default function SelectedNewsList({
     };
 
     return (
-        <div className="border rounded-lg p-4 bg-white shadow-sm">
-            <h2 className="text-xl font-semibold mb-4 flex justify-between items-center text-blue-800">
-                <div className="flex items-center gap-2">
+        <div className="border-2 border-gray-300 rounded-xl p-6 bg-white shadow-sm">
+            <h2 className="text-2xl font-bold mb-6 flex justify-between items-center text-blue-800 flex-wrap gap-3">
+                <div className="flex items-center gap-3">
                     선정된 뉴스
-                    <span className="text-sm font-normal bg-blue-100 text-blue-800 px-2 py-1 rounded">{topNews.length}개</span>
+                    <span className="text-lg font-bold bg-blue-100 text-blue-900 px-4 py-2 rounded-lg border-2 border-blue-300">{topNews.length}개</span>
                 </div>
                 <div className="flex gap-2">
                     <WorkflowButton topNews={topNews} />
                 </div>
             </h2>
-            <div className="space-y-4 h-[80vh] overflow-y-auto pr-2">
+            <div className="space-y-5 h-[80vh] overflow-y-auto pr-2">
                 {topNews.map(item => (
-                    <div key={item.id} className={`p-4 rounded border ${item.isTopNews ? 'bg-yellow-50 border-yellow-400 ring-2 ring-yellow-200' : 'bg-blue-50 border-blue-200'}`}>
-                        <div className="flex justify-between items-start mb-2">
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-blue-600 uppercase">{item.source}</span>
-                                {item.isTopNews && <span className="text-xs bg-yellow-400 text-yellow-900 px-1.5 py-0.5 rounded font-bold">★ TOP NEWS</span>}
+                    <div key={item.id} className={`p-6 rounded-xl border-2 ${item.isTopNews ? 'bg-yellow-50 border-yellow-400 ring-2 ring-yellow-200' : 'bg-blue-50 border-blue-300'}`}>
+                        <div className="flex justify-between items-start mb-3 flex-wrap gap-2">
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                                <span className="text-lg font-bold text-blue-700 uppercase">{item.source}</span>
+                                {item.isTopNews && <span className="text-base bg-yellow-400 text-yellow-900 px-3 py-1 rounded-lg font-bold border-2 border-yellow-500">★ TOP NEWS</span>}
                             </div>
                             <div className="flex gap-2">
-                                <span className={`text-xs px-2 py-0.5 rounded ${item.translationStatus === 'COMPLETED' ? 'bg-green-100 text-green-700' :
-                                    item.translationStatus === 'DRAFT' ? 'bg-yellow-100 text-yellow-700' :
-                                        'bg-gray-200 text-gray-600'
+                                <span className={`text-base font-bold px-3 py-1 rounded-lg border-2 ${item.translationStatus === 'COMPLETED' ? 'bg-green-100 text-green-800 border-green-300' :
+                                    item.translationStatus === 'DRAFT' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
+                                        'bg-gray-200 text-gray-800 border-gray-400'
                                     }`}>
                                     {item.translationStatus}
                                 </span>
                             </div>
                         </div>
 
-                        <h3 className="font-medium text-gray-900 mb-2">
-                            <Link href={`/admin/news/${item.id}/translate`} className="hover:text-blue-600 hover:underline flex items-center gap-2 group">
+                        <h3 className="text-2xl font-bold text-gray-900 mb-4 leading-snug">
+                            <Link href={`/admin/news/${item.id}/translate`} className="hover:text-blue-700 hover:underline flex items-center gap-2 group">
                                 {item.translatedTitle || item.title}
-                                <span className="opacity-0 group-hover:opacity-100 text-xs text-blue-500">✎ Edit</span>
+                                <span className="opacity-0 group-hover:opacity-100 text-base text-blue-700 font-semibold">✎ Edit</span>
                             </Link>
                             {!item.translatedTitle && (
-                                <span className="inline-flex items-center gap-1 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded mt-1">
+                                <span className="inline-flex items-center gap-2 text-base font-bold bg-red-100 text-red-800 px-3 py-1.5 rounded-lg mt-2 border-2 border-red-300">
                                     ⚠️ 번역 필요
                                     <button
                                         onClick={() => handleRetranslate(item.id)}
                                         disabled={translatingId === item.id}
-                                        className="ml-1 bg-yellow-500 text-white px-1.5 py-0.5 rounded hover:bg-yellow-600 disabled:opacity-50"
+                                        className="ml-1 bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 disabled:opacity-50 text-base font-bold"
                                     >
                                         {translatingId === item.id ? '⏳' : '🔄 재번역'}
                                     </button>
@@ -128,22 +128,22 @@ export default function SelectedNewsList({
                             )}
                         </h3>
 
-                        <div className="mb-3">
+                        <div className="mb-4 min-w-[220px]">
                             <CategorySelector id={item.id} initialCategory={item.category} />
                         </div>
 
-                        <div className="flex justify-between items-center mt-4 pt-3 border-t border-blue-100/50">
-                            <div className="flex gap-2 items-center">
+                        <div className="flex justify-between items-center mt-5 pt-4 border-t-2 border-blue-200">
+                            <div className="flex gap-3 items-center flex-wrap">
                                 <CardNewsToggle id={item.id} isCardNews={item.isCardNews} />
                                 <form action={handleRemoveFromTop}>
                                     <input type="hidden" name="id" value={item.id} />
-                                    <button type="submit" className="text-xs text-red-600 hover:text-red-800 hover:underline">
+                                    <button type="submit" className="text-lg font-bold text-red-700 hover:text-red-900 hover:underline">
                                         ← Unselect
                                     </button>
                                 </form>
                                 <form action={handleToggleTopNews}>
                                     <input type="hidden" name="id" value={item.id} />
-                                    <button type="submit" className={`text-xs flex items-center gap-1 ${item.isTopNews ? 'text-yellow-600 font-bold' : 'text-gray-400 hover:text-yellow-500'}`}>
+                                    <button type="submit" className={`text-lg font-bold flex items-center gap-1 ${item.isTopNews ? 'text-yellow-700' : 'text-gray-700 hover:text-yellow-600'}`}>
                                         {item.isTopNews ? '★ Unset Top' : '☆ Set as Top'}
                                     </button>
                                 </form>
@@ -154,15 +154,15 @@ export default function SelectedNewsList({
                 ))}
             </div>
             {topNews.length === 0 && (
-                <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg">
+                <div className="text-center py-14 border-2 border-dashed border-gray-300 rounded-xl">
                     {todayPublishedCount > 0 ? (
-                        <div className="space-y-2">
-                            <div className="text-4xl">✅</div>
-                            <p className="text-green-600 font-bold text-lg">오늘 {todayPublishedCount}개 뉴스 발행 완료!</p>
-                            <p className="text-gray-500 text-sm">새 뉴스를 선택하려면 왼쪽에서 추가하세요.</p>
+                        <div className="space-y-3">
+                            <div className="text-5xl">✅</div>
+                            <p className="text-green-700 font-bold text-2xl">오늘 {todayPublishedCount}개 뉴스 발행 완료!</p>
+                            <p className="text-gray-700 text-base font-semibold">새 뉴스를 선택하려면 왼쪽에서 추가하세요.</p>
                         </div>
                     ) : (
-                        <p className="text-gray-500">왼쪽에서 뉴스를 선택하세요.</p>
+                        <p className="text-gray-700 text-lg font-semibold">왼쪽에서 뉴스를 선택하세요.</p>
                     )}
                 </div>
             )}

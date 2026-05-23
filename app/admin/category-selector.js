@@ -26,7 +26,7 @@ export default function CategorySelector({ id, initialCategory }) {
             value={category}
             onChange={handleChange}
             disabled={loading}
-            className={`text-xs border rounded p-1 bg-white w-full ${loading ? 'opacity-50' : ''}`}
+            className={`text-lg font-bold border-2 border-gray-400 rounded-lg p-2.5 bg-white text-gray-900 w-full ${loading ? 'opacity-50' : ''}`}
         >
             <option value="Society">Society (사회)</option>
             <option value="Economy">Economy (경제)</option>
