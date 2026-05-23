@@ -327,17 +327,17 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
       )}
 
       {/* ─── 이메일 발송 패널 ─── */}
-      <div className="bg-white rounded-lg shadow-sm border-2 border-orange-200 mb-4">
-        <div className="p-4 bg-orange-50 border-b border-orange-200 flex items-center justify-between">
+      <div className="bg-white rounded-lg shadow-md border-2 border-orange-300 mb-5">
+        <div className="p-5 bg-orange-50 border-b-2 border-orange-200 flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h2 className="text-base font-bold text-orange-700">💌 오늘의 이메일 뉴스레터</h2>
-            <p className="text-xs text-gray-500 mt-0.5">아래 카드들이 이메일에 함께 발송됩니다 · 구독자 <strong>{subscriberCount.toLocaleString()}명</strong></p>
+            <h2 className="text-xl font-bold text-orange-800">💌 오늘의 이메일 뉴스레터</h2>
+            <p className="text-sm text-gray-700 mt-1">아래 카드들이 이메일에 함께 발송됩니다 · 구독자 <strong className="text-orange-700">{subscriberCount.toLocaleString()}명</strong></p>
           </div>
           {/* 버튼 영역 */}
           {confirmSend ? (
             /* 2단계: 발송 방식 + 인원 확인 */
-            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
-              <span className="text-sm font-bold text-red-700">
+            <div className="flex items-center gap-3 bg-red-50 border-2 border-red-300 rounded-lg px-4 py-2.5">
+              <span className="text-base font-bold text-red-800">
                 {confirmSend.endsWith('smtp') ? '📧 SMTP BCC' : '📨 e-service'}
                 {' · '}
                 {confirmSend.startsWith('test')
@@ -348,13 +348,13 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
               </span>
               <button
                 onClick={() => executeSend(confirmSend)}
-                className="px-3 py-1.5 bg-red-600 text-white rounded text-sm font-bold hover:bg-red-700 cursor-pointer"
+                className="px-4 py-2 bg-red-600 text-white rounded-md text-base font-bold hover:bg-red-700 cursor-pointer shadow-sm"
               >
                 ✅ 발송
               </button>
               <button
                 onClick={() => setConfirmSend(null)}
-                className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-sm font-bold hover:bg-gray-300 cursor-pointer"
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md text-base font-bold hover:bg-gray-300 cursor-pointer"
               >
                 ✕ 취소
               </button>
@@ -363,24 +363,24 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
             /* 1단계: 미리보기 + 발송방식별 버튼 */
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <button onClick={handlePreview} disabled={isPending || isPreviewing}
-                className="px-3 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50 text-sm font-medium cursor-pointer disabled:cursor-not-allowed">
+                className="px-4 py-2.5 bg-orange-500 text-white rounded-md hover:bg-orange-600 disabled:opacity-50 text-base font-bold cursor-pointer disabled:cursor-not-allowed shadow-sm">
                 {isPreviewing ? '⏳' : '👁️'} 미리보기
               </button>
               {/* e-service 테스트 */}
               <button onClick={() => setConfirmSend('test-eservice')} disabled={isTestSending || isAllSending || isPending}
-                className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm font-medium cursor-pointer disabled:cursor-not-allowed">
+                className="px-4 py-2.5 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-base font-bold cursor-pointer disabled:cursor-not-allowed shadow-sm">
                 {isTestSending ? '⏳' : '🧪'} 테스트(e-service)
               </button>
               {/* SMTP BCC 테스트 */}
               <button onClick={() => setConfirmSend('test-smtp')} disabled={isTestSending || isAllSending || isPending}
-                className="px-3 py-2 bg-teal-600 text-white rounded hover:bg-teal-700 disabled:opacity-50 text-sm font-medium cursor-pointer disabled:cursor-not-allowed">
+                className="px-4 py-2.5 bg-teal-600 text-white rounded-md hover:bg-teal-700 disabled:opacity-50 text-base font-bold cursor-pointer disabled:cursor-not-allowed shadow-sm">
                 {isTestSending ? '⏳' : '🧪'} 테스트(SMTP)
               </button>
               {/* SMTP 계정 선택 드롭다운 */}
               <select
                 value={smtpAccount}
                 onChange={e => setSmtpAccount(e.target.value)}
-                className="px-2 py-2 border border-teal-300 rounded text-sm bg-teal-50 text-teal-800 font-medium cursor-pointer"
+                className="px-3 py-2.5 border-2 border-teal-400 rounded-md text-base bg-teal-50 text-teal-900 font-bold cursor-pointer"
                 title="SMTP 발송 계정 선택"
               >
                 <option value="both">📊 균등 분산 (전체)</option>
@@ -389,36 +389,36 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
                 <option value="account3">계정3 (xinchao.id@)</option>
               </select>
               {/* 구분선 */}
-              <span className="text-gray-300 select-none">|</span>
+              <span className="text-gray-400 select-none text-xl">|</span>
               {/* e-service 전체 */}
               <button onClick={() => setConfirmSend('all-eservice')} disabled={isTestSending || isAllSending || isPending}
-                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm font-medium cursor-pointer disabled:cursor-not-allowed">
-                {isAllSending ? <><Send size={14} /> 발송 중...</> : <><Send size={14} /> e-service 전체</>}
+                className="px-4 py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-base font-bold cursor-pointer disabled:cursor-not-allowed shadow-sm flex items-center gap-1.5">
+                {isAllSending ? <><Send size={16} /> 발송 중...</> : <><Send size={16} /> e-service 전체</>}
               </button>
               {/* SMTP BCC 전체 */}
               <button onClick={() => setConfirmSend('all-smtp')} disabled={isTestSending || isAllSending || isPending}
-                className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 text-sm font-medium cursor-pointer disabled:cursor-not-allowed">
-                {isAllSending ? <><Send size={14} /> 발송 중...</> : <><Send size={14} /> SMTP 전체</>}
+                className="px-4 py-2.5 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 text-base font-bold cursor-pointer disabled:cursor-not-allowed shadow-sm flex items-center gap-1.5">
+                {isAllSending ? <><Send size={16} /> 발송 중...</> : <><Send size={16} /> SMTP 전체</>}
               </button>
             </div>
           )}
         </div>
         {/* 🧪 테스트 발송 대상 이메일 관리 */}
-        <div className="px-4 py-3 border-t border-orange-100 bg-green-50">
-          <p className="text-xs font-bold text-green-700 mb-2">🧪 테스트 발송 수신자 목록 ({testEmails.length}명)</p>
+        <div className="px-5 py-4 border-t-2 border-orange-100 bg-green-50">
+          <p className="text-base font-bold text-green-800 mb-2">🧪 테스트 발송 수신자 목록 ({testEmails.length}명)</p>
           {testEmails.length > 0 ? (
-            <div className="flex flex-wrap gap-2 mb-2">
+            <div className="flex flex-wrap gap-2 mb-3">
               {testEmails.map(t => (
-                <span key={t.id} className="inline-flex items-center gap-1 bg-white border border-green-200 rounded-full px-3 py-1 text-xs text-gray-700">
+                <span key={t.id} className="inline-flex items-center gap-1.5 bg-white border-2 border-green-300 rounded-full px-3 py-1.5 text-sm text-gray-800">
                   {t.name ? <strong>{t.name}</strong> : null}
                   {t.name ? ' · ' : null}
                   {t.email}
-                  <button onClick={() => handleDeleteTestEmail(t.id, t.email)} className="ml-1 text-red-400 hover:text-red-600 font-bold cursor-pointer">✕</button>
+                  <button onClick={() => handleDeleteTestEmail(t.id, t.email)} className="ml-1 text-red-500 hover:text-red-700 font-bold cursor-pointer text-base">✕</button>
                 </span>
               ))}
             </div>
           ) : (
-            <p className="text-xs text-gray-400 mb-2">등록된 테스트 이메일 없음 (아래에서 추가)</p>
+            <p className="text-sm text-gray-600 mb-3">등록된 테스트 이메일 없음 (아래에서 추가)</p>
           )}
           <div className="flex gap-2 items-center">
             <input
@@ -426,7 +426,7 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
               value={newTestEmail.name}
               onChange={e => setNewTestEmail(p => ({ ...p, name: e.target.value }))}
               placeholder="이름 (선택)"
-              className="w-24 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:border-green-400"
+              className="w-28 px-3 py-2 border-2 border-gray-300 rounded text-sm focus:outline-none focus:border-green-500"
             />
             <input
               type="email"
@@ -434,34 +434,34 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
               onChange={e => setNewTestEmail(p => ({ ...p, email: e.target.value }))}
               onKeyDown={e => e.key === 'Enter' && handleAddTestEmail()}
               placeholder="이메일 주소"
-              className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:border-green-400"
+              className="flex-1 px-3 py-2 border-2 border-gray-300 rounded text-sm focus:outline-none focus:border-green-500"
             />
             <button
               onClick={handleAddTestEmail}
               disabled={!newTestEmail.email.trim()}
-              className="px-3 py-1.5 bg-green-600 text-white rounded text-xs font-bold hover:bg-green-700 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed whitespace-nowrap"
+              className="px-4 py-2 bg-green-600 text-white rounded text-sm font-bold hover:bg-green-700 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed whitespace-nowrap shadow-sm"
             >
               ➕ 추가
             </button>
           </div>
         </div>
         {/* 이메일에 포함되는 카드 미리보기 */}
-        <div className="p-4 flex gap-4 flex-wrap">
+        <div className="p-5 flex gap-3 flex-wrap">
           {/* 뉴스 카드 */}
-          <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200 flex-1 min-w-[200px]">
-            <span className="text-2xl">📰</span>
+          <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border-2 border-blue-200 flex-1 min-w-[220px]">
+            <span className="text-3xl">📰</span>
             <div>
-              <p className="text-xs font-bold text-blue-700">오늘의 뉴스 카드</p>
-              <p className="text-xs text-gray-500">뉴스 터미널 ({allNews.length}개 기사)</p>
+              <p className="text-base font-bold text-blue-800">오늘의 뉴스 카드</p>
+              <p className="text-sm text-gray-700">뉴스 터미널 ({allNews.length}개 기사)</p>
             </div>
           </div>
           {/* 홍보 카드들 */}
           {activePromoCards.length === 0 ? (
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-dashed border-gray-300 flex-1 min-w-[200px]">
-              <span className="text-2xl">📭</span>
+            <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 flex-1 min-w-[220px]">
+              <span className="text-3xl">📭</span>
               <div>
-                <p className="text-xs font-bold text-gray-500">활성 홍보카드 없음</p>
-                <a href="/admin/promo-cards" className="text-xs text-blue-500 underline">홍보카드 관리에서 ON 설정</a>
+                <p className="text-base font-bold text-gray-700">활성 홍보카드 없음</p>
+                <a href="/admin/promo-cards" className="text-sm text-blue-600 underline font-medium">홍보카드 관리에서 ON 설정</a>
               </div>
             </div>
           ) : (
@@ -470,35 +470,35 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
               const ytId = ytMatch ? ytMatch[1] : null;
               const thumb = card.imageUrl || (ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null);
               return (
-                <div key={card.id} className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg border border-orange-200 flex-1 min-w-[200px]">
-                  {thumb && <img src={thumb} alt={card.title} className="w-14 h-10 object-cover rounded" onError={e => e.target.style.display = 'none'} />}
+                <div key={card.id} className="flex items-center gap-3 p-4 bg-orange-50 rounded-lg border-2 border-orange-200 flex-1 min-w-[220px]">
+                  {thumb && <img src={thumb} alt={card.title} className="w-16 h-12 object-cover rounded" onError={e => e.target.style.display = 'none'} />}
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-orange-700 truncate">{card.title}</p>
-                    <a href={`/promo/${card.id}`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 underline truncate block">프로모 페이지 보기</a>
+                    <p className="text-base font-bold text-orange-800 truncate">{card.title}</p>
+                    <a href={`/promo/${card.id}`} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 underline truncate block font-medium">프로모 페이지 보기</a>
                   </div>
-                  <span className="ml-auto text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold flex-shrink-0">ON</span>
+                  <span className="ml-auto text-sm bg-orange-100 text-orange-800 px-2.5 py-1 rounded-full font-bold flex-shrink-0 border border-orange-300">ON</span>
                 </div>
               );
             })
           )}
         </div>
-        <div className="px-4 pb-3 text-right">
-          <a href="/admin/promo-cards" className="text-xs text-gray-400 underline hover:text-orange-500">홍보카드 관리 (ON/OFF 변경) →</a>
+        <div className="px-5 pb-4 text-right">
+          <a href="/admin/promo-cards" className="text-sm text-blue-600 underline hover:text-orange-600 font-medium">홍보카드 관리 (ON/OFF 변경) →</a>
         </div>
       </div>
 
       {/* ─── 페이스북 4페이지 게시 패널 ─── */}
-      <div className="bg-white rounded-lg shadow-sm border-2 border-blue-200 mb-4">
-        <div className="p-4 bg-blue-50 border-b border-blue-200">
-          <h2 className="text-base font-bold text-blue-700">📘 페이스북 4페이지 게시</h2>
-          <p className="text-xs text-gray-500 mt-0.5">
+      <div className="bg-white rounded-lg shadow-md border-2 border-blue-300 mb-5">
+        <div className="p-5 bg-blue-50 border-b-2 border-blue-200">
+          <h2 className="text-xl font-bold text-blue-800">📘 페이스북 4페이지 게시</h2>
+          <p className="text-sm text-gray-700 mt-1">
             {fbReadyState.length === 0
               ? "오늘 페북 카드로 준비된 뉴스가 없습니다 — '전령카드 확인하기' 에서 페이스북 카드 준비를 먼저 실행하세요"
-              : `${fbReadyState.length}건 준비됨 · 페북 채널 활성 광고 ${fbPromoCards.length}장 함께 게시됨`}
+              : <>준비됨 <strong className="text-blue-700">{fbReadyState.length}건</strong> · 페북 채널 활성 광고 <strong className="text-blue-700">{fbPromoCards.length}장</strong> 함께 게시됨</>}
           </p>
           {fbReadyState.length > 0 && (
-            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-300 rounded text-xs text-yellow-900 leading-relaxed">
-              ⚠️ <strong>발송 흐름</strong>: 아래 미리보기 확인 → <strong>"📘 페이스북 4페이지 게시"</strong> 클릭 → <strong>확인 다이얼로그의 "✅ 게시"</strong> 클릭 시 <strong>실제 4개 페이지에 즉시 발송</strong>됩니다 (되돌릴 수 없음). 미리보기와 광고 자리를 충분히 확인하세요.
+            <div className="mt-3 p-3 bg-yellow-50 border-2 border-yellow-400 rounded-md text-sm text-yellow-900 leading-relaxed">
+              ⚠️ <strong className="text-base">발송 흐름</strong>: 아래 미리보기 확인 → <strong>"📘 페이스북 4페이지 게시"</strong> 클릭 → <strong>확인 다이얼로그의 "✅ 게시"</strong> 클릭 시 <strong className="text-red-700">실제 4개 페이지에 즉시 발송</strong>됩니다 (되돌릴 수 없음). 미리보기와 광고 자리를 충분히 확인하세요.
             </div>
           )}
         </div>
@@ -514,29 +514,29 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
               return (
                 <div key={news.id} className="border border-gray-200 rounded-lg overflow-hidden">
                   {/* 뉴스 제목 + 상태 배지 */}
-                  <div className="p-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-2">
+                  <div className="p-4 bg-gray-50 border-b-2 border-gray-200 flex items-center justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-gray-800 truncate">
+                      <p className="text-base font-bold text-gray-900 truncate">
                         {news.translatedTitle || news.title}
                       </p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">
+                      <p className="text-xs text-gray-600 mt-1">
                         카드 준비: {new Date(news.updatedAt).toLocaleString('ko-KR')}
                       </p>
                     </div>
                     {isPosted ? (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold whitespace-nowrap">
+                      <span className="text-sm bg-green-100 text-green-800 px-3 py-1.5 rounded-full font-bold whitespace-nowrap border border-green-300">
                         ✅ 게시 완료
                       </span>
                     ) : (
-                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-bold whitespace-nowrap">
+                      <span className="text-sm bg-yellow-100 text-yellow-800 px-3 py-1.5 rounded-full font-bold whitespace-nowrap border border-yellow-300">
                         ⏳ 게시 대기
                       </span>
                     )}
                   </div>
 
-                  {/* 페북 그리드 미리보기 (큰 위 1 + 작은 아래 2) */}
-                  <div className="p-4 bg-gradient-to-b from-gray-50 to-white">
-                    <p className="text-xs font-semibold text-gray-500 mb-2">📐 페이스북 그리드 미리보기 (실제 게시 모양)</p>
+                  {/* 페북 그리드 미리보기 (큰 위 1 + 작은 아래 2) + 카드 식별 정보 */}
+                  <div className="p-5 bg-gradient-to-b from-gray-50 to-white">
+                    <p className="text-sm font-bold text-gray-700 mb-3">📐 페이스북 그리드 미리보기 (실제 게시 모양)</p>
                     <div style={{ maxWidth: '500px', margin: '0 auto', display: 'grid', gap: '4px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
                       {/* 큰 위 1장 — 뉴스카드 */}
                       <img
@@ -562,13 +562,65 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
                         </div>
                       )}
                     </div>
-                    <p className="text-[10px] text-gray-400 text-center mt-2">
+
+                    {/* 광고 카드 식별 정보 + 변경 안내 */}
+                    {fbPromoCards.length > 0 && (
+                      <div style={{ maxWidth: '500px', margin: '12px auto 0' }}>
+                        <p className="text-sm font-bold text-gray-800 mb-2">📋 본문 carousel 에 들어가는 광고 ({Math.min(2, fbPromoCards.length)}개)</p>
+                        <div className="grid grid-cols-1 gap-1.5">
+                          {fbPromoCards.slice(0, 2).map((card, idx) => (
+                            <div key={card.id} className="flex items-center gap-2.5 px-3 py-2.5 bg-white border-2 border-gray-200 rounded-md text-sm">
+                              <span className="text-gray-500 font-mono font-bold text-base">#{idx + 2}</span>
+                              <span className={`text-xs font-bold px-2 py-1 rounded ${card.kind === 'self' ? 'bg-blue-100 text-blue-800 border border-blue-300' : 'bg-green-100 text-green-800 border border-green-300'}`}>
+                                {card.kind === 'self' ? '자체' : '광고주'}
+                              </span>
+                              <span className="flex-1 truncate font-bold text-gray-900">{card.title}</span>
+                              <a
+                                href={`/admin/promo-cards`}
+                                className="text-blue-600 hover:text-blue-800 text-sm font-bold whitespace-nowrap"
+                                title="홍보카드 관리에서 편집"
+                              >편집 →</a>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* 캡션에만 노출되는 추가 카드 (3번째 이후) */}
+                        {fbPromoCards.length > 2 && (
+                          <details className="mt-2">
+                            <summary className="text-sm text-gray-600 cursor-pointer hover:text-gray-900 font-medium py-1">
+                              + 캡션 텍스트에만 노출 ({fbPromoCards.length - 2}개 — 사진 없음, 광고주 이름·링크만)
+                            </summary>
+                            <div className="mt-2 grid grid-cols-1 gap-1.5">
+                              {fbPromoCards.slice(2).map(card => (
+                                <div key={card.id} className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-300 rounded text-sm text-gray-700">
+                                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${card.kind === 'self' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+                                    {card.kind === 'self' ? '자체' : '광고주'}
+                                  </span>
+                                  <span className="flex-1 truncate font-medium">{card.title}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        )}
+
+                        {/* 광고 변경 안내 + 빠른 링크 */}
+                        <div className="mt-3 p-3 bg-blue-50 border-2 border-blue-300 rounded-md text-sm text-blue-900 leading-relaxed">
+                          🎯 <strong className="text-base">광고 카드 변경 방법</strong>: 아래 링크 → 카드 편집에서 <strong>채널 체크박스(📘 페북)</strong> / <strong>정렬 순서</strong> / <strong>활성화(ON/OFF)</strong> 조정 후 이 페이지 새로고침. 카드 순서는 sortOrder 낮을수록 앞.
+                          <a href="/admin/promo-cards" target="_blank" rel="noopener noreferrer"
+                             className="block mt-2 text-center bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-md font-bold text-base transition-colors shadow-sm">
+                            🎯 홍보카드 관리 페이지 열기 (새 탭)
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
+                    <p className="text-sm text-gray-600 text-center mt-3 font-medium">
                       ⓘ 페북이 자동으로 그리드로 배치합니다. 클릭 시 갤러리에서 풀사이즈 노출.
                     </p>
                   </div>
 
                   {/* 게시 버튼 또는 결과 */}
-                  <div className="p-3 bg-white border-t border-gray-200">
+                  <div className="p-4 bg-white border-t-2 border-gray-200">
                     {isPosted ? (
                       <div className="flex items-center gap-2">
                         {permalink && (
@@ -577,13 +629,13 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
                               href={permalink}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex-1 text-center bg-[#1877f2] hover:bg-[#166fe5] text-white py-2 rounded font-bold text-sm transition-colors"
+                              className="flex-1 text-center bg-[#1877f2] hover:bg-[#166fe5] text-white py-3 rounded-md font-bold text-base transition-colors shadow-sm"
                             >
                               📘 게시물 보기 (페북 새 탭)
                             </a>
                             <button
                               onClick={() => navigator.clipboard.writeText(permalink).then(() => showToast('📋 링크 복사됨'))}
-                              className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm font-bold hover:bg-gray-200"
+                              className="px-4 py-3 bg-gray-100 text-gray-800 rounded-md text-base font-bold hover:bg-gray-200 border border-gray-300"
                             >
                               📋 링크 복사
                             </button>
@@ -591,20 +643,20 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
                         )}
                       </div>
                     ) : isConfirming ? (
-                      <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg p-2">
-                        <span className="flex-1 text-sm font-bold text-red-700">
-                          페이스북 4페이지에 게시하시겠습니까?
+                      <div className="flex items-center gap-3 bg-red-50 border-2 border-red-400 rounded-lg p-3">
+                        <span className="flex-1 text-base font-bold text-red-800">
+                          페이스북 4페이지에 실제 게시하시겠습니까?
                         </span>
                         <button
                           onClick={() => handleFbPublish(news.id)}
                           disabled={isFbPublishing}
-                          className="px-3 py-1.5 bg-red-600 text-white rounded text-sm font-bold hover:bg-red-700 disabled:opacity-50"
+                          className="px-5 py-2.5 bg-red-600 text-white rounded-md text-base font-bold hover:bg-red-700 disabled:opacity-50 shadow-sm"
                         >
                           ✅ 게시
                         </button>
                         <button
                           onClick={() => setFbConfirmId(null)}
-                          className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-sm font-bold hover:bg-gray-300"
+                          className="px-5 py-2.5 bg-gray-200 text-gray-800 rounded-md text-base font-bold hover:bg-gray-300"
                         >
                           ✕ 취소
                         </button>
@@ -613,7 +665,7 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
                       <button
                         onClick={() => setFbConfirmId(news.id)}
                         disabled={isFbPublishing}
-                        className="w-full bg-[#1877f2] hover:bg-[#166fe5] text-white py-2.5 rounded font-bold text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="w-full bg-[#1877f2] hover:bg-[#166fe5] text-white py-3.5 rounded-md font-bold text-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
                       >
                         {isFbPublishing ? (
                           <><span className="animate-spin">⏳</span> 게시 중...</>
@@ -625,10 +677,10 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
 
                     {/* 페이지별 결과 (게시 후) */}
                     {result?.pageResults && result.pageResults.length > 0 && (
-                      <div className="mt-2 grid grid-cols-2 gap-1">
+                      <div className="mt-3 grid grid-cols-2 gap-2">
                         {result.pageResults.map(pr => (
-                          <div key={pr.pageId} className={`text-[10px] px-2 py-1 rounded ${pr.ok ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                            {pr.ok ? '✅' : '❌'} {pr.name}{pr.attempts > 1 ? ` (${pr.attempts}회)` : ''}
+                          <div key={pr.pageId} className={`text-sm font-medium px-3 py-2 rounded ${pr.ok ? 'bg-green-50 text-green-800 border border-green-300' : 'bg-red-50 text-red-800 border border-red-300'}`}>
+                            {pr.ok ? '✅' : '❌'} <strong>{pr.name}</strong>{pr.attempts > 1 ? ` (${pr.attempts}회)` : ''}
                           </div>
                         ))}
                       </div>
