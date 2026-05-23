@@ -57,16 +57,23 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
   };
 
   useEffect(() => {
-    // 이메일용 활성 카드 (channel 미지정 = 모든 채널 + email 명시)
+    // 이메일용 활성 카드 (channel=email 명시 + null 카드 자동 포함)
     fetch('/api/promo-cards/active?channel=email')
       .then(r => r.json())
       .then(d => { if (d.success) setActivePromoCards(d.cards || []); })
       .catch(() => { });
-    // 페북용 활성 카드 (channel=facebook 명시 + null 카드 자동 포함)
-    fetch('/api/promo-cards/active?channel=facebook')
-      .then(r => r.json())
-      .then(d => { if (d.success) setFbPromoCards(d.cards || []); })
-      .catch(() => { });
+
+    // 페북용 활성 카드 — fb-publish API 와 동일한 로직 (kind=self 먼저, kind=ad 나중)
+    // 으로 호출해서 미리보기와 실제 게시 순서를 일치시킴.
+    // 자체 홍보 카드(씬짜오 앱 등)가 광고 카드보다 먼저 본문에 노출.
+    Promise.all([
+      fetch('/api/promo-cards/active?kind=self&channel=facebook').then(r => r.json()),
+      fetch('/api/promo-cards/active?kind=ad&channel=facebook').then(r => r.json()),
+    ]).then(([selfD, adD]) => {
+      const merged = [...(selfD.cards || []), ...(adD.cards || [])];
+      setFbPromoCards(merged);
+    }).catch(() => { });
+
     fetchTestEmails();
   }, []);
 
@@ -489,6 +496,11 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
               ? "오늘 페북 카드로 준비된 뉴스가 없습니다 — '전령카드 확인하기' 에서 페이스북 카드 준비를 먼저 실행하세요"
               : `${fbReadyState.length}건 준비됨 · 페북 채널 활성 광고 ${fbPromoCards.length}장 함께 게시됨`}
           </p>
+          {fbReadyState.length > 0 && (
+            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-300 rounded text-xs text-yellow-900 leading-relaxed">
+              ⚠️ <strong>발송 흐름</strong>: 아래 미리보기 확인 → <strong>"📘 페이스북 4페이지 게시"</strong> 클릭 → <strong>확인 다이얼로그의 "✅ 게시"</strong> 클릭 시 <strong>실제 4개 페이지에 즉시 발송</strong>됩니다 (되돌릴 수 없음). 미리보기와 광고 자리를 충분히 확인하세요.
+            </div>
+          )}
         </div>
 
         {fbReadyState.length > 0 && (
