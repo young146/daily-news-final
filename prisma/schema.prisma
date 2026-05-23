@@ -33,7 +33,10 @@ model NewsItem {
   isPublishedMain   Boolean  @default(false) // chaovietnam.co.kr
   isPublishedDaily  Boolean  @default(false) // daily.chaovietnam.co.kr
   isCardNews        Boolean  @default(false) // Selected for Card News (Top 1 + 4 others)
-  isSentSNS         Boolean  @default(false) // Facebook, Kakao
+  isSentSNS         Boolean  @default(false) // Facebook, Kakao 게시 완료
+  // 페북 게시 준비/결과 — "페북 카드 준비" 단계와 "페북 게시" 단계 분리 흐름 지원
+  cardImageUrl      String?  // 카드뉴스 이미지 URL — 페북 발송 시 메인 사진. publish-card-news fbCardOnly 모드에서 저장
+  facebookPermalink String?  // 페북 게시 성공 후 첫 페이지 permalink (4페이지 중 대표 URL)
   wordpressUrl      String?  // URL of the published post on WordPress
   wordpressImageUrl String?  // URL of uploaded image in WordPress media library
   wordpressMediaId  Int?     // Media ID of uploaded image for featured_media

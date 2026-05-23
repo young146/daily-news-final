@@ -3,13 +3,45 @@ import PublishedNewsList from "./published-news-list";
 
 export const dynamic = "force-dynamic"; // ✅ Vercel에서 캐싱 방지, 항상 최신 데이터 가져오기
 
-async function getPublishedNews() {
-  // 오늘 발행된 뉴스만 가져오기 (베트남 시간대 기준)
-  // 베트남 시간대(UTC+7) 기준으로 '오늘'의 시작과 끝 시간 계산 (통일된 로직)
+// 오늘 시작/끝 — 베트남 시간대 (모든 조회에 공통 사용)
+function getTodayRangeVN() {
   const now = new Date();
-  const vnDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // "YYYY-MM-DD"
+  const vnDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
   const todayStart = new Date(`${vnDateStr}T00:00:00+07:00`);
   const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+  return { todayStart, todayEnd };
+}
+
+// 페북 게시 대기 카드 — 오늘 cardImageUrl 저장됐고 아직 게시 안 한 뉴스 (보통 1개).
+// publish-card-news 호출 시 자동으로 cardImageUrl 저장. /api/fb-publish 호출 시 isSentSNS=true.
+async function getFacebookReadyNews() {
+  const { todayStart, todayEnd } = getTodayRangeVN();
+  return await prisma.newsItem.findMany({
+    where: {
+      cardImageUrl: { not: null },
+      OR: [
+        { isSentSNS: false },
+        { isSentSNS: true }, // 게시 완료된 것도 표시 (permalink 확인용)
+      ],
+      updatedAt: { gte: todayStart, lt: todayEnd }, // 오늘 준비된 것만
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 5, // 최대 5개 (보통 1개)
+    select: {
+      id: true,
+      title: true,
+      translatedTitle: true,
+      cardImageUrl: true,
+      isSentSNS: true,
+      facebookPermalink: true,
+      updatedAt: true,
+    },
+  });
+}
+
+async function getPublishedNews() {
+  // 오늘 발행된 뉴스만 가져오기 (베트남 시간대 기준)
+  const { todayStart, todayEnd } = getTodayRangeVN();
 
   const publishedNews = await prisma.newsItem.findMany({
     where: {
@@ -58,8 +90,11 @@ async function getPublishedNews() {
 }
 
 export default async function PublishedNewsPage() {
-  const { groupedNews, categories, totalCount } = await getPublishedNews();
-  const subscriberCount = await prisma.subscriber.count({ where: { isActive: true } });
+  const [{ groupedNews, categories, totalCount }, subscriberCount, fbReadyNews] = await Promise.all([
+    getPublishedNews(),
+    prisma.subscriber.count({ where: { isActive: true } }),
+    getFacebookReadyNews(),
+  ]);
 
   return (
     <div className="container mx-auto p-6">
@@ -70,7 +105,12 @@ export default async function PublishedNewsPage() {
         </p>
       </div>
 
-      <PublishedNewsList groupedNews={groupedNews} categories={categories} subscriberCount={subscriberCount} />
+      <PublishedNewsList
+        groupedNews={groupedNews}
+        categories={categories}
+        subscriberCount={subscriberCount}
+        fbReadyNews={fbReadyNews}
+      />
     </div>
   );
 }

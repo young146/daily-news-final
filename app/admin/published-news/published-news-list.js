@@ -19,7 +19,7 @@ const categoryLabels = {
   'Other': '기타'
 };
 
-export default function PublishedNewsList({ groupedNews, categories, subscriberCount = 0 }) {
+export default function PublishedNewsList({ groupedNews, categories, subscriberCount = 0, fbReadyNews = [] }) {
   const [newsData, setNewsData] = useState(groupedNews);
   const [selectedIds, setSelectedIds] = useState([]);
   const [isPending, startTransition] = useTransition();
@@ -37,6 +37,13 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
   const [sendMethod, setSendMethod] = useState(null); // 가장 최근 사용한 방식 기록
   const [smtpAccount, setSmtpAccount] = useState('both'); // 'both' | 'account1' | 'account2'
 
+  // ─── 페이스북 게시 관련 state ───
+  const [fbPromoCards, setFbPromoCards] = useState([]); // 페북 채널 활성 카드 (미리보기/게시용)
+  const [fbReadyState, setFbReadyState] = useState(fbReadyNews); // 페북 준비된 뉴스 (서버에서 초기값, 게시 후 갱신)
+  const [isFbPublishing, setIsFbPublishing] = useState(false);
+  const [fbConfirmId, setFbConfirmId] = useState(null); // 게시 확인 다이얼로그용 newsItemId
+  const [fbResults, setFbResults] = useState({}); // { newsItemId: { permalink, pageResults, summary } }
+
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
@@ -50,12 +57,47 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
   };
 
   useEffect(() => {
-    fetch('/api/promo-cards/active')
+    // 이메일용 활성 카드 (channel 미지정 = 모든 채널 + email 명시)
+    fetch('/api/promo-cards/active?channel=email')
       .then(r => r.json())
       .then(d => { if (d.success) setActivePromoCards(d.cards || []); })
       .catch(() => { });
+    // 페북용 활성 카드 (channel=facebook 명시 + null 카드 자동 포함)
+    fetch('/api/promo-cards/active?channel=facebook')
+      .then(r => r.json())
+      .then(d => { if (d.success) setFbPromoCards(d.cards || []); })
+      .catch(() => { });
     fetchTestEmails();
   }, []);
+
+  // 페이스북 4페이지 게시 실행
+  const handleFbPublish = async (newsItemId) => {
+    setFbConfirmId(null);
+    setIsFbPublishing(true);
+    try {
+      const res = await fetch('/api/fb-publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newsItemId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFbResults(prev => ({ ...prev, [newsItemId]: { permalink: data.permalink, pageResults: data.pageResults, summary: data.summary } }));
+        // 게시 완료 표시 — fbReadyState 의 해당 항목 isSentSNS=true 로 업데이트
+        setFbReadyState(prev => prev.map(n => n.id === newsItemId ? { ...n, isSentSNS: true, facebookPermalink: data.permalink } : n));
+        const { success: succ, failure: fail, total } = data.summary || {};
+        showToast(`✅ 페북 게시 완료 (${succ ?? '?'}/${total ?? '?'} 페이지)`);
+      } else if (data.alreadyPosted) {
+        showToast('⚠️ 이미 게시된 뉴스입니다', 'error');
+        setFbReadyState(prev => prev.map(n => n.id === newsItemId ? { ...n, isSentSNS: true, facebookPermalink: data.permalink } : n));
+      } else {
+        showToast(`❌ 페북 게시 실패: ${data.error}`, 'error');
+      }
+    } catch (e) {
+      showToast(`❌ 페북 게시 오류: ${e.message}`, 'error');
+    }
+    setIsFbPublishing(false);
+  };
 
   const handleAddTestEmail = async () => {
     const email = newTestEmail.email.trim();
@@ -436,6 +478,155 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
         <div className="px-4 pb-3 text-right">
           <a href="/admin/promo-cards" className="text-xs text-gray-400 underline hover:text-orange-500">홍보카드 관리 (ON/OFF 변경) →</a>
         </div>
+      </div>
+
+      {/* ─── 페이스북 4페이지 게시 패널 ─── */}
+      <div className="bg-white rounded-lg shadow-sm border-2 border-blue-200 mb-4">
+        <div className="p-4 bg-blue-50 border-b border-blue-200">
+          <h2 className="text-base font-bold text-blue-700">📘 페이스북 4페이지 게시</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {fbReadyState.length === 0
+              ? "오늘 페북 카드로 준비된 뉴스가 없습니다 — '전령카드 확인하기' 에서 페이스북 카드 준비를 먼저 실행하세요"
+              : `${fbReadyState.length}건 준비됨 · 페북 채널 활성 광고 ${fbPromoCards.length}장 함께 게시됨`}
+          </p>
+        </div>
+
+        {fbReadyState.length > 0 && (
+          <div className="p-4 space-y-4">
+            {fbReadyState.map(news => {
+              const result = fbResults[news.id];
+              const permalink = result?.permalink || news.facebookPermalink;
+              const isPosted = news.isSentSNS;
+              const isConfirming = fbConfirmId === news.id;
+
+              return (
+                <div key={news.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                  {/* 뉴스 제목 + 상태 배지 */}
+                  <div className="p-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-gray-800 truncate">
+                        {news.translatedTitle || news.title}
+                      </p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        카드 준비: {new Date(news.updatedAt).toLocaleString('ko-KR')}
+                      </p>
+                    </div>
+                    {isPosted ? (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold whitespace-nowrap">
+                        ✅ 게시 완료
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-bold whitespace-nowrap">
+                        ⏳ 게시 대기
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 페북 그리드 미리보기 (큰 위 1 + 작은 아래 2) */}
+                  <div className="p-4 bg-gradient-to-b from-gray-50 to-white">
+                    <p className="text-xs font-semibold text-gray-500 mb-2">📐 페이스북 그리드 미리보기 (실제 게시 모양)</p>
+                    <div style={{ maxWidth: '500px', margin: '0 auto', display: 'grid', gap: '4px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                      {/* 큰 위 1장 — 뉴스카드 */}
+                      <img
+                        src={news.cardImageUrl}
+                        alt="뉴스카드"
+                        style={{ width: '100%', height: '262px', objectFit: 'cover', display: 'block' }}
+                      />
+                      {/* 작은 아래 2장 — 페북 광고 */}
+                      {fbPromoCards.length > 0 ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: fbPromoCards.length === 1 ? '1fr' : '1fr 1fr', gap: '4px' }}>
+                          {fbPromoCards.slice(0, 2).map(card => (
+                            <img
+                              key={card.id}
+                              src={card.imageUrlFacebook || card.imageUrl}
+                              alt={card.title}
+                              style={{ width: '100%', height: '131px', objectFit: 'cover', display: 'block' }}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-gray-100 text-center text-xs text-gray-500">
+                          페북 채널 활성 광고 없음 — 뉴스카드만 게시됩니다
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-gray-400 text-center mt-2">
+                      ⓘ 페북이 자동으로 그리드로 배치합니다. 클릭 시 갤러리에서 풀사이즈 노출.
+                    </p>
+                  </div>
+
+                  {/* 게시 버튼 또는 결과 */}
+                  <div className="p-3 bg-white border-t border-gray-200">
+                    {isPosted ? (
+                      <div className="flex items-center gap-2">
+                        {permalink && (
+                          <>
+                            <a
+                              href={permalink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 text-center bg-[#1877f2] hover:bg-[#166fe5] text-white py-2 rounded font-bold text-sm transition-colors"
+                            >
+                              📘 게시물 보기 (페북 새 탭)
+                            </a>
+                            <button
+                              onClick={() => navigator.clipboard.writeText(permalink).then(() => showToast('📋 링크 복사됨'))}
+                              className="px-3 py-2 bg-gray-100 text-gray-700 rounded text-sm font-bold hover:bg-gray-200"
+                            >
+                              📋 링크 복사
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    ) : isConfirming ? (
+                      <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg p-2">
+                        <span className="flex-1 text-sm font-bold text-red-700">
+                          페이스북 4페이지에 게시하시겠습니까?
+                        </span>
+                        <button
+                          onClick={() => handleFbPublish(news.id)}
+                          disabled={isFbPublishing}
+                          className="px-3 py-1.5 bg-red-600 text-white rounded text-sm font-bold hover:bg-red-700 disabled:opacity-50"
+                        >
+                          ✅ 게시
+                        </button>
+                        <button
+                          onClick={() => setFbConfirmId(null)}
+                          className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-sm font-bold hover:bg-gray-300"
+                        >
+                          ✕ 취소
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setFbConfirmId(news.id)}
+                        disabled={isFbPublishing}
+                        className="w-full bg-[#1877f2] hover:bg-[#166fe5] text-white py-2.5 rounded font-bold text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {isFbPublishing ? (
+                          <><span className="animate-spin">⏳</span> 게시 중...</>
+                        ) : (
+                          <>📘 페이스북 4페이지 게시</>
+                        )}
+                      </button>
+                    )}
+
+                    {/* 페이지별 결과 (게시 후) */}
+                    {result?.pageResults && result.pageResults.length > 0 && (
+                      <div className="mt-2 grid grid-cols-2 gap-1">
+                        {result.pageResults.map(pr => (
+                          <div key={pr.pageId} className={`text-[10px] px-2 py-1 rounded ${pr.ok ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                            {pr.ok ? '✅' : '❌'} {pr.name}{pr.attempts > 1 ? ` (${pr.attempts}회)` : ''}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">

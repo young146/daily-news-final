@@ -1,5 +1,4 @@
 import prisma from "@/lib/prisma";
-import { after } from "next/server";
 import {
   publishCardNewsToWordPress,
   uploadImageToWordPress,
@@ -309,96 +308,29 @@ export async function POST(request) {
       }
     });
 
-    // emailOnly 모드: WordPress 카드 생성만 하고 즉시 반환 (이메일 전용, Facebook 없음)
-    if (body.emailOnly) {
-      return new Response(
-        JSON.stringify({ success: true, terminalUrl: result.terminalUrl, imageUrl: result.imageUrl, facebook: null }),
-        { headers: { "Content-Type": "application/json" } }
-      );
+    // 5-b. cardImageUrl 저장 — 향후 /api/fb-publish 가 이 URL 로 페북 게시 (페북 메인 사진)
+    //      모든 모드(emailOnly / fbCardOnly / 일반)에서 저장. published-news 페이지에서
+    //      페북 섹션 노출 조건(cardImageUrl 존재 + isSentSNS=false) 으로 사용.
+    if (topNews?.id && result.imageUrl) {
+      try {
+        await prisma.newsItem.update({
+          where: { id: topNews.id },
+          data: { cardImageUrl: result.imageUrl },
+        });
+      } catch (e) {
+        console.warn('[CardNews API] cardImageUrl 저장 실패 (무시):', e.message);
+      }
     }
 
-    // 6. 페이스북 자동 게시 — fire-and-forget (응답 후 백그라운드 진행)
-    //    사용자 체감: WordPress 카드 발행 즉시 응답 (~5초) → 페북은 백그라운드 (~30~60초)
-    //    이전: await 박혀 페북 완료까지 ~2~3분 대기 + 120초 timeout 시 false negative
-    //    사용자가 명시적으로 뉴스를 선택한 경우(body.topNewsId) isSentSNS 무시
-    const skipSNSCheck = !!body.topNewsId;
-    const shouldRunFacebook = (skipSNSCheck || !topNews.isSentSNS)
-      && !!process.env.PUBLISH_API_KEY
-      && !!result.imageUrl;
-
-    if (shouldRunFacebook) {
-      const fbCtx = {
-        topNewsId: topNews.id,
-        imageUrl: result.imageUrl,
-        terminalUrl: result.terminalUrl,
-        title,
-        dateStr,
-      };
-      // after() — 응답 송신 후 Vercel 런타임이 보장하는 백그라운드 실행 슬롯
-      after(async () => {
-        try {
-          let baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://daily-news-final.vercel.app";
-          if (baseUrl && !baseUrl.startsWith("http")) baseUrl = "https://" + baseUrl;
-          // 페북 채널 필터 — channels 에 "facebook" 포함된 카드 또는 channels 미지정 카드.
-          // 사용자가 admin 에서 "이 카드는 이메일 전용" 으로 설정한 카드는 자동 제외됨.
-          const [selfR, adR] = await Promise.all([
-            fetch(`${baseUrl}/api/promo-cards/active?kind=self&channel=facebook`),
-            fetch(`${baseUrl}/api/promo-cards/active?kind=ad&channel=facebook`),
-          ]);
-          const selfCards = (await selfR.json()).cards || [];
-          const adCards = (await adR.json()).cards || [];
-          // 페북용 이미지(imageUrlFacebook)가 있으면 우선 사용. 없으면 기본 imageUrl 로 폴백.
-          // 광고주 원본은 보통 앱/웹 배너 비율이라 페북 그리드에 잘 안 어울리므로
-          // admin 에서 페북 전용 이미지를 별도 업로드 권장.
-          const promos = [...selfCards, ...adCards]
-            .filter(c => c.imageUrlFacebook || c.imageUrl)
-            .map(c => ({ imageUrl: c.imageUrlFacebook || c.imageUrl, title: c.title, linkUrl: c.linkUrl || "" }));
-
-          const fbBody = {
-            news: {
-              imageUrl: fbCtx.imageUrl,
-              caption: `🗞 씬짜오 데일리뉴스 — ${fbCtx.dateStr}\n${fbCtx.title}\n오늘의 뉴스 전체 보기 ↓`,
-              link: fbCtx.terminalUrl || "https://chaovietnam.co.kr/daily-news-terminal/",
-            },
-            promos,
-          };
-
-          const fbRes = await fetch(
-            "https://asia-northeast3-chaovietnam-login.cloudfunctions.net/publishToFacebookPage",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: "Bearer " + process.env.PUBLISH_API_KEY },
-              body: JSON.stringify(fbBody),
-              signal: AbortSignal.timeout(290000), // Cloud Function timeout(300s) 직전까지 대기
-            }
-          );
-          const fbData = await fbRes.json();
-          if (fbData.ok) {
-            await prisma.newsItem.update({
-              where: { id: fbCtx.topNewsId },
-              data: { isSentSNS: true },
-            });
-            console.log("[CardNews API] ✅ Facebook posted (background):", fbData.permalink);
-          } else {
-            console.warn("[CardNews API] ⚠️ Facebook post failed (background):", fbData.error);
-          }
-        } catch (fbErr) {
-          console.warn("[CardNews API] ⚠️ Facebook post error (background):", fbErr.message);
-        }
-      });
-    } else if (topNews.isSentSNS) {
-      console.log("[CardNews API] Facebook skipped (already sent for this topNews)");
-    }
-
+    // 6. 응답 — 페북 자동 게시는 제거됨 (분리된 흐름).
+    //    사용자가 발행된 뉴스 페이지에서 "페이스북 4페이지 게시" 버튼 클릭 시
+    //    /api/fb-publish 가 publishToFacebookPage 를 호출.
     return new Response(
       JSON.stringify({
         success: true,
         terminalUrl: result.terminalUrl,
         imageUrl: result.imageUrl,
-        // 페북 게시는 백그라운드 진행 중 → 결과는 페북 페이지에서 직접 확인
-        facebook: shouldRunFacebook
-          ? { ok: null, pending: true, message: "백그라운드 게시 진행 중" }
-          : (topNews.isSentSNS ? { ok: false, skipped: "already_sent" } : null),
+        facebook: null, // 자동 게시 없음. published-news 에서 명시 게시.
       }),
       { headers: { "Content-Type": "application/json" } }
     );
