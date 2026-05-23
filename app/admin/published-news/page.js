@@ -12,21 +12,22 @@ function getTodayRangeVN() {
   return { todayStart, todayEnd };
 }
 
-// 페북 게시 대기 카드 — 오늘 cardImageUrl 저장됐고 아직 게시 안 한 뉴스 (보통 1개).
-// publish-card-news 호출 시 자동으로 cardImageUrl 저장. /api/fb-publish 호출 시 isSentSNS=true.
+// 페북 게시 대기 카드 — 오늘 cardImageUrl 저장됐고 *아직 게시 안 한* 뉴스.
+// 흐름:
+//   - publish-card-news 호출 시 cardImageUrl 저장 (게시 대기 = 패널에 표시)
+//   - /api/fb-publish 호출 시 isSentSNS=true (다음 새로고침 시 패널에서 사라짐 — 노이즈 제거)
+//   - 게시 직후 일시적 결과(permalink + 페이지별 ✅/❌)는 클라이언트 state 로 보존
+//     → 사용자가 즉시 결과 확인 가능. 새로고침하면 사라져 깔끔.
 async function getFacebookReadyNews() {
   const { todayStart, todayEnd } = getTodayRangeVN();
   return await prisma.newsItem.findMany({
     where: {
       cardImageUrl: { not: null },
-      OR: [
-        { isSentSNS: false },
-        { isSentSNS: true }, // 게시 완료된 것도 표시 (permalink 확인용)
-      ],
-      updatedAt: { gte: todayStart, lt: todayEnd }, // 오늘 준비된 것만
+      isSentSNS: false, // 아직 게시 안 한 카드만 (게시 완료는 자동 숨김)
+      updatedAt: { gte: todayStart, lt: todayEnd },
     },
     orderBy: { updatedAt: "desc" },
-    take: 5, // 최대 5개 (보통 1개)
+    take: 5,
     select: {
       id: true,
       title: true,
