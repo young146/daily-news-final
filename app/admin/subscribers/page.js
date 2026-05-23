@@ -307,72 +307,72 @@ export default function SubscribersPage() {
     if (loading) return <div className="flex justify-center p-8">로딩 중...</div>;
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center flex-wrap gap-2">
-                <h1 className="text-2xl font-bold text-gray-800 flex items-center">
-                    <Mail className="mr-2" /> 이메일 구독자 관리
+        <div className="space-y-7">
+            <div className="flex justify-between items-center flex-wrap gap-3">
+                <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+                    <Mail className="mr-2" size={28} /> 이메일 구독자 관리
                 </h1>
-                <div className="flex items-center flex-wrap gap-2">
-                    <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
+                <div className="flex items-center flex-wrap gap-3">
+                    <span className="bg-blue-100 text-blue-900 text-base font-bold px-4 py-2 rounded-full border-2 border-blue-300">
                         총 {total}명 (이 페이지: {subscribers.length}명)
                     </span>
                     {selected.size > 0 && (
-                        <div className="flex items-center gap-2 border-r pr-2 mr-1">
-                            <span className="text-sm text-gray-500 font-medium">{selected.size}명 선택됨:</span>
+                        <div className="flex items-center gap-2 border-r-2 border-gray-300 pr-3 mr-1">
+                            <span className="text-base text-gray-800 font-bold">{selected.size}명 선택됨:</span>
                             <button onClick={() => handleBulkToggleActive(true)} disabled={toggling}
-                                className="bg-green-600 text-white px-3 py-1.5 rounded-md hover:bg-green-700 transition flex items-center text-sm font-medium shadow-sm disabled:opacity-50">
-                                <CheckCircle2 size={16} className="mr-1" />
+                                className="bg-green-600 text-white px-4 py-2.5 rounded-lg hover:bg-green-700 transition flex items-center text-base font-bold shadow-sm disabled:opacity-50">
+                                <CheckCircle2 size={18} className="mr-1.5" />
                                 활성화
                             </button>
                             <button onClick={() => handleBulkToggleActive(false)} disabled={toggling}
-                                className="bg-yellow-600 text-white px-3 py-1.5 rounded-md hover:bg-yellow-700 transition flex items-center text-sm font-medium shadow-sm disabled:opacity-50">
-                                <XCircle size={16} className="mr-1" />
+                                className="bg-yellow-600 text-white px-4 py-2.5 rounded-lg hover:bg-yellow-700 transition flex items-center text-base font-bold shadow-sm disabled:opacity-50">
+                                <XCircle size={18} className="mr-1.5" />
                                 비활성화
                             </button>
                             <button onClick={handleBulkDelete} disabled={bulkDeleting}
-                                className="bg-red-600 text-white px-3 py-1.5 rounded-md hover:bg-red-700 transition flex items-center text-sm font-medium shadow-sm disabled:opacity-50">
-                                <Trash2 size={16} className="mr-1" />
+                                className="bg-red-600 text-white px-4 py-2.5 rounded-lg hover:bg-red-700 transition flex items-center text-base font-bold shadow-sm disabled:opacity-50">
+                                <Trash2 size={18} className="mr-1.5" />
                                 삭제
                             </button>
                         </div>
                     )}
                     <button onClick={handleCleanup} disabled={cleaning}
-                        className={`px-3 py-1.5 rounded-md transition flex items-center text-sm font-medium shadow-sm text-white ${cleaning ? 'bg-gray-400 cursor-not-allowed' : 'bg-gray-600 hover:bg-gray-700'}`}>
-                        <Trash2 size={16} className="mr-1" />
+                        className={`px-4 py-2.5 rounded-lg transition flex items-center text-base font-bold shadow-sm text-white ${cleaning ? 'bg-gray-400 cursor-not-allowed' : 'bg-gray-700 hover:bg-gray-800'}`}>
+                        <Trash2 size={18} className="mr-1.5" />
                         {cleaning ? '정리 중...' : '깨진 데이터 정리'}
                     </button>
-                    <label className={`px-3 py-1.5 rounded-md transition flex items-center text-sm font-medium shadow-sm cursor-pointer text-white ${importing ? 'bg-orange-300 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600'}`}>
-                        <Upload size={16} className="mr-1" />
+                    <label className={`px-4 py-2.5 rounded-lg transition flex items-center text-base font-bold shadow-sm cursor-pointer text-white ${importing ? 'bg-orange-300 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700'}`}>
+                        <Upload size={18} className="mr-1.5" />
                         {importing ? '가져오는 중...' : '엑셀 가져오기'}
                         <input type="file" accept=".xlsx,.xls,.csv" onChange={handleImport} disabled={importing} className="hidden" />
                     </label>
                     <button onClick={exportToCSV} disabled={exporting}
-                        className={`text-white px-3 py-1.5 rounded-md transition flex items-center text-sm font-medium shadow-sm ${exporting ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}>
-                        <Download size={16} className="mr-1" /> {exporting ? '다운로드 중...' : '전체 다운로드'}
+                        className={`text-white px-4 py-2.5 rounded-lg transition flex items-center text-base font-bold shadow-sm ${exporting ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}>
+                        <Download size={18} className="mr-1.5" /> {exporting ? '다운로드 중...' : '전체 다운로드'}
                     </button>
                 </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                <h2 className="text-lg font-semibold mb-4">새 구독자 직접 추가</h2>
+            <div className="bg-white p-7 rounded-xl shadow-sm border-2 border-gray-300">
+                <h2 className="text-xl font-bold mb-4 text-gray-900">새 구독자 직접 추가</h2>
                 <form onSubmit={handleAddSubscriber} className="flex gap-4 max-w-md">
                     <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)}
                         placeholder="이메일 주소 입력" required
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
+                        className="flex-1 px-4 py-3 text-base font-medium border-2 border-gray-400 rounded-lg focus:ring-blue-500 focus:border-blue-600 text-gray-900" />
                     <button type="submit" disabled={adding}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition flex items-center whitespace-nowrap disabled:opacity-50">
-                        {adding ? '추가 중...' : <><Plus size={18} className="mr-1" /> 추가</>}
+                        className="bg-blue-600 text-white px-5 py-3 rounded-lg hover:bg-blue-700 transition flex items-center whitespace-nowrap disabled:opacity-50 text-base font-bold shadow-sm">
+                        {adding ? '추가 중...' : <><Plus size={20} className="mr-1.5" /> 추가</>}
                     </button>
                 </form>
             </div>
 
             {/* 검색 필터 영역 */}
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <form onSubmit={handleSearch} className="flex gap-2 items-center">
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-5 rounded-xl shadow-sm border-2 border-gray-300">
+                <form onSubmit={handleSearch} className="flex gap-3 items-center flex-wrap">
                     <select
                         value={statusFilter}
                         onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-                        className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        className="px-4 py-2.5 border-2 border-gray-400 rounded-lg text-base font-bold focus:ring-blue-500 focus:border-blue-600 bg-white text-gray-900"
                     >
                         <option value="all">모든 상태</option>
                         <option value="active">활성 (ON)</option>
@@ -384,89 +384,89 @@ export default function SubscribersPage() {
                         type="text" value={searchInput}
                         onChange={e => setSearchInput(e.target.value)}
                         placeholder="이메일/이름/회사 검색"
-                        className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 w-56" />
-                    <button type="submit" className="bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm hover:bg-blue-700">검색</button>
-                    {(search || statusFilter !== 'all') && <button type="button" onClick={() => { setSearch(''); setSearchInput(''); setStatusFilter('all'); setPage(1); }} className="text-gray-500 text-sm hover:underline">초기화</button>}
+                        className="px-4 py-2.5 border-2 border-gray-400 rounded-lg text-base font-medium focus:ring-blue-500 focus:border-blue-600 w-64 text-gray-900" />
+                    <button type="submit" className="bg-blue-600 text-white px-5 py-2.5 rounded-lg text-base font-bold hover:bg-blue-700 shadow-sm">검색</button>
+                    {(search || statusFilter !== 'all') && <button type="button" onClick={() => { setSearch(''); setSearchInput(''); setStatusFilter('all'); setPage(1); }} className="text-gray-700 text-base font-bold hover:underline">초기화</button>}
                 </form>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border-2 border-gray-300 overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y-2 divide-gray-200">
+                        <thead className="bg-gray-100">
                             <tr>
-                                <th className="px-4 py-3 text-left w-10">
+                                <th className="px-4 py-4 text-left w-12">
                                     <input type="checkbox"
                                         checked={subscribers.length > 0 && selected.size === subscribers.length}
                                         onChange={toggleSelectAll}
-                                        className="rounded border-gray-300 text-blue-600 cursor-pointer" />
+                                        className="w-5 h-5 rounded border-2 border-gray-400 text-blue-600 cursor-pointer" />
                                 </th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">회사명</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">이메일</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">이름</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">전화번호</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">상태</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">구독 일시</th>
-                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">관리</th>
+                                <th className="px-4 py-4 text-left text-base font-bold text-gray-800 uppercase">회사명</th>
+                                <th className="px-4 py-4 text-left text-base font-bold text-gray-800 uppercase">이메일</th>
+                                <th className="px-4 py-4 text-left text-base font-bold text-gray-800 uppercase">이름</th>
+                                <th className="px-4 py-4 text-left text-base font-bold text-gray-800 uppercase">전화번호</th>
+                                <th className="px-4 py-4 text-left text-base font-bold text-gray-800 uppercase">상태</th>
+                                <th className="px-4 py-4 text-left text-base font-bold text-gray-800 uppercase">구독 일시</th>
+                                <th className="px-4 py-4 text-right text-base font-bold text-gray-800 uppercase">관리</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-white divide-y-2 divide-gray-100">
                             {subscribers.length === 0 ? (
                                 <tr>
-                                    <td colSpan="8" className="px-6 py-8 text-center text-gray-500">
+                                    <td colSpan="8" className="px-6 py-10 text-center text-lg text-gray-700 font-semibold">
                                         등록된 이메일 구독자가 없습니다.
                                     </td>
                                 </tr>
                             ) : (
                                 subscribers.map((s) => (
                                     <tr key={s.id} className={`hover:bg-gray-50 ${selected.has(s.id) ? 'bg-blue-50' : ''}`}>
-                                        <td className="px-4 py-3">
+                                        <td className="px-4 py-4">
                                             <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleSelect(s.id)}
-                                                className="rounded border-gray-300 text-blue-600 cursor-pointer" />
+                                                className="w-5 h-5 rounded border-2 border-gray-400 text-blue-600 cursor-pointer" />
                                         </td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-gray-700 text-sm">{s.company || '-'}</td>
-                                        <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900 text-sm">
+                                        <td className="px-4 py-4 whitespace-nowrap text-gray-800 text-base font-medium">{s.company || '-'}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap font-bold text-gray-900 text-base">
                                             <span>{s.email}</span>
                                             {s.isCustomer && (
-                                                <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200" title="CRM 거래 고객 — 자체 홍보 카드 발송 대상">
+                                                <span className="ml-2 inline-flex items-center px-2 py-1 rounded text-sm font-bold bg-amber-100 text-amber-900 border-2 border-amber-300" title="CRM 거래 고객 — 자체 홍보 카드 발송 대상">
                                                     고객
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-gray-700 text-sm">{s.name || '-'}</td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-gray-700 text-sm">{s.phone || '-'}</td>
-                                        <td className="px-4 py-3 whitespace-nowrap">
+                                        <td className="px-4 py-4 whitespace-nowrap text-gray-800 text-base font-medium">{s.name || '-'}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap text-gray-800 text-base font-medium">{s.phone || '-'}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap">
                                             <button
                                                 onClick={() => handleToggleActive(s.id, s.isActive)}
                                                 disabled={toggling}
-                                                className={`flex items-center text-sm font-medium px-2 py-1 rounded transition disabled:opacity-50 ${s.isActive
-                                                    ? 'text-green-700 bg-green-50 hover:bg-green-100'
-                                                    : 'text-red-700 bg-red-50 hover:bg-red-100'
+                                                className={`flex items-center text-base font-bold px-3 py-1.5 rounded-lg transition disabled:opacity-50 border-2 ${s.isActive
+                                                    ? 'text-green-800 bg-green-50 border-green-300 hover:bg-green-100'
+                                                    : 'text-red-800 bg-red-50 border-red-300 hover:bg-red-100'
                                                     }`}
                                                 title="클릭하여 상태 변경"
                                             >
                                                 {s.isActive ? (
-                                                    <><CheckCircle2 size={16} className="mr-1" /> 활성 (ON)</>
+                                                    <><CheckCircle2 size={18} className="mr-1.5" /> 활성 (ON)</>
                                                 ) : (
-                                                    <><XCircle size={16} className="mr-1" /> 비활성 (OFF)</>
+                                                    <><XCircle size={18} className="mr-1.5" /> 비활성 (OFF)</>
                                                 )}
                                             </button>
                                         </td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-gray-500 text-sm">
+                                        <td className="px-4 py-4 whitespace-nowrap text-gray-700 text-base font-medium">
                                             {new Date(s.createdAt).toLocaleDateString('ko-KR', {
                                                 year: 'numeric', month: 'long', day: 'numeric',
                                                 hour: '2-digit', minute: '2-digit'
                                             })}
                                         </td>
-                                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                                        <td className="px-4 py-4 whitespace-nowrap text-right">
                                             <div className="flex justify-end gap-2">
                                                 <button onClick={() => handleEditClick(s)}
-                                                    className="text-blue-500 hover:text-blue-700 bg-blue-50 p-2 rounded-md transition" title="수정">
-                                                    <Edit size={18} />
+                                                    className="text-blue-700 hover:text-blue-900 bg-blue-50 p-2.5 rounded-lg transition border-2 border-blue-200" title="수정">
+                                                    <Edit size={20} />
                                                 </button>
                                                 <button onClick={() => handleDelete(s.email)}
-                                                    className="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded-md transition" title="삭제">
-                                                    <Trash2 size={18} />
+                                                    className="text-red-700 hover:text-red-900 bg-red-50 p-2.5 rounded-lg transition border-2 border-red-200" title="삭제">
+                                                    <Trash2 size={20} />
                                                 </button>
                                             </div>
                                         </td>
@@ -479,13 +479,13 @@ export default function SubscribersPage() {
             </div>
 
             {/* 페이지네이션 (하단 배치) */}
-            <div className="flex justify-center bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <div className="flex items-center gap-2 text-sm">
+            <div className="flex justify-center bg-white p-5 rounded-xl shadow-sm border-2 border-gray-300">
+                <div className="flex items-center gap-3 text-base">
                     <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
-                        className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50">◀ 이전</button>
-                    <span className="text-gray-600">{page} / {totalPages} 페이지</span>
+                        className="px-5 py-2.5 rounded-lg border-2 border-gray-400 text-base font-bold text-gray-800 disabled:opacity-40 hover:bg-gray-50">◀ 이전</button>
+                    <span className="text-gray-900 text-lg font-bold">{page} / {totalPages} 페이지</span>
                     <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
-                        className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50">다음 ▶</button>
+                        className="px-5 py-2.5 rounded-lg border-2 border-gray-400 text-base font-bold text-gray-800 disabled:opacity-40 hover:bg-gray-50">다음 ▶</button>
                 </div>
             </div>
 

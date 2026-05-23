@@ -185,12 +185,12 @@ export default function CrmCustomersPage() {
 
     return (
         <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-7 flex-wrap gap-4">
                 <div className="flex items-center gap-3">
-                    <Users className="text-slate-700" size={28} />
+                    <Users className="text-slate-800" size={36} />
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">CRM 고객 명단</h1>
-                        <p className="text-sm text-gray-500 mt-1">
+                        <h1 className="text-3xl font-bold text-gray-900">CRM 고객 명단</h1>
+                        <p className="text-base text-gray-700 mt-2 font-medium leading-relaxed">
                             직원 CRM 시트(고객DB + 상담이력)에서 실시간으로 불러옵니다. 시트가 변경되면 새로고침 시 즉시 반영됩니다.
                         </p>
                     </div>
@@ -199,54 +199,54 @@ export default function CrmCustomersPage() {
                     href={SHEET_URL}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                    className="text-base text-blue-700 font-bold hover:underline flex items-center gap-1.5 px-4 py-2 bg-blue-50 rounded-lg border-2 border-blue-200"
                 >
-                    원본 시트 열기 <ExternalLink size={14} />
+                    원본 시트 열기 <ExternalLink size={18} />
                 </a>
             </div>
 
-            <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+            <div className="bg-white rounded-xl border-2 border-gray-300 p-5 mb-5 shadow-sm">
                 <div className="flex flex-wrap items-center gap-3">
-                    <div className="relative flex-grow min-w-[240px]">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <div className="relative flex-grow min-w-[280px]">
+                        <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
                         <input
                             type="text"
                             placeholder="이메일·고객사·담당자 검색"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full pl-11 pr-4 py-3 border-2 border-gray-400 rounded-lg text-base font-medium text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-600"
                         />
                     </div>
                     <button
                         onClick={load}
                         disabled={loading}
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm disabled:opacity-50"
+                        className="flex items-center gap-2 px-5 py-3 bg-gray-200 hover:bg-gray-300 text-gray-900 rounded-lg text-base font-bold disabled:opacity-50 border-2 border-gray-300"
                     >
-                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                        <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
                         새로고침
                     </button>
                     <button
                         onClick={handleDownload}
                         disabled={loading || filtered.length === 0}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm disabled:opacity-50"
+                        className="flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-base font-bold disabled:opacity-50 shadow-sm"
                     >
-                        <Download size={16} />
+                        <Download size={20} />
                         CSV 다운로드 ({filtered.length})
                     </button>
                     <button
                         onClick={handleRegisterAsCustomers}
                         disabled={loading || syncing || entries.length === 0}
-                        className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm disabled:opacity-50"
+                        className="flex items-center gap-2 px-5 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-base font-bold disabled:opacity-50 shadow-sm"
                         title="시트 전체를 발송 DB에 'CRM 고객'으로 등록/승격"
                     >
-                        <UserPlus size={16} />
+                        <UserPlus size={20} />
                         {syncing ? '등록 중…' : `고객으로 등록 (${entries.length})`}
                     </button>
                 </div>
 
-                <div className="mt-3 text-xs text-gray-500 flex flex-wrap gap-4">
-                    <span>총 고유 이메일: <strong className="text-gray-800">{entries.length}</strong></span>
-                    <span>표시: <strong className="text-gray-800">{filtered.length}</strong></span>
+                <div className="mt-4 text-base text-gray-700 flex flex-wrap gap-5 font-semibold">
+                    <span>총 고유 이메일: <strong className="text-gray-900 text-lg">{entries.length}</strong></span>
+                    <span>표시: <strong className="text-gray-900 text-lg">{filtered.length}</strong></span>
                     {lastFetchedAt && (
                         <span>마지막 갱신: {lastFetchedAt.toLocaleString('ko-KR')}</span>
                     )}
@@ -254,7 +254,7 @@ export default function CrmCustomersPage() {
             </div>
 
             {syncResult && (
-                <div className={`mb-4 p-3 rounded-lg text-sm ${syncResult.ok ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+                <div className={`mb-5 p-4 rounded-xl text-base font-bold border-2 ${syncResult.ok ? 'bg-emerald-50 text-emerald-900 border-emerald-300' : 'bg-red-50 text-red-900 border-red-300'}`}>
                     {syncResult.ok
                         ? `발송 DB 동기화 완료 — 신규 ${syncResult.added ?? 0} · 고객 승격 ${syncResult.promotedToCustomer ?? 0} · 업데이트 ${syncResult.updated ?? 0} · 스킵 ${syncResult.skipped ?? 0}`
                         : `발송 DB 동기화 실패: ${syncResult.message}`}
@@ -262,39 +262,39 @@ export default function CrmCustomersPage() {
             )}
 
             {error && (
-                <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-800 border border-red-200 text-sm">
+                <div className="mb-5 p-4 rounded-xl bg-red-50 text-red-900 border-2 border-red-300 text-base font-bold">
                     시트 로드 실패: {error}
                 </div>
             )}
 
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="bg-white rounded-xl border-2 border-gray-300 overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead className="bg-gray-50 text-gray-700 border-b border-gray-200">
+                    <table className="w-full text-base">
+                        <thead className="bg-gray-100 text-gray-900 border-b-2 border-gray-300">
                             <tr>
-                                <th className="text-left px-4 py-2 font-medium">이메일</th>
-                                <th className="text-left px-4 py-2 font-medium">고객사</th>
-                                <th className="text-left px-4 py-2 font-medium">담당자</th>
-                                <th className="text-left px-4 py-2 font-medium">연락처</th>
-                                <th className="text-left px-4 py-2 font-medium">현재상태</th>
-                                <th className="text-left px-4 py-2 font-medium">출처</th>
+                                <th className="text-left px-5 py-4 font-bold text-base">이메일</th>
+                                <th className="text-left px-5 py-4 font-bold text-base">고객사</th>
+                                <th className="text-left px-5 py-4 font-bold text-base">담당자</th>
+                                <th className="text-left px-5 py-4 font-bold text-base">연락처</th>
+                                <th className="text-left px-5 py-4 font-bold text-base">현재상태</th>
+                                <th className="text-left px-5 py-4 font-bold text-base">출처</th>
                             </tr>
                         </thead>
                         <tbody>
                             {loading && (
-                                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">불러오는 중…</td></tr>
+                                <tr><td colSpan={6} className="px-5 py-10 text-center text-lg text-gray-700 font-semibold">불러오는 중…</td></tr>
                             )}
                             {!loading && filtered.length === 0 && (
-                                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">데이터가 없습니다.</td></tr>
+                                <tr><td colSpan={6} className="px-5 py-10 text-center text-lg text-gray-700 font-semibold">데이터가 없습니다.</td></tr>
                             )}
                             {!loading && filtered.map((e) => (
-                                <tr key={e.email} className="border-b border-gray-100 hover:bg-gray-50">
-                                    <td className="px-4 py-2 font-mono text-xs text-gray-800">{e.email}</td>
-                                    <td className="px-4 py-2 text-gray-900">{e.customer}</td>
-                                    <td className="px-4 py-2 text-gray-700">{e.contact}</td>
-                                    <td className="px-4 py-2 text-gray-700">{e.phone}</td>
-                                    <td className="px-4 py-2 text-gray-700">{e.status}</td>
-                                    <td className="px-4 py-2 text-xs text-gray-500">{e.sources.join(' + ')}</td>
+                                <tr key={e.email} className="border-b-2 border-gray-100 hover:bg-gray-50">
+                                    <td className="px-5 py-3 font-mono text-base text-gray-900 font-semibold">{e.email}</td>
+                                    <td className="px-5 py-3 text-gray-900 text-base font-bold">{e.customer}</td>
+                                    <td className="px-5 py-3 text-gray-800 text-base font-medium">{e.contact}</td>
+                                    <td className="px-5 py-3 text-gray-800 text-base font-medium">{e.phone}</td>
+                                    <td className="px-5 py-3 text-gray-800 text-base font-medium">{e.status}</td>
+                                    <td className="px-5 py-3 text-base text-gray-700 font-semibold">{e.sources.join(' + ')}</td>
                                 </tr>
                             ))}
                         </tbody>

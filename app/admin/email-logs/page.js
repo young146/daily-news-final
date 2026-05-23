@@ -77,86 +77,86 @@ export default function EmailLogsPage() {
 
     const methodBadge = (method) => {
         if (method === 'smtp') return (
-            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold">SMTP</span>
+            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm font-bold border-2 border-blue-300">SMTP</span>
         );
         return (
-            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-bold">e-service</span>
+            <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-lg text-sm font-bold border-2 border-purple-300">e-service</span>
         );
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center flex-wrap gap-2">
-                <h1 className="text-2xl font-bold text-gray-800 flex items-center">
-                    <Mail className="mr-2" /> 이메일 발송 기록
+        <div className="space-y-7">
+            <div className="flex justify-between items-center flex-wrap gap-3">
+                <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+                    <Mail className="mr-2" size={28} /> 이메일 발송 기록
                 </h1>
-                <div className="flex items-center gap-2">
-                    <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
+                <div className="flex items-center gap-3 flex-wrap">
+                    <span className="bg-blue-100 text-blue-900 text-base font-bold px-4 py-2 rounded-full border-2 border-blue-300">
                         총 {total}건
                     </span>
                     <button onClick={() => fetchFailedEmails()}
-                        className="flex items-center gap-1 bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-md text-sm transition font-semibold">
-                        <XCircle size={14} /> 최근 7일 실패
+                        className="flex items-center gap-1.5 bg-red-100 hover:bg-red-200 text-red-800 px-5 py-2.5 rounded-lg text-base transition font-bold border-2 border-red-300">
+                        <XCircle size={18} /> 최근 7일 실패
                     </button>
                     <button onClick={() => fetchLogs(page)}
-                        className="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-md text-sm transition">
-                        <RefreshCw size={14} /> 새로고침
+                        className="flex items-center gap-1.5 bg-gray-200 hover:bg-gray-300 text-gray-900 px-5 py-2.5 rounded-lg text-base transition font-bold border-2 border-gray-300">
+                        <RefreshCw size={18} /> 새로고침
                     </button>
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border-2 border-gray-300 overflow-hidden">
                 {loading ? (
-                    <div className="py-16 text-center text-gray-500">로딩 중...</div>
+                    <div className="py-16 text-center text-lg text-gray-700 font-semibold">로딩 중...</div>
                 ) : logs.length === 0 ? (
-                    <div className="py-16 text-center text-gray-500">
-                        <Mail size={40} className="mx-auto mb-3 text-gray-300" />
-                        <p className="font-medium">발송 기록이 없습니다.</p>
-                        <p className="text-sm mt-1 text-gray-400">뉴스레터가 발송되면 여기에 기록됩니다.</p>
+                    <div className="py-16 text-center text-gray-800">
+                        <Mail size={48} className="mx-auto mb-3 text-gray-400" />
+                        <p className="text-lg font-bold">발송 기록이 없습니다.</p>
+                        <p className="text-base mt-2 text-gray-700 font-medium">뉴스레터가 발송되면 여기에 기록됩니다.</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
+                        <table className="min-w-full divide-y-2 divide-gray-200">
+                            <thead className="bg-gray-100">
                                 <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">발송 일시</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">이메일 제목</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">방식</th>
-                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">총 발송</th>
-                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">성공</th>
-                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">실패</th>
-                                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">배치 수</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">비고</th>
+                                    <th className="px-4 py-4 text-left text-base font-bold text-gray-800 uppercase">발송 일시</th>
+                                    <th className="px-4 py-4 text-left text-base font-bold text-gray-800 uppercase">이메일 제목</th>
+                                    <th className="px-4 py-4 text-left text-base font-bold text-gray-800 uppercase">방식</th>
+                                    <th className="px-4 py-4 text-center text-base font-bold text-gray-800 uppercase">총 발송</th>
+                                    <th className="px-4 py-4 text-center text-base font-bold text-gray-800 uppercase">성공</th>
+                                    <th className="px-4 py-4 text-center text-base font-bold text-gray-800 uppercase">실패</th>
+                                    <th className="px-4 py-4 text-center text-base font-bold text-gray-800 uppercase">배치 수</th>
+                                    <th className="px-4 py-4 text-left text-base font-bold text-gray-800 uppercase">비고</th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="bg-white divide-y-2 divide-gray-100">
                                 {logs.map((log) => (
                                     <tr key={log.id} className="hover:bg-gray-50">
-                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                        <td className="px-4 py-4 whitespace-nowrap text-base text-gray-800 font-medium">
                                             {new Date(log.sentAt).toLocaleString('ko-KR', {
                                                 year: 'numeric', month: '2-digit', day: '2-digit',
                                                 hour: '2-digit', minute: '2-digit'
                                             })}
                                         </td>
-                                        <td className="px-4 py-3 text-sm text-gray-800 max-w-xs truncate">{log.subject}</td>
-                                        <td className="px-4 py-3 whitespace-nowrap">{methodBadge(log.method)}</td>
-                                        <td className="px-4 py-3 text-center text-sm font-semibold text-gray-700">{log.total.toLocaleString()}</td>
-                                        <td className="px-4 py-3 text-center">
-                                            <span className="flex items-center justify-center gap-1 text-green-600 font-semibold text-sm">
-                                                <CheckCircle2 size={14} /> {log.succeeded.toLocaleString()}
+                                        <td className="px-4 py-4 text-base text-gray-900 max-w-xs truncate font-bold">{log.subject}</td>
+                                        <td className="px-4 py-4 whitespace-nowrap">{methodBadge(log.method)}</td>
+                                        <td className="px-4 py-4 text-center text-lg font-bold text-gray-900">{log.total.toLocaleString()}</td>
+                                        <td className="px-4 py-4 text-center">
+                                            <span className="flex items-center justify-center gap-1.5 text-green-700 font-bold text-lg">
+                                                <CheckCircle2 size={20} /> {log.succeeded.toLocaleString()}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 text-center">
+                                        <td className="px-4 py-4 text-center">
                                             {log.failed > 0 ? (
-                                                <button onClick={() => fetchFailedEmails(log.id)} title="상세 보기" className="flex items-center justify-center gap-1 text-red-600 hover:text-red-800 font-semibold text-sm transition bg-red-50 hover:bg-red-100 px-2 py-1 rounded w-full border border-red-200">
-                                                    <XCircle size={14} /> {log.failed.toLocaleString()}
+                                                <button onClick={() => fetchFailedEmails(log.id)} title="상세 보기" className="flex items-center justify-center gap-1.5 text-red-800 hover:text-red-900 font-bold text-lg transition bg-red-50 hover:bg-red-100 px-3 py-2 rounded-lg w-full border-2 border-red-300">
+                                                    <XCircle size={20} /> {log.failed.toLocaleString()}
                                                 </button>
                                             ) : (
-                                                <span className="text-gray-400 text-sm">0</span>
+                                                <span className="text-gray-700 text-lg font-bold">0</span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3 text-center text-sm text-gray-500">{log.batches}</td>
-                                        <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">{log.note || '-'}</td>
+                                        <td className="px-4 py-4 text-center text-base text-gray-800 font-medium">{log.batches}</td>
+                                        <td className="px-4 py-4 text-base text-gray-800 max-w-xs truncate font-medium">{log.note || '-'}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -166,12 +166,12 @@ export default function EmailLogsPage() {
             </div>
 
             {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2 text-sm mt-4">
+                <div className="flex items-center justify-center gap-3 text-base mt-5">
                     <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
-                        className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50">◀ 이전</button>
-                    <span className="text-gray-600">{page} / {totalPages} 페이지</span>
+                        className="px-5 py-2.5 rounded-lg border-2 border-gray-400 text-base font-bold text-gray-800 disabled:opacity-40 hover:bg-gray-50">◀ 이전</button>
+                    <span className="text-gray-900 text-lg font-bold">{page} / {totalPages} 페이지</span>
                     <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
-                        className="px-3 py-1 rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50">다음 ▶</button>
+                        className="px-5 py-2.5 rounded-lg border-2 border-gray-400 text-base font-bold text-gray-800 disabled:opacity-40 hover:bg-gray-50">다음 ▶</button>
                 </div>
             )}
 

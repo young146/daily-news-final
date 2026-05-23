@@ -143,17 +143,17 @@ export default function AdminAdsPage() {
   return (
     <div className="mx-auto max-w-6xl py-4 space-y-6">
       {/* 헤더 */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-extrabold text-slate-800">🚀 앱 자체광고 관리</h1>
-          <p className="text-sm text-slate-500">Firebase 실시간 동기화</p>
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-7 rounded-xl border-2 border-gray-300 shadow-sm">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-3xl font-extrabold text-slate-900">🚀 앱 자체광고 관리</h1>
+          <p className="text-base text-slate-700 font-semibold">Firebase 실시간 동기화</p>
         </div>
-        <div className="flex items-center gap-3">
-          {actionMsg && <span className="rounded-lg bg-green-100 px-4 py-2 text-sm font-bold text-green-700">✅ {actionMsg}</span>}
-          {errorMsg && <span className="rounded-lg bg-red-100 px-4 py-2 text-sm font-bold text-red-600">❌ {errorMsg}</span>}
+        <div className="flex items-center gap-3 flex-wrap">
+          {actionMsg && <span className="rounded-lg bg-green-100 px-4 py-2.5 text-base font-bold text-green-800 border-2 border-green-300">✅ {actionMsg}</span>}
+          {errorMsg && <span className="rounded-lg bg-red-100 px-4 py-2.5 text-base font-bold text-red-800 border-2 border-red-300">❌ {errorMsg}</span>}
           <button
             onClick={() => { setEditTarget(null); setShowForm(true); }}
-            className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 shadow-sm transition-colors"
+            className="rounded-xl bg-indigo-600 px-6 py-3 text-base font-bold text-white hover:bg-indigo-700 shadow-sm transition-colors"
           >
             + 새 캠페인 등록
           </button>
@@ -177,9 +177,9 @@ export default function AdminAdsPage() {
              <span className="ml-3 text-sm text-slate-500 font-medium">데이터를 불러오는 중...</span>
            </div>
         ) : (
-          <div className="grid gap-4 mt-6">
+          <div className="grid gap-5 mt-7">
             {!showForm && ads.length === 0 && (
-              <div className="rounded-xl border border-dashed border-slate-300 py-20 text-center text-slate-400 bg-white">
+              <div className="rounded-xl border-2 border-dashed border-slate-400 py-20 text-center text-lg text-slate-700 bg-white font-semibold leading-relaxed">
                 아직 등록된 광고 캠페인이 없습니다.<br/>우측 상단의 버튼을 눌러 추가해보세요.
               </div>
             )}
@@ -227,19 +227,19 @@ function AdRow({ ad, onToggle, onEdit, onDelete }) {
 
       {/* 기본 정보 */}
       <div className="min-w-0 flex-1 py-1">
-        <div className="flex flex-wrap items-center gap-2 mb-1.5">
-          <p className="truncate text-[15px] font-bold text-slate-900">{ad.title}</p>
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-            active ? "bg-green-100 text-green-700"
-            : ad.isActive ? "bg-amber-100 text-amber-700"
-            : "bg-gray-200 text-gray-500"
+        <div className="flex flex-wrap items-center gap-2 mb-2.5">
+          <p className="truncate text-lg font-bold text-slate-900">{ad.title}</p>
+          <span className={`rounded-full px-3 py-1 text-sm font-bold border-2 ${
+            active ? "bg-green-100 text-green-800 border-green-300"
+            : ad.isActive ? "bg-amber-100 text-amber-800 border-amber-300"
+            : "bg-gray-200 text-gray-800 border-gray-400"
           }`}>
             {active ? "ON" : ad.isActive ? "기간 외" : "OFF"}
           </span>
-          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700 border border-blue-100">
+          <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-800 border-2 border-blue-300">
             {POSITION_LABEL[ad.position] || ad.position}
           </span>
-          <span className="text-[10px] text-slate-400 font-bold ml-1">
+          <span className="text-xs text-slate-700 font-bold ml-1">
             ({
               ad.position === 'popup' ? '1080x1920' :
               ad.position === 'head' ? '1080x300' :
@@ -247,14 +247,14 @@ function AdRow({ ad, onToggle, onEdit, onDelete }) {
               '1080x450'
             })
           </span>
-          <span className="rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-medium text-purple-700 border border-purple-100">
+          <span className="rounded-full bg-purple-100 px-3 py-1 text-sm font-bold text-purple-800 border-2 border-purple-300">
             우선도 {ad.priority || 10}
           </span>
         </div>
-        
-        <div className="text-xs text-slate-500 space-y-1">
+
+        <div className="text-base text-slate-800 space-y-1.5 font-medium">
           <p className="line-clamp-1">
-            <span className="font-semibold text-slate-700">📍 노출 탭:</span>{" "}
+            <span className="font-bold text-slate-900">📍 노출 탭:</span>{" "}
             {ad.targetPages?.length > 0
               ? ad.targetPages.map(p => PAGE_TARGETS.find(t => t.value === p)?.label.replace(/^[^\s]+ /, "") || p).join(", ")
               : "전체 탭 어디서나"}
@@ -265,37 +265,37 @@ function AdRow({ ad, onToggle, onEdit, onDelete }) {
       </div>
 
       {/* 성과 지표 (Tracking) */}
-      <div className="flex flex-row sm:flex-col gap-4 sm:gap-2 px-4 py-3 sm:py-0 bg-slate-50 sm:bg-transparent rounded-lg border border-slate-100 sm:border-0 justify-center">
+      <div className="flex flex-row sm:flex-col gap-4 sm:gap-2 px-5 py-4 sm:py-0 bg-slate-50 sm:bg-transparent rounded-lg border-2 border-slate-200 sm:border-0 justify-center">
          <div className="flex justify-between sm:justify-start items-center gap-3">
-            <span className="text-xs text-slate-400 font-medium w-12">조회수</span>
-            <span className="text-sm font-bold text-slate-700">{(ad.impressions || 0).toLocaleString()}</span>
+            <span className="text-sm text-slate-700 font-bold w-14">조회수</span>
+            <span className="text-lg font-bold text-slate-900">{(ad.impressions || 0).toLocaleString()}</span>
          </div>
          <div className="flex justify-between sm:justify-start items-center gap-3">
-            <span className="text-xs text-slate-400 font-medium w-12">클릭수</span>
-            <span className="text-sm font-bold text-indigo-600">{(ad.clicks || 0).toLocaleString()}</span>
+            <span className="text-sm text-slate-700 font-bold w-14">클릭수</span>
+            <span className="text-lg font-bold text-indigo-700">{(ad.clicks || 0).toLocaleString()}</span>
          </div>
          <div className="flex justify-between sm:justify-start items-center gap-3">
-            <span className="text-xs text-slate-400 font-medium w-12">전환율</span>
-            <span className="text-xs font-semibold text-teal-600">
+            <span className="text-sm text-slate-700 font-bold w-14">전환율</span>
+            <span className="text-base font-bold text-teal-700">
                {ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(2) : "0.00"}%
             </span>
          </div>
       </div>
 
       {/* 액션 버튼 그룹 */}
-      <div className="flex flex-row sm:flex-col shrink-0 items-center gap-2 justify-end sm:border-l sm:border-slate-100 sm:pl-4">
+      <div className="flex flex-row sm:flex-col shrink-0 items-center gap-2 justify-end sm:border-l-2 sm:border-slate-200 sm:pl-4">
         <button onClick={onToggle}
-          className={`flex-1 sm:flex-none w-full rounded-lg px-3 py-1.5 text-xs font-bold transition-colors shadow-sm ${
-            ad.isActive ? "bg-amber-100 text-amber-800 hover:bg-amber-200" : "bg-green-100 text-green-800 hover:bg-green-200"
+          className={`flex-1 sm:flex-none w-full rounded-lg px-4 py-2.5 text-base font-bold transition-colors shadow-sm border-2 ${
+            ad.isActive ? "bg-amber-100 text-amber-900 hover:bg-amber-200 border-amber-300" : "bg-green-100 text-green-900 hover:bg-green-200 border-green-300"
           }`}>
           {ad.isActive ? "⏸ 비활성화" : "▶ 활성화"}
         </button>
         <button onClick={onEdit}
-          className="flex-1 sm:flex-none w-full rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-200 transition-colors shadow-sm">
+          className="flex-1 sm:flex-none w-full rounded-lg bg-gray-200 px-4 py-2.5 text-base font-bold text-gray-900 hover:bg-gray-300 transition-colors shadow-sm border-2 border-gray-300">
           ✏️ 수정
         </button>
         <button onClick={onDelete}
-          className="flex-1 sm:flex-none w-full rounded-lg bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 transition-colors shadow-sm">
+          className="flex-1 sm:flex-none w-full rounded-lg bg-red-100 px-4 py-2.5 text-base font-bold text-red-800 hover:bg-red-200 transition-colors shadow-sm border-2 border-red-300">
           🗑 삭제
         </button>
       </div>
