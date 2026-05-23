@@ -53,6 +53,7 @@ export default function PromoCardsPage() {
     const [previewCard, setPreviewCard] = useState(null);
     const fileInputRef = useRef(null);
     const fileInputRefFb = useRef(null);
+    const formRef = useRef(null); // 수정 폼 자동 스크롤용
 
     const emptyForm = { title: "", description: "", imageUrl: "", imageUrlFacebook: "", videoUrl: "", linkUrl: "", isActive: true, sortOrder: 0, kind: "ad", category: "", weekdays: "", channels: "" };
     const [form, setForm] = useState(emptyForm);
@@ -77,12 +78,35 @@ export default function PromoCardsPage() {
         setTimeout(() => setMessage(null), 4000);
     };
 
-    const openNewForm = () => { setEditingCard(null); setForm(emptyForm); setShowForm(true); window.scrollTo({ top: 0, behavior: "smooth" }); };
+    // 폼 위치로 정확히 스크롤 — admin layout 의 sticky 영역 등에 가리지 않게.
+    // scrollIntoView 는 "이미 화면에 보임" 으로 판단되면 no-op 라서 폼이 이미 열린 상태에서
+    // 다른 카드 수정 시 작동 안 함 → 명시적 픽셀 좌표 계산 (getBoundingClientRect) 으로 강제 이동.
+    // + 폼이 새 카드 데이터로 갱신됐음을 알리는 짧은 flash 효과 (주황 배경 0.6초).
+    const scrollToForm = () => {
+        setTimeout(() => {
+            if (!formRef.current) {
+                window.scrollTo({ top: 0, behavior: "smooth" });
+                return;
+            }
+            const rect = formRef.current.getBoundingClientRect();
+            const top = rect.top + window.pageYOffset - 20; // 위 여백 20px
+            window.scrollTo({ top, behavior: "smooth" });
+            // Flash 효과 — 폼이 갱신됐음을 시각 신호 (특히 이미 열린 상태에서 다른 카드 클릭 시)
+            const el = formRef.current;
+            const orig = el.style.background;
+            el.style.transition = "background 0.4s ease-out";
+            el.style.background = "#fff7ed"; // 주황 연하게
+            setTimeout(() => {
+                if (el) el.style.background = orig || "white";
+            }, 600);
+        }, 100);
+    };
+    const openNewForm = () => { setEditingCard(null); setForm(emptyForm); setShowForm(true); scrollToForm(); };
     const openEditForm = (card) => {
         setEditingCard(card);
         setForm({ title: card.title, description: card.description || "", imageUrl: card.imageUrl || "", imageUrlFacebook: card.imageUrlFacebook || "", videoUrl: card.videoUrl || "", linkUrl: card.linkUrl, isActive: card.isActive, sortOrder: card.sortOrder, kind: card.kind || "ad", category: card.category || "", weekdays: card.weekdays || "", channels: card.channels || "" });
         setShowForm(true);
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        scrollToForm();
     };
     const cancelForm = () => { setShowForm(false); setEditingCard(null); setForm(emptyForm); };
 
@@ -171,7 +195,7 @@ export default function PromoCardsPage() {
 
             {/* 작성/수정 폼 */}
             {showForm && (
-                <div style={{ background: "white", border: "2px solid #f97316", borderRadius: "12px", padding: "24px", marginBottom: "24px", boxShadow: "0 4px 12px rgba(249,115,22,0.15)" }}>
+                <div ref={formRef} style={{ background: "white", border: "2px solid #f97316", borderRadius: "12px", padding: "24px", marginBottom: "24px", boxShadow: "0 4px 12px rgba(249,115,22,0.15)", scrollMarginTop: "20px" }}>
                     <h2 style={{ fontSize: "18px", fontWeight: "bold", color: "#c2410c", marginBottom: "20px" }}>{editingCard ? "✏️ 홍보카드 수정" : "✨ 새 홍보카드 작성"}</h2>
                     <div style={{ display: "grid", gap: "16px" }}>
                         <div>
