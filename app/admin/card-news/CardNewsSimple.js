@@ -182,19 +182,19 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
   return (
     <div className="flex flex-col items-center py-8 px-4 min-h-screen">
       <div className="mb-6 w-full max-w-4xl bg-white rounded-lg shadow-lg p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-gray-800">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-2xl font-bold text-gray-900">
             📰 카드뉴스에 사용할 뉴스 선택
           </h3>
           {isUsingFallback && fallbackReason && (
-            <div className="px-3 py-1 bg-yellow-100 border border-yellow-400 rounded-lg text-yellow-800 text-sm">
+            <div className="px-4 py-2 bg-yellow-100 border-2 border-yellow-400 rounded-lg text-yellow-900 text-base font-bold">
               ⚠️ {fallbackReason}
             </div>
           )}
         </div>
 
         {newsListToShow.length === 0 ? (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
+          <div className="p-5 bg-red-50 border-2 border-red-300 rounded-lg text-red-900 text-base font-bold">
             ⚠️ 사용 가능한 뉴스가 없습니다. 관리자 페이지에서 뉴스를 선택해주세요.
           </div>
         ) : (
@@ -225,13 +225,13 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1.5">
                           {isTopNews && (
-                            <span className="text-xs font-bold bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
+                            <span className="text-sm font-bold bg-yellow-100 text-yellow-900 px-2.5 py-1 rounded border-2 border-yellow-400">
                               탑뉴스
                             </span>
                           )}
-                          <span className="text-xs font-semibold text-gray-600">
+                          <span className="text-sm font-bold text-gray-800">
                             {isTopNews ? `탑뉴스 ${topNewsList.findIndex(tn => tn.id === news.id) + 1}` : `뉴스 ${index + 1}`}
                           </span>
                         </div>
@@ -265,18 +265,18 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                           </div>
                         )}
                         <div
-                          className={`text-sm font-bold line-clamp-2 ${isSelected ? "text-blue-700" : "text-gray-800"
+                          className={`text-base font-bold line-clamp-2 leading-snug ${isSelected ? "text-blue-800" : "text-gray-900"
                             }`}
                         >
                           {news.translatedTitle || news.title}
                         </div>
                         {news.source && (
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-sm text-gray-700 mt-1.5 font-semibold">
                             출처: {news.source}
                           </div>
                         )}
                         {news.publishedAt && (
-                          <div className="text-xs text-gray-400 mt-1">
+                          <div className="text-sm text-gray-600 mt-1 font-medium">
                             {new Date(news.publishedAt).toLocaleDateString('ko-KR')}
                           </div>
                         )}
@@ -286,11 +286,11 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                 );
               })}
             </div>
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="text-sm text-blue-800">
+            <div className="mt-4 p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
+              <div className="text-base text-blue-900 font-bold">
                 💡 <strong>선택된 뉴스:</strong> {currentTopNews ? (currentTopNews.translatedTitle || currentTopNews.title) : "없음"}
               </div>
-              <div className="text-xs text-blue-600 mt-1">
+              <div className="text-sm text-blue-800 mt-1.5 leading-relaxed font-medium">
                 선택한 뉴스의 이미지와 제목으로 카드뉴스가 생성됩니다. 다른 뉴스를 선택하면 카드뉴스가 재생성됩니다.
               </div>
             </div>
@@ -470,32 +470,32 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
 
       <div className="mt-6 flex flex-col items-center gap-4">
         {!currentTopNews && (
-          <div className="mb-4 p-4 bg-yellow-100 border border-yellow-400 rounded-lg text-yellow-800">
+          <div className="mb-2 p-4 bg-yellow-100 border-2 border-yellow-400 rounded-lg text-yellow-900 text-base font-bold">
             ⚠️ 뉴스가 선택되지 않았습니다. 위에서 뉴스를 선택해주세요.
           </div>
         )}
         {currentTopNews && (
-          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800">
+          <div className="mb-2 p-4 bg-green-50 border-2 border-green-300 rounded-lg text-green-900 text-base font-bold">
             ✅ <strong>선택된 뉴스:</strong> {currentTopNews.translatedTitle || currentTopNews.title}
           </div>
         )}
         {currentTopNews && !currentTopNews.wordpressImageUrl && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 rounded-lg text-red-800">
+          <div className="mb-2 p-4 bg-red-100 border-2 border-red-400 rounded-lg text-red-900 text-base font-bold leading-relaxed">
             ⚠️ <strong>주의:</strong> 선택한 뉴스는 아직 WordPress에 발행되지 않아 이미지가 DB에 없습니다.
             이미지가 있는 뉴스를 선택하거나 먼저 뉴스를 발행해주세요.
           </div>
         )}
 
         {/* 그라디언트 사용 옵션 */}
-        <div className="mb-4 p-4 bg-gray-50 border border-gray-300 rounded-lg">
-          <label className="flex items-center gap-2 cursor-pointer">
+        <div className="mb-2 p-4 bg-gray-50 border-2 border-gray-300 rounded-lg">
+          <label className="flex items-center gap-2.5 cursor-pointer">
             <input
               type="checkbox"
               checked={useGradient}
               onChange={(e) => setUseGradient(e.target.checked)}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              className="w-5 h-5 text-blue-600 border-2 border-gray-400 rounded focus:ring-blue-500"
             />
-            <span className="text-sm text-gray-700">
+            <span className="text-base text-gray-800 font-semibold">
               그라디언트 배경 사용 (이미지가 없을 때만 적용)
             </span>
           </label>
@@ -505,8 +505,8 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
         <button
           onClick={handleEmailCardOnly}
           disabled={isGeneratingEmail || isGenerating || !currentTopNews}
-          className={`px-8 py-3 text-white rounded-lg text-base font-bold shadow-lg flex items-center gap-2 transition-all ${isGeneratingEmail || !currentTopNews
-            ? "bg-gray-400 cursor-not-allowed opacity-50"
+          className={`px-10 py-4 text-white rounded-lg text-lg font-bold shadow-lg flex items-center gap-2 transition-all ${isGeneratingEmail || !currentTopNews
+            ? "bg-gray-400 cursor-not-allowed opacity-60"
             : "bg-green-600 hover:bg-green-700 cursor-pointer"
             }`}
           type="button"
@@ -522,8 +522,8 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
         <button
           onClick={handleFbCardPrep}
           disabled={isGenerating || isGeneratingEmail || !currentTopNews}
-          className={`px-8 py-3 text-white rounded-lg text-base font-bold shadow-lg flex items-center gap-2 transition-all ${isGenerating || !currentTopNews
-            ? "bg-gray-400 cursor-not-allowed opacity-50"
+          className={`px-10 py-4 text-white rounded-lg text-lg font-bold shadow-lg flex items-center gap-2 transition-all ${isGenerating || !currentTopNews
+            ? "bg-gray-400 cursor-not-allowed opacity-60"
             : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
             }`}
           type="button"
@@ -534,8 +534,8 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
             <>📘 페이스북 카드 준비</>
           )}
         </button>
-        <p className="text-xs text-gray-500 -mt-2">
-          카드 준비 후 <strong>발행된 뉴스 관리</strong> 페이지에서 미리보기 확인 후 4페이지에 게시합니다.
+        <p className="text-sm text-gray-700 -mt-2 font-semibold text-center">
+          카드 준비 후 <strong className="text-blue-700">발행된 뉴스 관리</strong> 페이지에서 미리보기 확인 후 4페이지에 게시합니다.
         </p>
 
         {publishResult && publishResult.success && (
@@ -543,21 +543,21 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
             <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-lg mx-4">
               <div className="flex flex-col gap-5">
                 <div className="text-center">
-                  <span className="text-4xl">🎉</span>
-                  <p className="text-2xl font-bold text-green-700 mt-3">
+                  <span className="text-5xl">🎉</span>
+                  <p className="text-3xl font-bold text-green-700 mt-3">
                     게시 완료!
                   </p>
-                  <p className="text-gray-500 mt-1">
+                  <p className="text-base text-gray-700 mt-2 font-semibold">
                     뉴스 터미널 대표이미지가 업데이트되었습니다
                   </p>
                 </div>
 
                 {/* ─── 카드 게시 완료 팝업 ─── */}
-                <div className="bg-blue-50 p-4 rounded-xl border-2 border-blue-200">
+                <div className="bg-blue-50 p-5 rounded-xl border-2 border-blue-300">
                   {/* 뉴스 URL 표시 */}
-                  <p className="text-xs font-semibold text-blue-500 uppercase mb-2">📰 오늘 뉴스 터미널 URL</p>
-                  <div className="flex items-center gap-2 p-3 bg-white rounded-lg border border-blue-200 mb-3">
-                    <span className="text-blue-700 font-mono text-xs flex-1 break-all">
+                  <p className="text-sm font-bold text-blue-700 uppercase mb-2.5">📰 오늘 뉴스 터미널 URL</p>
+                  <div className="flex items-center gap-2 p-3 bg-white rounded-lg border-2 border-blue-200 mb-3">
+                    <span className="text-blue-800 font-mono text-sm font-semibold flex-1 break-all">
                       https://chaovietnam.co.kr/daily-news-terminal/?v={`${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}`}
                     </span>
                   </div>
@@ -577,37 +577,37 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                         }
                       });
                     }}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold text-base transition-colors shadow-sm"
                   >
                     📋 뉴스 URL 복사
                   </button>
                 </div>
 
                 {/* Facebook 게시 안내 — 카드 준비 완료, 실제 게시는 발행된 뉴스 페이지에서 */}
-                <div className="bg-[#e7f0fd] p-4 rounded-xl border-2 border-[#1877f2]">
-                  <p className="text-xs font-semibold text-[#1877f2] uppercase mb-2">📘 페이스북 카드 준비 완료</p>
-                  <p className="text-sm text-gray-600 mb-3">
+                <div className="bg-[#e7f0fd] p-5 rounded-xl border-2 border-[#1877f2]">
+                  <p className="text-sm font-bold text-[#1877f2] uppercase mb-2.5">📘 페이스북 카드 준비 완료</p>
+                  <p className="text-base text-gray-800 mb-3 leading-relaxed font-medium">
                     페북 4페이지 게시를 위해 카드 이미지가 준비되었습니다.<br />
-                    <span className="text-[#1877f2] font-medium">발행된 뉴스 페이지</span>에서 페북 그리드 미리보기 확인 후 4페이지에 게시하세요.
+                    <span className="text-[#1877f2] font-bold">발행된 뉴스 페이지</span>에서 페북 그리드 미리보기 확인 후 4페이지에 게시하세요.
                   </p>
                   <a
                     href="/admin/published-news"
-                    className="block w-full text-center bg-[#1877f2] hover:bg-[#166fe5] text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
+                    className="block w-full text-center bg-[#1877f2] hover:bg-[#166fe5] text-white py-3 rounded-lg font-bold text-base transition-colors shadow-sm"
                   >
                     📘 발행 뉴스 페이지 → 페북 미리보기 + 게시
                   </a>
                 </div>
 
                 {/* 이메일 발송 안내 */}
-                <div className="bg-orange-50 p-4 rounded-xl border-2 border-orange-200">
-                  <p className="text-xs font-semibold text-orange-500 uppercase mb-2">💌 이메일 뉴스레터</p>
-                  <p className="text-sm text-gray-600 mb-3">
+                <div className="bg-orange-50 p-5 rounded-xl border-2 border-orange-300">
+                  <p className="text-sm font-bold text-orange-700 uppercase mb-2.5">💌 이메일 뉴스레터</p>
+                  <p className="text-base text-gray-800 mb-3 leading-relaxed font-medium">
                     뉴스카드 + 홍보카드를 함께 보냅니다.<br />
-                    <span className="text-orange-600 font-medium">발행 뉴스 페이지</span>에서 미리보기 후 발송하세요.
+                    <span className="text-orange-700 font-bold">발행 뉴스 페이지</span>에서 미리보기 후 발송하세요.
                   </p>
                   <a
                     href="/admin/published-news"
-                    className="block w-full text-center bg-orange-500 hover:bg-orange-600 text-white py-2.5 rounded-lg font-bold text-sm transition-colors"
+                    className="block w-full text-center bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-bold text-base transition-colors shadow-sm"
                   >
                     💌 발행 뉴스 페이지 → 이메일 발송
                   </a>
@@ -618,7 +618,7 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                     href={`/admin/card-news/preview?imageUrl=${encodeURIComponent(publishResult.imageUrl)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 text-center bg-gray-100 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-200 transition-colors"
+                    className="flex-1 text-center bg-gray-200 text-gray-900 py-3.5 rounded-lg font-bold text-base hover:bg-gray-300 transition-colors border-2 border-gray-300"
                   >
                     🖼️ 카드 보기
                   </a>
@@ -627,7 +627,7 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                     onClick={() => {
                       setPublishResult(null);
                     }}
-                    className="flex-1 bg-orange-600 text-white py-3 rounded-lg font-bold hover:bg-orange-700 transition-colors"
+                    className="flex-1 bg-orange-600 text-white py-3.5 rounded-lg font-bold text-base hover:bg-orange-700 transition-colors shadow-sm"
                   >
                     🔄 다시 생성
                   </button>
@@ -644,7 +644,7 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                           setPublishResult(null);
                         });
                     }}
-                    className="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-colors"
+                    className="flex-1 bg-green-600 text-white py-3.5 rounded-lg font-bold text-base hover:bg-green-700 transition-colors shadow-sm"
                   >
                     ✓ 확인
                   </button>
