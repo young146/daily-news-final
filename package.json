@@ -11,6 +11,7 @@
     "crawl": "node scripts/crawler.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.98.0",
     "@prisma/client": "^5.22.0",
     "@sendgrid/mail": "^8.1.6",
     "@sparticuz/chromium": "^131.0.1",
