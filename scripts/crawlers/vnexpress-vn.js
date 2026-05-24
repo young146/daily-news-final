@@ -90,7 +90,7 @@ async function crawlVnExpressVN() {
                 });
                 const $detail = cheerio.load(detailData);
 
-                let content = $detail('.fck_detail, .sidebar-1, .content-detail, article.fck_detail, .container .sidebar-1').html();
+                let content = $detail('.fck_detail').html() || $detail('article.fck_detail').html();
 
                 const metaImage = $detail('meta[property="og:image"]').attr('content');
                 if (metaImage) {

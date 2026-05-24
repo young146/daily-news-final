@@ -63,7 +63,7 @@ async function crawlVnExpressEconomy() {
                 const $detail = cheerio.load(detailData);
 
                 // VnExpress 본문 선택자
-                let content = $detail('.fck_detail, .sidebar-1, .content-detail, article.fck_detail, .container .sidebar-1').html();
+                let content = $detail('.fck_detail').html() || $detail('article.fck_detail').html();
 
                 // 이미지 추출
                 const metaImage = $detail('meta[property="og:image"]').attr('content');
