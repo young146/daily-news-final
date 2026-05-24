@@ -40,76 +40,101 @@ export async function translateItemAction(id) {
   }
 }
 
+// 발행 진행 중을 표시하는 sentinel — DB-level lock 역할
+const PUBLISHING_SENTINEL = '__PUBLISHING__';
+
 export async function publishItemAction(id, target) {
   // target: 'main', 'daily', 'sns'
+
+  // SNS는 wordpressUrl과 무관하므로 별도 처리 (race condition 영향 없음)
+  if (target === 'sns') {
+    try {
+      const item = await prisma.newsItem.findUnique({ where: { id } });
+      if (!item) throw new Error("Item not found");
+      await postToSNS(item, "facebook");
+      await postToSNS(item, "kakao");
+      await prisma.newsItem.update({
+        where: { id },
+        data: { isSentSNS: true, isSelected: false },
+      });
+      revalidatePath("/admin");
+      return { success: true };
+    } catch (error) {
+      console.error("Publishing (SNS) failed:", error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // main/daily — atomic claim 패턴으로 중복 발행 차단
   try {
+    // 1) Atomic claim: wordpressUrl이 null일 때만 sentinel로 점유
+    //    updateMany는 WHERE 조건에 맞는 row 수를 반환. 두 호출이 동시 진입해도
+    //    DB-level로 한 호출만 count=1을 받음. 두 번째는 count=0.
+    const claim = await prisma.newsItem.updateMany({
+      where: { id, wordpressUrl: null },
+      data: { wordpressUrl: PUBLISHING_SENTINEL },
+    });
+
+    if (claim.count === 0) {
+      const existing = await prisma.newsItem.findUnique({
+        where: { id },
+        select: { wordpressUrl: true, translatedTitle: true, title: true },
+      });
+      console.log(`[Publish] ⚠️ Already claimed/published, skipping: ${existing?.translatedTitle || existing?.title}`);
+      console.log(`[Publish] Existing wordpressUrl: ${existing?.wordpressUrl}`);
+      return { success: true, skipped: true, message: "Already published or in progress" };
+    }
+
+    // 2) Claim 성공 — 실제 publish 수행
     const item = await prisma.newsItem.findUnique({ where: { id } });
     if (!item) throw new Error("Item not found");
-
-    // 🛡️ 중복 발행 방지: 이미 발행된 경우 스킵
-    if (item.wordpressUrl && (target === "main" || target === "daily")) {
-      console.log(`[Publish] ⚠️ Already published, skipping: ${item.translatedTitle || item.title}`);
-      console.log(`[Publish] Existing WordPress URL: ${item.wordpressUrl}`);
-      return { success: true, skipped: true, message: "Already published" };
-    }
 
     const data = {};
 
     if (target === "main") {
       const result = await publishToMainSite(item);
       data.wordpressUrl = result.postUrl;
-      if (result.imageUrl) {
-        data.wordpressImageUrl = result.imageUrl;
-      }
-      if (result.mediaId) {
-        data.wordpressMediaId = result.mediaId;
-      }
-      if (result.localImagePath) {
-        data.localImagePath = result.localImagePath;
-      }
+      if (result.imageUrl) data.wordpressImageUrl = result.imageUrl;
+      if (result.mediaId) data.wordpressMediaId = result.mediaId;
+      if (result.localImagePath) data.localImagePath = result.localImagePath;
       data.isPublishedMain = true;
       data.publishedAt = new Date();
       data.status = "PUBLISHED";
-      // data.isCardNews = true; // ✅ 자동 지정 제거 (관리자가 수동 선택하도록)
-
       console.log(`[Publish] ✅ News published to main site`);
     } else if (target === "daily") {
-      // Publish to Main Site only (no separate summary post needed)
       const result = await publishToMainSite(item);
       data.wordpressUrl = result.postUrl;
-      if (result.imageUrl) {
-        data.wordpressImageUrl = result.imageUrl;
-      }
-      if (result.mediaId) {
-        data.wordpressMediaId = result.mediaId;
-      }
-      if (result.localImagePath) {
-        data.localImagePath = result.localImagePath;
-      }
+      if (result.imageUrl) data.wordpressImageUrl = result.imageUrl;
+      if (result.mediaId) data.wordpressMediaId = result.mediaId;
+      if (result.localImagePath) data.localImagePath = result.localImagePath;
       data.isPublishedMain = true;
       data.isPublishedDaily = true;
       data.publishedAt = new Date();
       data.status = "PUBLISHED";
-      // data.isCardNews = true; // ✅ 자동 지정 제거 (관리자가 수동 선택하도록)
-
       console.log(`[Publish] ✅ News published to daily summary`);
-    } else if (target === "sns") {
-      await postToSNS(item, "facebook");
-      await postToSNS(item, "kakao");
-      data.isSentSNS = true;
     }
 
+    // 3) sentinel을 실제 wordpressUrl로 교체
     await prisma.newsItem.update({
       where: { id },
-      data: {
-        ...data,
-        isSelected: false,
-      },
+      data: { ...data, isSelected: false },
     });
 
     revalidatePath("/admin");
     return { success: true };
   } catch (error) {
+    // 4) 실패 시 sentinel을 다시 null로 되돌려 재시도 가능하게 함
+    //    (단, publishToMainSite 가 WordPress에 article을 만든 후 throw한 경우는
+    //     수동 정리가 필요할 수 있음 — 그래도 다음 발행 시도가 가능해지는 게 우선)
+    try {
+      await prisma.newsItem.updateMany({
+        where: { id, wordpressUrl: PUBLISHING_SENTINEL },
+        data: { wordpressUrl: null },
+      });
+      console.log(`[Publish] 🔓 Released claim for ${id} due to error`);
+    } catch (releaseErr) {
+      console.error(`[Publish] Failed to release claim for ${id}:`, releaseErr.message);
+    }
     console.error("Publishing failed:", error);
     return { success: false, error: error.message };
   }
