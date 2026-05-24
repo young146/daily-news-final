@@ -610,23 +610,33 @@ export async function batchPublishDailyAction(ids) {
     console.warn(`[Publish] Duplicate IDs detected! ${ids.length} → ${uniqueIds.length} unique IDs`);
   }
 
-  console.log(`[Publish] Processing ${uniqueIds.length} items sequentially...`);
+  // 부분 병렬: 3개씩 동시 발행. publishItemAction의 atomic claim 패턴이 동일 ID race를
+  // 막아주고, BATCH_SIZE=3은 WordPress 서버 부하를 안전 수준으로 유지하는 균형치.
+  // 순차 대비 약 2~3배 빠름 (30개 ~150~300초 → ~40~80초).
+  const BATCH_SIZE = 3;
+  console.log(`[Publish] Processing ${uniqueIds.length} items in parallel batches of ${BATCH_SIZE}...`);
 
-  // Run sequentially to avoid overwhelming the WordPress server
-  for (const id of uniqueIds) {
-    try {
-      const result = await publishItemAction(id, "daily");
-      if (result.success) {
-        successCount++;
+  for (let i = 0; i < uniqueIds.length; i += BATCH_SIZE) {
+    const batch = uniqueIds.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map(id => publishItemAction(id, "daily"))
+    );
+    results.forEach((r, idx) => {
+      const id = batch[idx];
+      if (r.status === 'fulfilled') {
+        if (r.value.success) {
+          successCount++;
+        } else {
+          failCount++;
+          errors.push(`Item ${id}: ${r.value.error}`);
+        }
       } else {
         failCount++;
-        errors.push(`Item ${id}: ${result.error}`);
+        const msg = r.reason?.message || String(r.reason);
+        errors.push(`Item ${id}: ${msg}`);
+        console.error(`Failed to publish item ${id}:`, r.reason);
       }
-    } catch (e) {
-      failCount++;
-      errors.push(`Item ${id}: ${e.message}`);
-      console.error(`Failed to publish item ${id}:`, e);
-    }
+    });
   }
 
   revalidatePath("/admin");
