@@ -108,6 +108,8 @@
 
 ## 🪵 작업 로그 (최신순)
 
+- `2026-05-25` — **딥링크 라우팅 7개 손상 복구** — Firebase가 보고한 `vnkorlife.com` 7개 손상 패턴 진단·수정. 원인: ① App.js linking config `prefixes`에 `vnkorlife.com` 누락 → React Navigation이 URL을 자기 관할로 못 봄. ② `getStateFromPath` 정규식이 *내부 타입명*(`danggn/job/neighbor`)만 매칭, *웹 경로명*(`market/jobs/neighborbusiness`)은 불일치 → 공유된 모든 카톡·페북·이메일 링크가 *메인 뉴스 탭*으로 떨어짐. 단계 1 효과 누수의 정체. 수정: WEB_TO_TYPE 매핑 도입(market→danggn, jobs→job, neighborbusiness→neighbor), prefixes에 vnkorlife.com 2개 추가, 2차 안전망 `handleDeepLinkUrl`도 vnkorlife.com 패턴 + neighbor 매핑 보강. OTA-safe (native 변경 X).
+- `2026-05-25` — **소셜 가입(Google/Apple/Kakao) signup_complete 4경로 통합** — AuthContext.js 각 isNewSignup 분기에 method 라벨 이벤트. 단계 3 retention 코호트 측정 사전 작업 (4명 중 3명 측정 누락 차단). OTA 발송 `2df419c7-...`.
 - `2026-05-21` — **페이스북 자동 게시 사고 복구 + Multi-Page v2 재구축** — 5/19 02:00 PDT 토큰 만료로 자동 게시 중단 사고. publishToFacebookPage Cloud Function 재구성 (FB_PAGE_ID+FB_PAGE_ACCESS_TOKEN → FB_SYSTEM_USER_TOKEN 영구 토큰, /me/accounts 로 4 페이지 동적 발견). 사용자 시스템 사용자 봇(dailynews-bot) 영구 토큰 발급 + Firebase Secret 등록 + redeploy. 4 페이지(씬짜오베트남·부동산·당근/나눔·Ẩm thực) 게시 정상 회복. broadcastLogs 에 페이지별 결과 박힘 → 향후 진단 즉시 가능.
 - `2026-05-21` — **액션 14 v1 — 비회원 첫 화면 가치 카드** — 뉴스 탭(첫 진입 화면) 상단에 `VisitorValueCard` 추가. Firestore Jobs/RealEstate/XinChaoDanggn 24h count + 가입 유도 CTA. 이메일 신규 채용/부동산 섹션 + 환영 화면 + 비회원 첫 화면 = **3채널 데이터/디자인 자동 동기화** (사용자 통찰 반영 — 같은 메시지 3번 노출로 인지 일관성 강화). 빌드 사이클 안 변경이라 새 빌드 출시 후 OTA로 전달.
 - `2026-05-21` — **5/21 EAS Build 추진 + 완료** — iOS build 73 + Android versionCode 106 / v2.4.2 / rv 2.4.2. analytics 측정 + 8 사이클 보강 + 작업 C 5차 통합 빌드. 스토어 심사 중.
