@@ -40,7 +40,7 @@ export async function GET(request) {
 /** POST /api/admin/push — 커스텀 푸시 발송 */
 export async function POST(request) {
     try {
-        const { title, body, dryRun } = await request.json();
+        const { title, body, url, imageUrl, dryRun } = await request.json();
 
         if (!title?.trim() || !body?.trim()) {
             return Response.json({ success: false, error: '제목과 내용을 모두 입력하세요.' }, { status: 400 });
@@ -52,7 +52,13 @@ export async function POST(request) {
                 'Content-Type': 'application/json',
                 'x-admin-key': ADMIN_KEY,
             },
-            body: JSON.stringify({ title: title.trim(), body: body.trim(), dryRun: !!dryRun }),
+            body: JSON.stringify({
+                title: title.trim(),
+                body: body.trim(),
+                url: url || null,
+                imageUrl: imageUrl || null,
+                dryRun: !!dryRun,
+            }),
         });
 
         const data = await res.json();

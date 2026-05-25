@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Bell, Send, RefreshCw, CheckCircle2, XCircle, Clock, Eye } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Bell, Send, RefreshCw, CheckCircle2, XCircle, Clock, Eye, Link, Image, Upload, X } from 'lucide-react';
 
 const TYPE_LABELS = {
     custom_push: { label: '커스텀', color: 'bg-purple-100 text-purple-800 border-purple-300' },
@@ -20,9 +20,13 @@ const STATUS_LABELS = {
 export default function PushNotificationsPage() {
     const [title, setTitle] = useState('');
     const [body, setBody] = useState('');
+    const [url, setUrl] = useState('');
+    const [imageUrl, setImageUrl] = useState('');
+    const [uploading, setUploading] = useState(false);
     const [dryRun, setDryRun] = useState(false);
     const [sending, setSending] = useState(false);
     const [sendResult, setSendResult] = useState(null);
+    const fileInputRef = useRef(null);
 
     const [logs, setLogs] = useState([]);
     const [logsLoading, setLogsLoading] = useState(true);
@@ -44,10 +48,42 @@ export default function PushNotificationsPage() {
         }
     };
 
+    const handleImageUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            alert('이미지 파일만 업로드 가능합니다.');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            alert('5MB 이하 이미지만 업로드 가능합니다.');
+            return;
+        }
+
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await fetch('/api/admin/push/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (res.ok && data.url) {
+                setImageUrl(data.url);
+            } else {
+                alert(data.error || '업로드 실패');
+            }
+        } catch (e) {
+            alert('업로드 중 오류: ' + e.message);
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
     const handleSend = async () => {
         if (!title.trim() || !body.trim()) return;
         const confirmed = dryRun || confirm(
-            `전체 앱 사용자에게 푸시를 발송합니다.\n\n제목: ${title}\n내용: ${body}\n\n계속하시겠습니까?`
+            `전체 앱 사용자에게 푸시를 발송합니다.\n\n제목: ${title}\n내용: ${body}${url ? '\n링크: ' + url : ''}${imageUrl ? '\n이미지: 있음' : ''}\n\n계속하시겠습니까?`
         );
         if (!confirmed) return;
 
@@ -57,13 +93,15 @@ export default function PushNotificationsPage() {
             const res = await fetch('/api/admin/push', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, body, dryRun }),
+                body: JSON.stringify({ title, body, url: url.trim() || null, imageUrl: imageUrl.trim() || null, dryRun }),
             });
             const data = await res.json();
             setSendResult({ ok: res.ok, ...data });
             if (res.ok && !dryRun) {
                 setTitle('');
                 setBody('');
+                setUrl('');
+                setImageUrl('');
                 setTimeout(fetchLogs, 1500);
             }
         } catch (e) {
@@ -90,6 +128,7 @@ export default function PushNotificationsPage() {
                         새 알림 작성
                     </h2>
 
+                    {/* 제목 */}
                     <div className="space-y-1">
                         <label className="text-sm font-medium text-gray-700">
                             제목 <span className="text-gray-400 font-normal">({title.length}/50)</span>
@@ -103,6 +142,7 @@ export default function PushNotificationsPage() {
                         />
                     </div>
 
+                    {/* 내용 */}
                     <div className="space-y-1">
                         <label className="text-sm font-medium text-gray-700">
                             내용 <span className="text-gray-400 font-normal">({body.length}/150)</span>
@@ -116,6 +156,80 @@ export default function PushNotificationsPage() {
                         />
                     </div>
 
+                    {/* 링크 */}
+                    <div className="space-y-1">
+                        <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                            <Link size={14} className="text-gray-400" />
+                            링크 <span className="text-gray-400 font-normal">(선택)</span>
+                        </label>
+                        <input
+                            type="url"
+                            value={url}
+                            onChange={e => setUrl(e.target.value)}
+                            placeholder="https://chaovietnam.co.kr/..."
+                            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                        />
+                        <p className="text-xs text-gray-400">알림 탭 시 이 URL을 브라우저로 엽니다.</p>
+                    </div>
+
+                    {/* 이미지 */}
+                    <div className="space-y-1">
+                        <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                            <Image size={14} className="text-gray-400" />
+                            이미지 <span className="text-gray-400 font-normal">(선택 · Android 즉시 / iOS 차기 빌드)</span>
+                        </label>
+
+                        {imageUrl ? (
+                            <div className="relative">
+                                <img
+                                    src={imageUrl}
+                                    alt="첨부 이미지"
+                                    className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                                    onError={() => setImageUrl('')}
+                                />
+                                <button
+                                    onClick={() => setImageUrl('')}
+                                    className="absolute top-2 right-2 bg-white rounded-full p-1 shadow border border-gray-200 hover:bg-red-50"
+                                >
+                                    <X size={14} className="text-gray-500" />
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={uploading}
+                                    className="flex items-center gap-2 border border-dashed border-gray-300 rounded-lg px-4 py-3 w-full text-sm text-gray-500 hover:border-orange-400 hover:text-orange-500 transition-colors"
+                                >
+                                    {uploading
+                                        ? <><RefreshCw size={14} className="animate-spin" /> 업로드 중…</>
+                                        : <><Upload size={14} /> 이미지 업로드 (5MB 이하)</>
+                                    }
+                                </button>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    accept="image/*"
+                                    onChange={handleImageUpload}
+                                    className="hidden"
+                                />
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1 h-px bg-gray-200" />
+                                    <span className="text-xs text-gray-400">또는 URL 직접 입력</span>
+                                    <div className="flex-1 h-px bg-gray-200" />
+                                </div>
+                                <input
+                                    type="url"
+                                    value={imageUrl}
+                                    onChange={e => setImageUrl(e.target.value)}
+                                    placeholder="https://..."
+                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 테스트 모드 */}
                     <label className="flex items-center gap-2 cursor-pointer select-none">
                         <input
                             type="checkbox"
@@ -157,19 +271,26 @@ export default function PushNotificationsPage() {
                 </div>
 
                 {/* 폰 미리보기 */}
-                <div className="flex flex-col items-center justify-center">
+                <div className="flex flex-col items-center justify-start pt-4">
                     <p className="text-xs text-gray-400 mb-3 flex items-center gap-1"><Eye size={13} /> 알림 미리보기</p>
                     <div className="w-72 bg-gray-900 rounded-3xl p-3 shadow-2xl">
                         <div className="bg-gray-800 rounded-2xl overflow-hidden">
-                            {/* 상태바 */}
                             <div className="flex justify-between px-4 pt-2 pb-1 text-white text-xs">
                                 <span>9:41</span>
                                 <span>●●●</span>
                             </div>
                             {/* 알림 카드 */}
-                            <div className="mx-2 mb-2 bg-white rounded-xl p-3 shadow">
-                                <div className="flex items-start gap-2">
-                                    <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">씬</div>
+                            <div className="mx-2 mb-2 bg-white rounded-xl overflow-hidden shadow">
+                                {imageUrl && (
+                                    <img
+                                        src={imageUrl}
+                                        alt=""
+                                        className="w-full h-24 object-cover"
+                                        onError={() => {}}
+                                    />
+                                )}
+                                <div className="p-3 flex items-start gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center text-white text-xs font-bold shrink-0">씬</div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xs font-semibold text-gray-900 truncate">
                                             {title || '제목을 입력하세요'}
@@ -177,11 +298,15 @@ export default function PushNotificationsPage() {
                                         <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
                                             {body || '내용을 입력하세요'}
                                         </p>
+                                        {url && (
+                                            <p className="text-xs text-blue-400 mt-1 truncate">🔗 {url}</p>
+                                        )}
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                    <p className="text-xs text-gray-400 mt-3 text-center">이미지: Android 즉시 · iOS 차기 빌드 후</p>
                 </div>
             </div>
 
@@ -211,6 +336,7 @@ export default function PushNotificationsPage() {
                                     <th className="text-left px-6 py-3 font-medium">종류</th>
                                     <th className="text-left px-6 py-3 font-medium">제목</th>
                                     <th className="text-left px-6 py-3 font-medium">내용</th>
+                                    <th className="text-left px-6 py-3 font-medium">첨부</th>
                                     <th className="text-right px-6 py-3 font-medium">수신자</th>
                                     <th className="text-right px-6 py-3 font-medium">상태</th>
                                     <th className="text-right px-6 py-3 font-medium">발송 시각</th>
@@ -228,8 +354,23 @@ export default function PushNotificationsPage() {
                                                     {typeInfo.label}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-3 text-gray-800 max-w-[160px] truncate">{log.title || '-'}</td>
-                                            <td className="px-6 py-3 text-gray-500 max-w-[200px] truncate">{log.body || '-'}</td>
+                                            <td className="px-6 py-3 text-gray-800 max-w-[140px] truncate">{log.title || '-'}</td>
+                                            <td className="px-6 py-3 text-gray-500 max-w-[180px] truncate">{log.body || '-'}</td>
+                                            <td className="px-6 py-3">
+                                                <div className="flex items-center gap-2">
+                                                    {log.imageUrl && (
+                                                        <a href={log.imageUrl} target="_blank" rel="noreferrer" title="이미지 보기">
+                                                            <Image size={14} className="text-blue-400 hover:text-blue-600" />
+                                                        </a>
+                                                    )}
+                                                    {log.url && (
+                                                        <a href={log.url} target="_blank" rel="noreferrer" title={log.url}>
+                                                            <Link size={14} className="text-blue-400 hover:text-blue-600" />
+                                                        </a>
+                                                    )}
+                                                    {!log.imageUrl && !log.url && <span className="text-gray-300">—</span>}
+                                                </div>
+                                            </td>
                                             <td className="px-6 py-3 text-right text-gray-700 font-medium">
                                                 {log.status === 'sent' ? totalRecipients(log).toLocaleString() : '-'}
                                             </td>
