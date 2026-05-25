@@ -10,7 +10,7 @@
 > - 에이전트 작업 지침: [CLAUDE.md](../../chao-vn-app/chao-vn-app/CLAUDE.md) — 빌드 vs OTA 의사결정 가이드 포함
 >
 > 시작: 2026-05-21
-> 최종 갱신: 2026-05-21
+> 최종 갱신: 2026-05-25
 
 ---
 
@@ -36,7 +36,7 @@
 |---|---|---|
 | **1. 이메일 → 앱 다운로드 유도** | 🟢 다중 강화 완료 (상단 배너 + 통합 QR + 신규 채용/부동산 섹션 + 측정) | 1주 후 GA4 컨버전율 측정 → 약점 보강 |
 | **2. 앱 다운로드 → 회원가입** | 🟢 보강 완료 (B + A v1/v2 + C 1·2차 + 4개 가입 경로 환영 통일) | 1주 후 가입 전환율 측정 |
-| **3. 앱 회원가입 → retention** | 🟡 측정 인프라 OK, 데이터 대기 | Firebase Analytics retention 코호트 며칠 후 |
+| **3. 앱 회원가입 → retention** | 🟡 푸시 알림 시스템 완료, 코호트 데이터 대기 | Firebase Analytics retention 코호트 측정 |
 | **4. 외부 유입 (한인커뮤니티 등)** | ⏭️ 메인 다진 후 진행 | 한인회·교회·학교 협력 |
 
 ---
@@ -108,6 +108,15 @@
 
 ## 🪵 작업 로그 (최신순)
 
+- `2026-05-25` — **푸시 알림 양방향 대화 시스템 완성** (retention 단계 3 무기)
+  - **커스텀 푸시 발송**: Cloud Function `sendCustomPush` — 제목/내용/링크/이미지 지원. 발송 시 Firestore `announcements/{id}` 자동 생성 (댓글 스레드 루트).
+  - **공지사항 화면 2종**: `AnnouncementsListScreen` (카드형 목록) + `AnnouncementDetailScreen` (본문+댓글/대댓글+이미지 첨부). 메뉴 탭 → 공지사항 접근.
+  - **알림 탭 딥링크**: 푸시 탭 시 announcementId → 공지 상세, url → 브라우저, 없음 → 뉴스탭.
+  - **어드민 UI** (`vnkorlife.com/admin/push-notifications`): 작성·발송·이미지 업로드·미리보기·발송 이력·댓글 수·댓글 스레드 모달.
+  - **임시저장 + 예약 발송**: `pushDrafts` Firestore 컬렉션. datetime picker로 시각 지정 → "예약 등록". `scheduledPushCheck` Cloud Function이 5분마다 자동 발송 처리.
+  - **Firestore 규칙**: `announcements` 공개 읽기, `comments` 로그인 사용자 작성.
+  - OTA 배포 완료 (production 채널, runtime 2.4.2). Firebase Functions 배포 완료.
+  - 참고 문서: `chao-vn-app/PROGRESS_PUSH_SYSTEM.md`
 - `2026-05-25` — **딥링크 라우팅 7개 손상 복구** — Firebase가 보고한 `vnkorlife.com` 7개 손상 패턴 진단·수정. 원인: ① App.js linking config `prefixes`에 `vnkorlife.com` 누락 → React Navigation이 URL을 자기 관할로 못 봄. ② `getStateFromPath` 정규식이 *내부 타입명*(`danggn/job/neighbor`)만 매칭, *웹 경로명*(`market/jobs/neighborbusiness`)은 불일치 → 공유된 모든 카톡·페북·이메일 링크가 *메인 뉴스 탭*으로 떨어짐. 단계 1 효과 누수의 정체. 수정: WEB_TO_TYPE 매핑 도입(market→danggn, jobs→job, neighborbusiness→neighbor), prefixes에 vnkorlife.com 2개 추가, 2차 안전망 `handleDeepLinkUrl`도 vnkorlife.com 패턴 + neighbor 매핑 보강. OTA-safe (native 변경 X).
 - `2026-05-25` — **소셜 가입(Google/Apple/Kakao) signup_complete 4경로 통합** — AuthContext.js 각 isNewSignup 분기에 method 라벨 이벤트. 단계 3 retention 코호트 측정 사전 작업 (4명 중 3명 측정 누락 차단). OTA 발송 `2df419c7-...`.
 - `2026-05-21` — **페이스북 자동 게시 사고 복구 + Multi-Page v2 재구축** — 5/19 02:00 PDT 토큰 만료로 자동 게시 중단 사고. publishToFacebookPage Cloud Function 재구성 (FB_PAGE_ID+FB_PAGE_ACCESS_TOKEN → FB_SYSTEM_USER_TOKEN 영구 토큰, /me/accounts 로 4 페이지 동적 발견). 사용자 시스템 사용자 봇(dailynews-bot) 영구 토큰 발급 + Firebase Secret 등록 + redeploy. 4 페이지(씬짜오베트남·부동산·당근/나눔·Ẩm thực) 게시 정상 회복. broadcastLogs 에 페이지별 결과 박힘 → 향후 진단 즉시 가능.
