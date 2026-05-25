@@ -86,8 +86,12 @@ export async function publishItemAction(id, target) {
     }
 
     // 2) Claim 성공 — 실제 publish 수행
-    const item = await prisma.newsItem.findUnique({ where: { id } });
-    if (!item) throw new Error("Item not found");
+    // 주의: atomic claim으로 인해 fetch한 item의 wordpressUrl 이 sentinel 값이 되어 있다.
+    //       publishToMainSite는 wordpressUrl이 있으면 "이미 발행됨"으로 판단하므로,
+    //       sentinel을 비운 사본을 전달해야 실제 WordPress POST가 일어난다.
+    const itemRaw = await prisma.newsItem.findUnique({ where: { id } });
+    if (!itemRaw) throw new Error("Item not found");
+    const item = { ...itemRaw, wordpressUrl: null };
 
     const data = {};
 
