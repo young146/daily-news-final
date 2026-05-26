@@ -37,9 +37,28 @@ body.app-loading * {
   cursor: wait !important;
 }
 
-/* 추가: 비활성화된 버튼은 not-allowed (가독성) */
+/* 클릭 가능한 요소에 손바닥(pointer) cursor — 사용자에게 "이건 누를 수 있다" 시각 신호.
+   브라우저 기본은 button에 default cursor지만 UX 관점에선 pointer가 표준. */
+button:not(:disabled):not([aria-disabled="true"]),
+a[href],
+[role="button"]:not([aria-disabled="true"]),
+input[type="submit"]:not(:disabled),
+input[type="button"]:not(:disabled),
+input[type="reset"]:not(:disabled),
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+input[type="file"]:not(:disabled),
+select:not(:disabled),
+label[for],
+summary {
+  cursor: pointer;
+}
+
+/* 비활성화된 버튼은 not-allowed (가독성) */
 button:disabled,
-button[aria-disabled="true"] {
+button[aria-disabled="true"],
+input:disabled,
+select:disabled {
   cursor: not-allowed;
 }
 
