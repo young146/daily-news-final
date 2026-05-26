@@ -23,6 +23,7 @@ export default function PushNotificationsPage() {
     const [url, setUrl] = useState('');
     const [imageUrl, setImageUrl] = useState('');
     const [scheduledAt, setScheduledAt] = useState('');
+    const [minDateTime, setMinDateTime] = useState('');
     const [uploading, setUploading] = useState(false);
     const [dryRun, setDryRun] = useState(false);
     const [sending, setSending] = useState(false);
@@ -39,7 +40,11 @@ export default function PushNotificationsPage() {
     const [commentsModal, setCommentsModal] = useState(null);
     const [commentsLoading, setCommentsLoading] = useState(false);
 
-    useEffect(() => { fetchLogs(); fetchDrafts(); }, []);
+    useEffect(() => {
+        fetchLogs();
+        fetchDrafts();
+        setMinDateTime(new Date(Date.now() + 60000).toISOString().slice(0, 16));
+    }, []);
 
     const fetchLogs = async () => {
         setLogsLoading(true);
@@ -271,7 +276,7 @@ export default function PushNotificationsPage() {
                             type="datetime-local"
                             value={scheduledAt}
                             onChange={e => setScheduledAt(e.target.value)}
-                            min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
+                            min={minDateTime}
                             className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                         />
                         {scheduledAt && (
