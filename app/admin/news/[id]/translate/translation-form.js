@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { saveTranslation, completeReview } from './actions';
 
@@ -9,6 +9,23 @@ export default function TranslationForm({ newsItem, nextId }) {
     const [showPreview, setShowPreview] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
     const [publishMessage, setPublishMessage] = useState('');
+
+    // 다음 기사를 백그라운드로 미리 로드 — Confirm & Complete 후 페이지 SSR 대기 시간 제거
+    useEffect(() => {
+        if (nextId) {
+            router.prefetch(`/admin/news/${nextId}/translate`);
+        }
+    }, [nextId, router]);
+
+    // 로딩 상태일 때 전역 cursor 변경 (모든 요소에 wait 표시)
+    useEffect(() => {
+        if (isPublishing) {
+            document.body.classList.add('app-loading');
+        } else {
+            document.body.classList.remove('app-loading');
+        }
+        return () => document.body.classList.remove('app-loading');
+    }, [isPublishing]);
 
     const [formData, setFormData] = useState({
         translatedTitle: newsItem.translatedTitle || '',
@@ -175,6 +192,7 @@ export default function TranslationForm({ newsItem, nextId }) {
                         onClick={async (e) => {
                             e.preventDefault();
                             if (confirm('Skip this item? It will be unselected and moved back to Collected News.')) {
+                                setIsPublishing(true);  // ← 즉시 cursor wait + 버튼 비활성화
                                 const { skipItemAction } = await import('./actions');
                                 await skipItemAction(newsItem.id);
                                 if (nextId) {

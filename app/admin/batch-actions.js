@@ -1,10 +1,23 @@
 'use client';
-import { useTransition, useOptimistic, useState } from 'react';
+import { useTransition, useOptimistic, useState, useEffect } from 'react';
 import { batchTranslateAction, batchPublishDailyAction, toggleCardNewsAction, batchTranslateTitlesAction, deleteSelectedNewsAction } from './actions';
 import { useRouter } from 'next/navigation';
 
+// 전역 cursor wait 피드백 — isLoading 상태일 때 body.app-loading 토글
+function useGlobalLoadingCursor(isLoading) {
+    useEffect(() => {
+        if (isLoading) {
+            document.body.classList.add('app-loading');
+        } else {
+            document.body.classList.remove('app-loading');
+        }
+        return () => document.body.classList.remove('app-loading');
+    }, [isLoading]);
+}
+
 export function BatchTranslateTitlesButton({ ids }) {
     const [isPending, startTransition] = useTransition();
+    useGlobalLoadingCursor(isPending);
 
     // If all items are already translated (ids array is empty), show a solid status badge instead of a disabled button
     if (ids.length === 0) {
@@ -31,6 +44,7 @@ export function BatchTranslateTitlesButton({ ids }) {
 export function BatchTranslateButton({ ids, redirectId }) {
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
+    useGlobalLoadingCursor(isPending);
 
     return (
         <button
@@ -53,6 +67,7 @@ export function BatchTranslateButton({ ids, redirectId }) {
 
 export function BatchPublishButton({ ids }) {
     const [isPending, startTransition] = useTransition();
+    useGlobalLoadingCursor(isPending);
     return (
         <button
             type="button"
@@ -71,6 +86,7 @@ export function BatchPublishButton({ ids }) {
 
 export function DeleteSelectedNewsButton({ id }) {
     const [isPending, startTransition] = useTransition();
+    useGlobalLoadingCursor(isPending);
 
     return (
         <button
@@ -117,7 +133,11 @@ export function CardNewsToggle({ id, isCardNews }) {
 export function WorkflowButton({ topNews }) {
     const [isPending, startTransition] = useTransition();
     const [isTranslating, setIsTranslating] = useState(false);
+    const [isNavigating, setIsNavigating] = useState(false);  // 페이지 이동 중 표시
     const router = useRouter();
+
+    // 어떤 상태든 로딩이면 전역 cursor wait
+    useGlobalLoadingCursor(isPending || isTranslating || isNavigating);
 
     // 번역이 필요한 항목 (제목, 요약, 본문 중 하나라도 없음)
     const itemsNeedingTranslation = topNews.filter(n => !n.translatedTitle || !n.translatedSummary || !n.translatedContent);
@@ -237,9 +257,10 @@ Total Completed: ${completedItems.length} items
         }
     };
 
-    // 리뷰 계속하기
+    // 리뷰 계속하기 — 클릭 즉시 loading 표시 후 페이지 이동
     const handleContinueReview = () => {
         if (nextReviewItem) {
+            setIsNavigating(true);
             router.push(`/admin/news/${nextReviewItem.id}/translate`);
         }
     };

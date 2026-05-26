@@ -1,11 +1,9 @@
 'use server';
 
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { translateNewsItem } from '@/lib/translator';
-
-const prisma = new PrismaClient();
 
 export async function saveTranslation(formData) {
     const id = formData.get('id');

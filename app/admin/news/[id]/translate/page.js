@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/prisma';
+import Link from 'next/link';
 import TranslationForm from './translation-form';
-
-const prisma = new PrismaClient();
 
 async function getNewsItem(id) {
     return await prisma.newsItem.findUnique({
@@ -41,11 +40,11 @@ export default async function TranslatePage({ params }) {
                 <h1 className="text-2xl font-bold">Translate & Edit</h1>
                 <div className="flex gap-4">
                     {nextId && (
-                        <a href={`/admin/news/${nextId}/translate`} className="text-blue-600 hover:underline font-medium">
+                        <Link href={`/admin/news/${nextId}/translate`} prefetch={true} className="text-blue-600 hover:underline font-medium">
                             Next Item →
-                        </a>
+                        </Link>
                     )}
-                    <a href="/admin" className="text-gray-500 hover:underline">← Back to Dashboard</a>
+                    <Link href="/admin" className="text-gray-500 hover:underline">← Back to Dashboard</Link>
                 </div>
             </div>
 

@@ -29,6 +29,20 @@ body {
   font-family: var(--font-sans);
 }
 
+/* 작업 중일 때 모든 요소에 wait cursor 표시 (클릭 즉시 시각 피드백).
+   React 컴포넌트에서 isPending/isTranslating 등 로딩 상태에 따라
+   document.body.classList.toggle('app-loading', isLoading) 로 토글한다. */
+body.app-loading,
+body.app-loading * {
+  cursor: wait !important;
+}
+
+/* 추가: 비활성화된 버튼은 not-allowed (가독성) */
+button:disabled,
+button[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 h1,
 h2,
 h3,
