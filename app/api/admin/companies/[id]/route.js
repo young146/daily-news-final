@@ -28,7 +28,7 @@ export async function GET(request, { params }) {
     const cfg = getWpConfig();
     if (!cfg) return missingEnvResponse();
 
-    const { id } = params;
+    const { id } = await params;
     try {
         const res = await fetch(`${cfg.base}/xcd/v1/${id}`, {
             headers: { Authorization: `Basic ${cfg.token}` },
@@ -47,7 +47,7 @@ export async function POST(request, { params }) {
     const cfg = getWpConfig();
     if (!cfg) return missingEnvResponse();
 
-    const { id } = params;
+    const { id } = await params;
     try {
         const body = await request.json();
         const res = await fetch(`${cfg.base}/xcd/v1/${id}`, {
@@ -71,7 +71,7 @@ export async function DELETE(request, { params }) {
     const cfg = getWpConfig();
     if (!cfg) return missingEnvResponse();
 
-    const { id } = params;
+    const { id } = await params;
     try {
         const res = await fetch(`${cfg.base}/xcd/v1/${id}`, {
             method: 'DELETE',
