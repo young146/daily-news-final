@@ -45,9 +45,9 @@ function StatsCards({ stats, loading }) {
                 ) : (
                     <ul className="space-y-1">
                         {topArea.map((a) => (
-                            <li key={a.name} className="flex justify-between text-sm font-medium text-gray-800">
-                                <span>{a.name || '기타'}</span>
-                                <span className="font-bold text-gray-900">{a.count}</span>
+                            <li key={a.area} className="flex justify-between text-sm font-medium text-gray-800">
+                                <span>{a.area || '기타'}</span>
+                                <span className="font-bold text-gray-900">{(a.count ?? 0).toLocaleString()}</span>
                             </li>
                         ))}
                     </ul>
@@ -64,9 +64,9 @@ function StatsCards({ stats, loading }) {
                 ) : (
                     <ul className="space-y-1">
                         {topGroup.map((g) => (
-                            <li key={g.name} className="flex justify-between text-sm font-medium text-gray-800">
-                                <span className="truncate max-w-[120px]">{g.name || '기타'}</span>
-                                <span className="font-bold text-gray-900">{g.count}</span>
+                            <li key={g.group} className="flex justify-between text-sm font-medium text-gray-800">
+                                <span className="truncate max-w-[120px]">{g.group || '기타'}</span>
+                                <span className="font-bold text-gray-900">{(g.count ?? 0).toLocaleString()}</span>
                             </li>
                         ))}
                     </ul>
@@ -504,21 +504,31 @@ export default function CompaniesPage() {
                         />
                     </div>
 
-                    <input
-                        type="text"
+                    <select
                         value={areaFilter}
                         onChange={(e) => { setAreaFilter(e.target.value); setPage(1); }}
-                        placeholder="지역 필터"
-                        className="px-3 py-2.5 border-2 border-gray-400 rounded-lg text-sm font-medium text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-600 w-32"
-                    />
+                        className="px-3 py-2.5 border-2 border-gray-400 rounded-lg text-sm font-medium text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-600 bg-white"
+                    >
+                        <option value="">전체 지역</option>
+                        {(stats?.by_area || []).filter((a) => a.area).map((a) => (
+                            <option key={a.area} value={a.area}>
+                                {a.area} ({(a.count ?? 0).toLocaleString()})
+                            </option>
+                        ))}
+                    </select>
 
-                    <input
-                        type="text"
+                    <select
                         value={groupFilter}
                         onChange={(e) => { setGroupFilter(e.target.value); setPage(1); }}
-                        placeholder="업종 필터"
-                        className="px-3 py-2.5 border-2 border-gray-400 rounded-lg text-sm font-medium text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-600 w-32"
-                    />
+                        className="px-3 py-2.5 border-2 border-gray-400 rounded-lg text-sm font-medium text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-600 bg-white"
+                    >
+                        <option value="">전체 업종</option>
+                        {(stats?.by_group || []).filter((g) => g.group).map((g) => (
+                            <option key={g.group} value={g.group}>
+                                {g.group} ({(g.count ?? 0).toLocaleString()})
+                            </option>
+                        ))}
+                    </select>
 
                     <select
                         value={`${orderby}:${order}`}
