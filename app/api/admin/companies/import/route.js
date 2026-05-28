@@ -32,7 +32,7 @@ export async function POST(request) {
         const formData = await request.formData();
 
         // Forward the multipart form directly to WP API
-        const res = await fetch(`${cfg.base}/xcd/v1/companies/import`, {
+        const res = await fetch(`${cfg.base}/xcd/v1/import`, {
             method: 'POST',
             headers: {
                 Authorization: `Basic ${cfg.token}`,

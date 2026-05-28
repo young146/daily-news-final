@@ -41,7 +41,7 @@ export async function GET(request) {
     if (!params.has('per_page')) params.set('per_page', '25');
 
     try {
-        const res = await fetch(`${cfg.base}/xcd/v1/companies?${params}`, {
+        const res = await fetch(`${cfg.base}/xcd/v1/search?${params}`, {
             headers: { Authorization: `Basic ${cfg.token}` },
             cache: 'no-store',
         });
@@ -60,7 +60,7 @@ export async function POST(request) {
 
     try {
         const body = await request.json();
-        const res = await fetch(`${cfg.base}/xcd/v1/companies/create`, {
+        const res = await fetch(`${cfg.base}/xcd/v1/create`, {
             method: 'POST',
             headers: {
                 Authorization: `Basic ${cfg.token}`,

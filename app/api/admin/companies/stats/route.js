@@ -29,7 +29,7 @@ export async function GET() {
     if (!cfg) return missingEnvResponse();
 
     try {
-        const res = await fetch(`${cfg.base}/xcd/v1/companies/stats`, {
+        const res = await fetch(`${cfg.base}/xcd/v1/stats`, {
             headers: { Authorization: `Basic ${cfg.token}` },
             cache: 'no-store',
         });
