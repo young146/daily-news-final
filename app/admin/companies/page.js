@@ -221,8 +221,8 @@ function CsvImportModal({ onClose, onDone }) {
         setResult(null);
         try {
             const fd = new FormData();
-            fd.append('file', file);
-            if (clearExisting) fd.append('clear', '1');
+            fd.append('csv_file', file);
+            if (clearExisting) fd.append('truncate', '1');
 
             const res = await fetch('/api/admin/companies/import', {
                 method: 'POST',
