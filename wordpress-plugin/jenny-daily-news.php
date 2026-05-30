@@ -459,6 +459,409 @@ function jenny_get_exchange_data()
 }
 
 /**
+ * 미니 추세 그래프(스파크라인)를 인라인 SVG로 렌더.
+ * 외부 차트 라이브러리 없이 polyline 하나로 그림 → 가볍고 JS 로딩 0.
+ * @param array  $points 숫자 시계열 (오래된→최신 순)
+ * @param string $color  선 색
+ * @return string SVG 마크업 (점이 2개 미만이면 빈 문자열 → 호출부에서 자연스럽게 생략)
+ */
+function jenny_render_sparkline($points, $color = '#868e96', $w = 96, $h = 28)
+{
+    $points = array_values(array_filter((array) $points, 'is_numeric'));
+    $n = count($points);
+    if ($n < 2) {
+        return '';
+    }
+
+    $min = min($points);
+    $max = max($points);
+    $range = $max - $min;
+    if ($range == 0) {
+        $range = 1; // 완전 평탄 시 0 나눗셈 방지 (중앙 수평선)
+    }
+
+    $coords = array();
+    for ($i = 0; $i < $n; $i++) {
+        $x = ($n > 1) ? (($w - 2) * $i / ($n - 1) + 1) : 1;
+        $y = ($h - 1) - ($h - 2) * (($points[$i] - $min) / $range);
+        $coords[] = round($x, 1) . ',' . round($y, 1);
+    }
+
+    return '<svg width="' . $w . '" height="' . $h . '" viewBox="0 0 ' . $w . ' ' . $h . '" preserveAspectRatio="none" style="vertical-align:middle;margin-left:4px;overflow:visible;">'
+        . '<polyline fill="none" stroke="' . esc_attr($color) . '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" points="' . esc_attr(implode(' ', $coords)) . '" />'
+        . '</svg>';
+}
+
+/**
+ * 사각형 그래프 박스 — 숫자 옆 인라인 선("낙서") 대신, 카드 아래 붙는 독립 박스.
+ * 면적 채우기(그라데이션) + 가장 최근 값에 점 표시 → 추세가 한눈에.
+ * width:100% 로 카드 폭에 맞춰 늘어나고, stroke 는 non-scaling 으로 두께 일정.
+ */
+function jenny_render_graph_box($points, $color = '#868e96', $w = 240, $h = 60)
+{
+    $points = array_values(array_filter((array) $points, 'is_numeric'));
+    $n = count($points);
+    if ($n < 2) {
+        return '';
+    }
+
+    $min = min($points);
+    $max = max($points);
+    $range = $max - $min;
+    if ($range == 0) {
+        $range = 1;
+    }
+
+    $pad = 4; // 박스 내부 여백
+    $coords = array();
+    for ($i = 0; $i < $n; $i++) {
+        $x = $pad + ($w - 2 * $pad) * $i / ($n - 1);
+        $y = $pad + ($h - 2 * $pad) * (1 - (($points[$i] - $min) / $range));
+        $coords[] = round($x, 1) . ',' . round($y, 1);
+    }
+    $line = implode(' ', $coords);
+
+    // 면적 채우기용 polygon (라인 → 우하단 → 좌하단으로 닫음)
+    $area = $line . ' ' . round($w - $pad, 1) . ',' . round($h - $pad, 1) . ' ' . round($pad, 1) . ',' . round($h - $pad, 1);
+    // 마지막(최근) 좌표 = 끝점 강조 점
+    $last = explode(',', $coords[$n - 1]);
+    $gid = 'jg' . substr(md5($line . $color), 0, 8);
+
+    $svg  = '<svg width="100%" height="' . $h . '" viewBox="0 0 ' . $w . ' ' . $h . '" preserveAspectRatio="none" style="display:block;overflow:visible;">';
+    $svg .= '<defs><linearGradient id="' . $gid . '" x1="0" y1="0" x2="0" y2="1">';
+    $svg .= '<stop offset="0%" stop-color="' . esc_attr($color) . '" stop-opacity="0.22"/>';
+    $svg .= '<stop offset="100%" stop-color="' . esc_attr($color) . '" stop-opacity="0.02"/>';
+    $svg .= '</linearGradient></defs>';
+    $svg .= '<polygon fill="url(#' . $gid . ')" stroke="none" points="' . esc_attr($area) . '"/>';
+    $svg .= '<polyline fill="none" stroke="' . esc_attr($color) . '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" points="' . esc_attr($line) . '"/>';
+    $svg .= '<circle cx="' . esc_attr($last[0]) . '" cy="' . esc_attr($last[1]) . '" r="3.2" fill="' . esc_attr($color) . '" vector-effect="non-scaling-stroke"/>';
+    $svg .= '</svg>';
+
+    return '<div class="jenny-graph-box">' . $svg . '</div>';
+}
+
+/**
+ * 시계열의 방향에 따른 색 (상승=초록, 하락=빨강, 판단불가=회색).
+ * 환율/항공료처럼 "한국 관례(빨강=상승)"가 적용 안 되는 카드용.
+ */
+function jenny_spark_color($points)
+{
+    $p = array_values(array_filter((array) $points, 'is_numeric'));
+    if (count($p) < 2) {
+        return '#868e96';
+    }
+    return ($p[count($p) - 1] >= $p[0]) ? '#2f9e44' : '#e03131';
+}
+
+/**
+ * 하루 1포인트씩 직접 적립하는 시계열 (외부 히스토리가 없는 지표용: VN-Index 등).
+ * 같은 날 여러 번 호출되면 그날 값만 갱신(덮어쓰기). 최대 $cap 일치 보관.
+ * @return array 날짜=>값 배열
+ */
+function jenny_append_daily_series($option_key, $value, $cap = 30)
+{
+    $series = get_option($option_key, array());
+    if (!is_array($series)) {
+        $series = array();
+    }
+    if (is_numeric($value) && $value > 0) {
+        $series[date('Y-m-d')] = floatval($value);
+    }
+    if (count($series) > $cap) {
+        $series = array_slice($series, -$cap, $cap, true);
+    }
+    update_option($option_key, $series, false);
+    return $series;
+}
+
+/**
+ * 월별 시계열 적립: 한 달에 한 칸(같은 달이면 더 싼 값으로 갱신).
+ * 항공권 최저가처럼 "달이 바뀌며 추세"를 보는 지표용. 최근 $cap 개월 유지.
+ * @return array  YYYY-MM => float (날짜순 정렬된 값)
+ */
+function jenny_append_monthly_series($option_key, $value, $cap = 12)
+{
+    $series = get_option($option_key, array());
+    if (!is_array($series)) {
+        $series = array();
+    }
+    if (is_numeric($value) && $value > 0) {
+        $month = date('Y-m');
+        // 같은 달에 여러 번 조회되면 그 달의 "최저가"로 유지
+        if (!isset($series[$month]) || floatval($value) < $series[$month]) {
+            $series[$month] = floatval($value);
+        }
+    }
+    ksort($series); // 월 순서 보장
+    if (count($series) > $cap) {
+        $series = array_slice($series, -$cap, $cap, true);
+    }
+    update_option($option_key, $series, false);
+    return $series;
+}
+
+/**
+ * URL을 "있는 그대로" 가져온다 — PHP 네이티브 cURL 직접 사용.
+ * 왜 wp_remote_get 대신인가:
+ *  - 야후 지수 심볼은 ^KS11 처럼 '^' 가 들어간다.
+ *  - literal '^' → libcurl이 "illegal URL character" 로 거부.
+ *  - '%5E' 로 인코딩 → 워드프레스 내부 Requests 라이브러리가 '%' 를 다시 인코딩해 '%255E' 로 망가뜨림 → 야후 "Not Found".
+ *  => 어느 쪽이든 wp_remote_get 으로는 '^' 심볼을 못 보낸다.
+ *  네이티브 cURL은 '%5E' 를 그대로 전송하므로 정상 동작한다(환율 심볼은 '^'가 없어 영향 없음).
+ * cURL 미사용 환경 대비 wp_remote_get 폴백 포함.
+ */
+function jenny_fetch_raw($url)
+{
+    if (function_exists('curl_init')) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
+        $out = curl_exec($ch);
+        curl_close($ch);
+        if (is_string($out) && $out !== '') {
+            return $out;
+        }
+    }
+    // 폴백: wp_remote_get (단, '^' 심볼은 여기서 깨질 수 있음)
+    $r = wp_remote_get($url, array('timeout' => 10, 'user-agent' => 'Mozilla/5.0'));
+    if (is_wp_error($r)) {
+        return '';
+    }
+    return wp_remote_retrieve_body($r);
+}
+
+/**
+ * Yahoo Finance 차트 API에서 일별 종가 배열만 추출 (1개월).
+ * @param string $symbol URL에 바로 쓸 수 있는 심볼 (예: 'USDVND=X', 'KRW=X')
+ */
+function jenny_yahoo_closes($symbol)
+{
+    $url = 'https://query1.finance.yahoo.com/v8/finance/chart/' . $symbol . '?range=1mo&interval=1d';
+    $response = wp_remote_get($url, array('timeout' => 10, 'user-agent' => 'Mozilla/5.0'));
+    if (is_wp_error($response)) {
+        return array();
+    }
+    $body = json_decode(wp_remote_retrieve_body($response), true);
+    if (empty($body['chart']['result'][0]['indicators']['quote'][0]['close'])) {
+        return array();
+    }
+    $out = array();
+    foreach ($body['chart']['result'][0]['indicators']['quote'][0]['close'] as $c) {
+        if (is_numeric($c) && $c > 0) {
+            $out[] = floatval($c);
+        }
+    }
+    return $out;
+}
+
+/**
+ * 환율 스파크라인용 시계열: USD/VND 직접, KRW/VND = (USD/VND) ÷ (USD/KRW) × 100 합성.
+ * 6시간 캐시.
+ */
+function jenny_get_fx_sparklines()
+{
+    $cache_key = 'jenny_fx_spark_v1';
+    $cached = get_transient($cache_key);
+    if ($cached !== false && is_array($cached) && array_key_exists('usd', $cached)) {
+        return $cached;
+    }
+
+    $out = array('usd' => array(), 'krw' => array());
+
+    $usdvnd = jenny_yahoo_closes('USDVND=X');
+    $usdkrw = jenny_yahoo_closes('KRW=X');
+
+    if (!empty($usdvnd)) {
+        $out['usd'] = $usdvnd;
+    }
+    if (!empty($usdvnd) && !empty($usdkrw)) {
+        $len = min(count($usdvnd), count($usdkrw));
+        $a = array_slice($usdvnd, -$len);
+        $b = array_slice($usdkrw, -$len);
+        $krw = array();
+        for ($i = 0; $i < $len; $i++) {
+            if ($b[$i] > 0) {
+                $krw[] = ($a[$i] / $b[$i]) * 100; // 100 KRW 당 VND
+            }
+        }
+        $out['krw'] = $krw;
+    }
+
+    $ttl = (!empty($out['usd'])) ? 6 * HOUR_IN_SECONDS : 30 * MINUTE_IN_SECONDS;
+    set_transient($cache_key, $out, $ttl);
+    return $out;
+}
+
+/**
+ * 항공권 최저가 데이터 (Travelpayouts/Aviasales Flight Data API)
+ * 인천(ICN) → 호치민(SGN), 하노이(HAN) 왕복 캐시 최저가를 KRW로 반환.
+ * - 토큰만 있으면 계정 활성화 전에도 가격 데이터는 수신됨 (수익 집계는 활성화 후).
+ * - 12시간 캐시 (항공료 캐시 데이터는 분 단위로 안 바뀌므로 외부 호출 최소화).
+ * - 실패 시 빈 값 반환 → 호출부에서 카드 자체를 숨김 (깨진 화면 방지).
+ */
+function jenny_get_airfare_data()
+{
+    $cache_key = 'jenny_airfare_v3'; // v3: 추세를 "월별 최저가 적립" 방식으로 변경
+    $cached = get_transient($cache_key);
+    if ($cached !== false && is_array($cached) && array_key_exists('sgn', $cached)) {
+        return $cached;
+    }
+
+    $token = '215c0dab036cfb614ed8c952f8cbdd1e';
+    $data = array(
+        'sgn' => array('price' => '', 'spark' => array()),
+        'han' => array('price' => '', 'spark' => array()),
+    );
+
+    $routes = array('sgn' => 'SGN', 'han' => 'HAN');
+
+    foreach ($routes as $key => $dest) {
+        // 헤드라인 최저가 (왕복 cheap)
+        $url = add_query_arg(array(
+            'origin' => 'ICN',
+            'destination' => $dest,
+            'currency' => 'krw',
+            'token' => $token,
+        ), 'https://api.travelpayouts.com/v1/prices/cheap');
+
+        $response = wp_remote_get($url, array('timeout' => 10, 'user-agent' => 'Mozilla/5.0'));
+        $min_price = null;
+        if (!is_wp_error($response)) {
+            $body = json_decode(wp_remote_retrieve_body($response), true);
+            if (!empty($body['success']) && !empty($body['data'][$dest]) && is_array($body['data'][$dest])) {
+                // data[DEST]는 "0","1",... 인덱스 키로 여러 오퍼가 옴 → 최저가 탐색
+                foreach ($body['data'][$dest] as $offer) {
+                    if (!isset($offer['price'])) {
+                        continue;
+                    }
+                    $price = intval($offer['price']);
+                    if ($price > 0 && ($min_price === null || $price < $min_price)) {
+                        $min_price = $price;
+                    }
+                }
+                if ($min_price !== null) {
+                    $data[$key]['price'] = number_format($min_price);
+                }
+            }
+        }
+
+        // 추세 = "월별 최저가 적립". 출발일별 곡선(month-matrix) 대신,
+        // 매달 이 노선의 최저가를 한 칸씩 기록해 달이 바뀌며 추세 그래프가 쌓이게 한다.
+        // (스파크라인은 2개월치가 모여야 그려짐 — 처음엔 1포인트라 박스가 비어 보일 수 있음)
+        if ($min_price !== null) {
+            $logged = jenny_append_monthly_series('jenny_airfare_series_' . $key, $min_price, 12);
+            $data[$key]['spark'] = array_values($logged);
+        }
+    }
+
+    // 둘 다 실패해도 빈 배열로 캐시(짧게) → 매 요청마다 외부 호출하는 것 방지
+    $has = (!empty($data['sgn']['price']) || !empty($data['han']['price']));
+    $ttl = $has ? 12 * HOUR_IN_SECONDS : 30 * MINUTE_IN_SECONDS;
+    set_transient($cache_key, $data, $ttl);
+    return $data;
+}
+
+/**
+ * 주가지수 데이터 (Yahoo Finance chart API, 무료·무인증)
+ * KOSPI(^KS11), VN-Index(^VNINDEX.VN)의 현재가 + 전일종가 대비 등락률 반환.
+ * - retention용 정보 위젯 (외부 제휴 없음).
+ * - 30분 캐시 (장중 변동 반영하되 외부 호출 최소화).
+ * - 실패 시 null → 호출부에서 해당 줄/카드 숨김.
+ */
+function jenny_get_stock_data()
+{
+    $cache_key = 'jenny_stock_v7'; // v7: VN-Index 스파크라인 — 적립 2일 미만이면 전일종가+현재가로 시드(첫날부터 선 표시)
+    $cached = get_transient($cache_key);
+    if ($cached !== false && is_array($cached) && array_key_exists('kospi', $cached)) {
+        return $cached;
+    }
+
+    // 심볼의 ^ 는 반드시 %5E 로 퍼센트 인코딩한다.
+    // literal '^' 를 URL에 그대로 넣으면 PHP 내부 libcurl(워드프레스 wp_remote_get)이
+    // "illegal URL character" 로 판단해 요청 자체를 실패시킨다(curl 커맨드라인은 관대해서 통과됨).
+    // %5E 는 RFC 표준 인코딩이며 WP가 이중 인코딩하지 않으므로 야후가 정상 인식한다.
+    $symbols = array(
+        'kospi' => '%5EKS11',
+        'vnindex' => '%5EVNINDEX.VN',
+    );
+    $data = array('kospi' => null, 'vnindex' => null);
+
+    foreach ($symbols as $key => $sym) {
+        // range/interval 추가 → 현재가(meta) + 일별 종가(history) 한 번에 수신
+        $url = 'https://query1.finance.yahoo.com/v8/finance/chart/' . $sym . '?range=1mo&interval=1d';
+        $raw = jenny_fetch_raw($url); // 네이티브 cURL — '^'(=%5E) 심볼을 안전하게 전송
+        if ($raw === '') {
+            continue;
+        }
+
+        $body = json_decode($raw, true);
+        if (empty($body['chart']['result'][0]['meta'])) {
+            continue;
+        }
+        $result = $body['chart']['result'][0];
+        $meta = $result['meta'];
+        if (!isset($meta['regularMarketPrice'])) {
+            continue;
+        }
+
+        $price = floatval($meta['regularMarketPrice']);
+        // 야후 chart API의 meta는 'previousClose' 가 아니라 'chartPreviousClose' 로 전일종가를 준다.
+        // (이전 코드가 없는 필드 previousClose 를 요구해 항상 continue → 카드가 안 떴음)
+        if (isset($meta['chartPreviousClose'])) {
+            $prev = floatval($meta['chartPreviousClose']);
+        } elseif (isset($meta['previousClose'])) {
+            $prev = floatval($meta['previousClose']);
+        } else {
+            $prev = 0;
+        }
+        if ($price <= 0 || $prev <= 0) {
+            continue;
+        }
+
+        $pct = (($price - $prev) / $prev) * 100;
+        $dir = ($pct > 0.005) ? 'up' : (($pct < -0.005) ? 'down' : 'flat');
+
+        // 스파크라인용 일별 종가 배열
+        $spark = array();
+        if (!empty($result['indicators']['quote'][0]['close'])) {
+            foreach ($result['indicators']['quote'][0]['close'] as $c) {
+                if (is_numeric($c) && $c > 0) {
+                    $spark[] = floatval($c);
+                }
+            }
+        }
+
+        // VN-Index는 야후가 일별 히스토리를 안 줌(1포인트) → 우리가 매일 적립한 시계열 사용
+        if ($key === 'vnindex') {
+            $logged = jenny_append_daily_series('jenny_series_vnindex', $price, 30);
+            $spark = array_values($logged);
+            // 적립이 2일치 미만이면 그래프(jenny_render_graph_box)가 안 그려진다.
+            // 전일종가($prev)+현재가($price)로 최소 2점을 시드해 "어제→오늘" 선이 첫날부터 보이게 한다.
+            // 날이 지나며 적립 데이터가 쌓이면 자연스럽게 실제 30일 추세로 대체된다.
+            if (count($spark) < 2) {
+                $spark = array($prev, $price);
+            }
+        }
+
+        $data[$key] = array(
+            'value' => number_format($price, 2),
+            'pct' => number_format(abs($pct), 2),
+            'dir' => $dir,
+            'spark' => $spark,
+        );
+    }
+
+    $ttl = ($data['kospi'] || $data['vnindex']) ? 30 * MINUTE_IN_SECONDS : 10 * MINUTE_IN_SECONDS;
+    set_transient($cache_key, $data, $ttl);
+    return $data;
+}
+
+
+/**
  * 특정 날짜의 포스트를 가져와서 top_news와 regular_posts로 분류
  */
 function jenny_get_posts_by_date($date, $category_id, $category_order)
@@ -668,10 +1071,79 @@ function jenny_daily_news_shortcode($atts)
     $output .= '<div class="jenny-info-bar">';
     $output .= '<div class="jenny-info-card jenny-weather-card"><div class="jenny-card-header"><span class="jenny-card-icon">🌤</span><span class="jenny-card-title">오늘의 날씨</span><span class="jenny-card-source">(Open-Meteo)</span></div><div class="jenny-card-chips">' . jenny_get_weather_fallback() . '</div></div>';
 
-    $output .= '<div class="jenny-info-card jenny-fx-card"><div class="jenny-card-header"><span class="jenny-card-icon">💱</span><span class="jenny-card-title">환율</span><span class="jenny-card-source">(ECB 기준)</span></div><div class="jenny-card-chips">';
-    $output .= '<div class="jenny-fx-chip"><span class="jenny-fx-flag">🇺🇸</span><span class="jenny-fx-label">1 USD</span><span class="jenny-fx-value">' . esc_html($exchange['usd']) . '₫</span></div>';
-    $output .= '<div class="jenny-fx-chip"><span class="jenny-fx-flag">🇰🇷</span><span class="jenny-fx-label">100 KRW</span><span class="jenny-fx-value">' . esc_html($exchange['krw_100']) . '₫</span></div>';
-    $output .= '</div></div>';
+    $fx_spark = jenny_get_fx_sparklines();
+    $usd_graph = jenny_render_graph_box($fx_spark['usd'], jenny_spark_color($fx_spark['usd']));
+    $krw_graph = jenny_render_graph_box($fx_spark['krw'], jenny_spark_color($fx_spark['krw']));
+    $output .= '<div class="jenny-info-card jenny-fx-card"><div class="jenny-card-header"><span class="jenny-card-icon">💱</span><span class="jenny-card-title">환율</span><span class="jenny-card-source">(30일 추세)</span></div><div class="jenny-card-chips">';
+    $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">🇺🇸</span><span class="jenny-fx-label">1 USD</span><span class="jenny-fx-value">' . esc_html($exchange['usd']) . '₫</span></div>' . $usd_graph . '</div>';
+    $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">🇰🇷</span><span class="jenny-fx-label">100 KRW</span><span class="jenny-fx-value">' . esc_html($exchange['krw_100']) . '₫</span></div>' . $krw_graph . '</div>';
+    $output .= '</div>'; // close jenny-card-chips
+
+    // 환율 검색 버튼: 네이버 금융 환율 페이지로 (USD/KRW + 베트남 동 환율계산기 포함)
+    $output .= '<a href="https://finance.naver.com/marketindex/" rel="noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 18px;background:#059669;color:#ffffff;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">🔍 환율 검색 →</a>';
+
+    // 환율 보러 온 자리 = 송금 의향 최고점 → Wise 송금 제휴 버튼.
+    // 목적지 URL이 설정된 경우에만 노출 (jenny_affiliate_destinations()).
+    $jenny_aff = jenny_affiliate_destinations();
+    if (!empty($jenny_aff['wise'])) {
+        $output .= '<a href="' . esc_url(home_url('/go/wise')) . '" class="jenny-fx-cta" rel="sponsored nofollow noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;margin-left:8px;padding:10px 18px;background:#163300;color:#9fe870;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">💸 이 환율로 송금하기 →</a>';
+    }
+
+    $output .= '</div>'; // close jenny-info-card (fx-card)
+
+    // 항공권 최저가 카드 (인천→호치민/하노이 왕복). 정보는 항상 노출.
+    // "항공권 검색" 버튼은 jenny_affiliate_destinations()['aviasales']가 설정된 경우에만 노출.
+    $airfare = jenny_get_airfare_data();
+    if (!empty($airfare['sgn']['price']) || !empty($airfare['han']['price'])) {
+        $output .= '<div class="jenny-info-card jenny-airfare-card"><div class="jenny-card-header"><span class="jenny-card-icon">✈️</span><span class="jenny-card-title">항공권 최저가</span><span class="jenny-card-source">(월별 추세)</span></div><div class="jenny-card-chips">';
+        if (!empty($airfare['sgn']['price'])) {
+            $sgn_graph = jenny_render_graph_box($airfare['sgn']['spark'], jenny_spark_color($airfare['sgn']['spark']));
+            $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">🇻🇳</span><span class="jenny-fx-label">호치민</span><span class="jenny-fx-value">' . esc_html($airfare['sgn']['price']) . '원~</span></div>' . $sgn_graph . '</div>';
+        }
+        if (!empty($airfare['han']['price'])) {
+            $han_graph = jenny_render_graph_box($airfare['han']['spark'], jenny_spark_color($airfare['han']['spark']));
+            $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">🇻🇳</span><span class="jenny-fx-label">하노이</span><span class="jenny-fx-value">' . esc_html($airfare['han']['price']) . '원~</span></div>' . $han_graph . '</div>';
+        }
+        $output .= '</div>'; // close jenny-card-chips
+
+        if (!empty($jenny_aff['aviasales'])) {
+            $output .= '<a href="' . esc_url(home_url('/go/aviasales')) . '" class="jenny-fx-cta" rel="sponsored nofollow noopener" target="_blank" style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;padding:8px 14px;background:#1a73e8;color:#fff;font-weight:600;font-size:13px;border-radius:16px;text-decoration:none;line-height:1;">✈️ 항공권 검색하기 →</a>';
+        }
+
+        $output .= '</div>'; // close jenny-info-card (airfare-card)
+    }
+
+    // 주가지수 카드 (KOSPI·VN-Index, 전일종가 대비 등락). retention용 정보.
+    // 한국 관례: 상승=빨강, 하락=파랑.
+    $stock = jenny_get_stock_data();
+    if (!empty($stock['kospi']) || !empty($stock['vnindex'])) {
+        $output .= '<div class="jenny-info-card jenny-stock-card"><div class="jenny-card-header"><span class="jenny-card-icon">📈</span><span class="jenny-card-title">주가지수</span><span class="jenny-card-source">(전일 대비)</span></div><div class="jenny-card-chips">';
+        $stock_rows = array(
+            'kospi' => array('flag' => '🇰🇷', 'label' => 'KOSPI'),
+            'vnindex' => array('flag' => '🇻🇳', 'label' => 'VN-Index'),
+        );
+        foreach ($stock_rows as $sk => $info) {
+            if (empty($stock[$sk])) {
+                continue;
+            }
+            $s = $stock[$sk];
+            $color = ($s['dir'] === 'up') ? '#e03131' : (($s['dir'] === 'down') ? '#1971c2' : '#868e96');
+            $arrow = ($s['dir'] === 'up') ? '▲' : (($s['dir'] === 'down') ? '▼' : '–');
+            $stock_graph = jenny_render_graph_box(isset($s['spark']) ? $s['spark'] : array(), $color);
+            // VN-Index는 야후가 과거 데이터를 안 줘서 우리가 매일 1칸씩 적립 → 2일 이상 쌓여야 그래프가 그려짐.
+            // 그 전까지는 빈 박스 대신 "적립 중" 안내를 보여 카드가 깨져 보이지 않게 한다.
+            if ($stock_graph === '') {
+                $stock_graph = '<div class="jenny-graph-box jenny-graph-pending">📊 추세 데이터 적립 중 (며칠 후 표시)</div>';
+            }
+            $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">' . $info['flag'] . '</span><span class="jenny-fx-label">' . $info['label'] . '</span><span class="jenny-fx-value">' . esc_html($s['value']) . ' <span style="color:' . $color . ';font-weight:700;">' . $arrow . ' ' . esc_html($s['pct']) . '%</span></span></div>' . $stock_graph . '</div>';
+        }
+        $output .= '</div>'; // close jenny-card-chips
+
+        // 주가 확인 버튼: 소스 페이지(인베스팅닷컴 주요 지수 - KOSPI·VN-Index 등 한 곳에서 확인)로 이동
+        $output .= '<a href="https://kr.investing.com/indices/major-indices" rel="noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 18px;background:#7048e8;color:#ffffff;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">📈 주가 확인 →</a>';
+
+        $output .= '</div>'; // close jenny-info-card (stock-card)
+    }
 
     $output .= '<div class="jenny-filter-buttons">';
     $output .= $is_filtered ? '<a href="' . esc_url($page_url) . '" class="jenny-filter-btn">오늘의 뉴스</a>' : '<span class="jenny-filter-btn active">오늘의 뉴스</span>';
@@ -832,16 +1304,7 @@ function jenny_daily_news_shortcode($atts)
     // 메인 콘텐츠 영역 닫기
     $output .= '</div>'; // Close jenny-main-content
 
-    // 사이드바 광고 (PC에서만 표시, sticky)
-    $output .= '<div class="jenny-sidebar-ad">';
-    $output .= '<div class="jenny-sidebar-ad-inner">';
-    $output .= '<div id="jenny-ad-sidebar-1" class="jenny-ad-placeholder jenny-ad-sidebar">';
-    $output .= '<!-- Ad Inserter: #jenny-ad-sidebar-1 -->';
-    $output .= '</div>';
-    $output .= '<div id="jenny-ad-sidebar-2" class="jenny-ad-placeholder jenny-ad-sidebar" style="margin-top: 20px;">';
-    $output .= '<!-- Ad Inserter: #jenny-ad-sidebar-2 -->';
-    $output .= '</div>';
-    $output .= '</div></div>';
+    // (사이드바 광고 슬롯 제거됨 — 본문이 전체 폭을 사용)
 
     // 레이아웃 wrapper 닫기
     $output .= '</div>'; // Close jenny-layout-wrapper
@@ -883,6 +1346,83 @@ function jenny_register_meta_fields()
     }
 }
 add_action('init', 'jenny_register_meta_fields');
+
+// ============================================================================
+// 제휴 링크 리다이렉트 시스템  (/go/{slug})
+// ----------------------------------------------------------------------------
+// 목적: 환율/날씨 위젯 등에서 제휴 버튼을 누르면 우리 도메인(/go/wise 등)을
+//       한 번 거쳐서 클릭 수를 우리 손에 기록한 뒤, 실제 제휴 URL로 보낸다.
+//       → 어느 위젯/링크가 실제로 돈이 되는지 데이터가 우리 쪽에 쌓인다.
+//       → 제휴사가 바뀌어도 버튼은 그대로, 아래 목적지 URL 한 줄만 교체.
+//
+// 새 제휴를 추가/변경하려면 아래 배열에 'slug' => '제휴URL' 한 줄만 넣으면 됨.
+// 목적지가 빈 문자열('')이면 그 버튼은 화면에 *아예 표시되지 않는다*
+//   → 링크 발급 전에는 사용자에게 깨진 버튼이 안 보이고, 발급 후 URL만 넣으면 자동 노출.
+// ============================================================================
+function jenny_affiliate_destinations()
+{
+    return array(
+        // Wise 송금 제휴. Partnerize 승인 후 발급되는 추적 링크를 여기에 붙여넣기.
+        // 예: 'wise' => 'https://prf.hn/click/camref:xxxx/...',
+        'wise' => '',
+
+        // Aviasales 항공권 제휴 (Travelpayouts). marker=733771 으로 클릭/예약이 집계됨.
+        'aviasales' => 'https://www.aviasales.com/?marker=733771',
+    );
+}
+
+// /go/{slug} 형태의 주소를 인식하도록 rewrite rule 등록
+function jenny_register_go_rewrite()
+{
+    add_rewrite_rule('^go/([^/]+)/?$', 'index.php?jenny_go=$matches[1]', 'top');
+
+    // rewrite rule을 한 번만 flush (배포 후 최초 1회 자동 갱신)
+    if (get_option('jenny_go_rewrite_v') !== '1') {
+        flush_rewrite_rules(false);
+        update_option('jenny_go_rewrite_v', '1');
+    }
+}
+add_action('init', 'jenny_register_go_rewrite');
+
+// jenny_go 쿼리 변수 등록
+function jenny_register_go_query_var($vars)
+{
+    $vars[] = 'jenny_go';
+    return $vars;
+}
+add_filter('query_vars', 'jenny_register_go_query_var');
+
+// /go/{slug} 접속 처리: 클릭 집계 후 실제 제휴 URL로 302 리다이렉트
+function jenny_handle_go_redirect()
+{
+    $slug = get_query_var('jenny_go');
+    if (empty($slug)) {
+        return;
+    }
+
+    $slug = sanitize_key($slug);
+    $destinations = jenny_affiliate_destinations();
+    $target = isset($destinations[$slug]) ? $destinations[$slug] : '';
+
+    // 클릭 집계 (slug별 총합 + 일자별). 목적지 미설정이라도 클릭은 기록.
+    $clicks = get_option('jenny_go_clicks', array());
+    if (!is_array($clicks)) {
+        $clicks = array();
+    }
+    if (!isset($clicks[$slug]) || !is_array($clicks[$slug])) {
+        $clicks[$slug] = array('total' => 0);
+    }
+    $clicks[$slug]['total']++;
+    $today = date('Y-m-d');
+    $clicks[$slug][$today] = isset($clicks[$slug][$today]) ? $clicks[$slug][$today] + 1 : 1;
+    update_option('jenny_go_clicks', $clicks, false);
+
+    // 목적지가 설정돼 있으면 그곳으로, 아니면 홈으로 (Wise에 무크레딧 트래픽 안 보냄)
+    $redirect_to = !empty($target) ? $target : home_url('/');
+    wp_redirect(esc_url_raw($redirect_to), 302);
+    exit;
+}
+add_action('template_redirect', 'jenny_handle_go_redirect');
 
 /**
  * WordPress 본문 페이지에 모바일 스타일 추가 (전역 적용)
@@ -1012,9 +1552,9 @@ function jenny_get_scripts($category_id = 31)
                 var btn = wrapper.querySelector(".jenny-archive-btn");
                 var dateList = wrapper.querySelector(".jenny-date-list");
                 var datesLoaded = false; // 날짜 목록 로드 여부
-                
+
                 if (!btn || !dateList) return;
-                
+
                 // 달력 상태
                 var calState = { year: 0, month: 0, dateSet: {}, today: "", selected: "", pageUrl: "" };
 
@@ -1153,12 +1693,12 @@ function jenny_get_scripts($category_id = 31)
                     };
                     xhr.send("action=jenny_get_archive_dates&category=" + encodeURIComponent(category) + "&page_url=" + encodeURIComponent(pageUrl) + "&selected=" + encodeURIComponent(selected));
                 }
-                
+
                 // 클릭 이벤트 처리 (모바일 + PC)
                 btn.addEventListener("click", function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    
+
                     // 다른 아코디언 닫기
                     archiveWrappers.forEach(function(otherWrapper) {
                         if (otherWrapper !== wrapper) {
@@ -1169,18 +1709,18 @@ function jenny_get_scripts($category_id = 31)
                             }
                         }
                     });
-                    
+
                     // 현재 아코디언 토글
                     var isActive = wrapper.classList.contains("active");
                     wrapper.classList.toggle("active");
                     btn.setAttribute("aria-expanded", !isActive ? "true" : "false");
-                    
+
                     // 열릴 때 AJAX로 날짜 목록 로드
                     if (!isActive && !datesLoaded) {
                         loadArchiveDates();
                     }
                 });
-                
+
                 // 아코디언 외부 클릭 시 닫기
                 document.addEventListener("click", function(e) {
                     if (!wrapper.contains(e.target)) {
@@ -1189,7 +1729,7 @@ function jenny_get_scripts($category_id = 31)
                     }
                 });
             });
-            
+
             // 섹션 네비게이션 클릭 - AJAX로 섹션 뉴스 로드
             var sectionNavItems = document.querySelectorAll(".jenny-section-nav-item");
             var sectionModal = document.getElementById("jennySectionModal");
@@ -1200,38 +1740,38 @@ function jenny_get_scripts($category_id = 31)
             var currentSectionKey = "";
             var currentPage = 1;
             var categoryId = ' . intval($category_id) . ';
-            
+
             // 모달 요소가 존재하는지 확인
             if (!sectionModal || !sectionNewsContainer) {
                 console.error("Jenny: 섹션 모달 요소를 찾을 수 없습니다.");
                 return;
             }
-            
+
             sectionNavItems.forEach(function(item) {
                 item.addEventListener("click", function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     var sectionKey = this.getAttribute("data-section");
-                    
+
                     console.log("Jenny: 섹션 클릭됨 - " + sectionKey);
-                    
+
                     // 활성 상태 표시
                     sectionNavItems.forEach(function(nav) {
                         nav.classList.remove("active");
                     });
                     this.classList.add("active");
-                    
+
                     // 모달 열기 및 뉴스 로드
                     currentSectionKey = sectionKey;
                     currentPage = 1;
                     sectionNewsContainer.innerHTML = "<div class=\"jenny-section-loading\">뉴스를 불러오는 중...</div>";
                     sectionModal.classList.add("show");
                     document.body.style.overflow = "hidden";
-                    
+
                     loadSectionNews(sectionKey, 1, true);
                 });
             });
-            
+
             // 모달 닫기
             if (sectionModalClose) {
                 sectionModalClose.addEventListener("click", function() {
@@ -1242,7 +1782,7 @@ function jenny_get_scripts($category_id = 31)
                     });
                 });
             }
-            
+
             // 모달 외부 클릭시 닫기
             if (sectionModal) {
                 sectionModal.addEventListener("click", function(e) {
@@ -1255,7 +1795,7 @@ function jenny_get_scripts($category_id = 31)
                     }
                 });
             }
-            
+
             // 더 보기 버튼
             if (sectionLoadMore) {
                 sectionLoadMore.addEventListener("click", function() {
@@ -1263,13 +1803,13 @@ function jenny_get_scripts($category_id = 31)
                     loadSectionNews(currentSectionKey, currentPage, false);
                 });
             }
-            
+
             // 섹션 뉴스 로드 함수
             function loadSectionNews(sectionKey, page, isNew) {
                 var xhr = new XMLHttpRequest();
                 xhr.open("POST", jennyAjax.ajaxurl, true);
                 xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-                
+
                 xhr.onload = function() {
                     if (xhr.status >= 200 && xhr.status < 400) {
                         try {
@@ -1281,7 +1821,7 @@ function jenny_get_scripts($category_id = 31)
                                 } else {
                                     sectionNewsContainer.insertAdjacentHTML("beforeend", resp.data.html);
                                 }
-                                
+
                                 // 더 보기 버튼 표시/숨김
                                 if (resp.data.has_more) {
                                     sectionLoadMore.style.display = "block";
@@ -1298,11 +1838,11 @@ function jenny_get_scripts($category_id = 31)
                         sectionNewsContainer.innerHTML = "<div class=\"jenny-section-error\">서버 오류가 발생했습니다.</div>";
                     }
                 };
-                
+
                 xhr.onerror = function() {
                     sectionNewsContainer.innerHTML = "<div class=\"jenny-section-error\">네트워크 오류가 발생했습니다.</div>";
                 };
-                
+
                 xhr.send("action=jenny_get_section_news&section=" + encodeURIComponent(sectionKey) + "&page=" + page + "&category_id=" + categoryId);
             }
         });
@@ -1323,55 +1863,75 @@ function jenny_get_styles()
             max-width: 100% !important;
             overflow: hidden !important;
         }
-        
+
         /* Existing Styles ... */
-        .jenny-date-filter { 
-            margin-bottom: 24px; 
-            padding: 20px; 
+        .jenny-date-filter {
+            margin-bottom: 24px;
+            padding: 20px;
             border-bottom: 1px solid #e5e7eb;
             background: linear-gradient(135deg, #fef3c7 0%, #fde68a 50%, #fef3c7 100%);
             border-radius: 16px;
             box-shadow: 0 4px 12px rgba(234, 88, 12, 0.1);
         }
-        .jenny-info-bar { 
-            display: flex; 
-            gap: 16px; 
-            align-items: center; 
-            flex-wrap: wrap; 
-        }
-        .jenny-info-card { 
-            background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%); 
-            border: 2px solid #0ea5e9; 
-            border-radius: 12px; 
-            padding: 12px 16px; 
-            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
-        }
-        .jenny-card-header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-        .jenny-card-icon { font-size: 16px; }
-        .jenny-card-title { font-size: 11px; font-weight: 700; color: #0ea5e9; text-transform: uppercase; letter-spacing: 0.5px; }
-        .jenny-card-chips { display: flex; gap: 8px; flex-wrap: wrap; }
-        .jenny-weather-chip, .jenny-fx-chip { display: flex; align-items: center; gap: 4px; background: #ffffff; padding: 6px 10px; border-radius: 16px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); border: 1px solid #e5e7eb; }
-        .jenny-chip-city { font-size: 12px; font-weight: 600; color: #374151; }
-        .jenny-chip-temp, .jenny-fx-value { font-size: 13px; font-weight: 700; color: #ea580c; }
-        .jenny-fx-flag { font-size: 14px; }
-        .jenny-fx-label { font-size: 11px; color: #6b7280; font-weight: 500; }
-        .jenny-fx-value { color: #059669; }
-        .jenny-card-source { font-size: 9px; color: #9ca3af; font-weight: 400; margin-left: 4px; }
-        .jenny-filter-buttons { 
-            display: flex; 
-            gap: 12px; 
-            align-items: flex-end; /* 아코디언이 위로 펼쳐지므로 하단 정렬 */
-            margin-left: auto; 
+        .jenny-info-bar {
+            display: flex;
+            gap: 22px;
+            align-items: stretch;
             flex-wrap: wrap;
         }
-        @media (max-width: 900px) { 
-            .jenny-info-bar { 
-                flex-direction: column; 
-                align-items: flex-start; 
-            } 
-            .jenny-filter-buttons { 
-                margin-left: 0; 
-                margin-top: 12px; 
+        .jenny-info-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+            border: 2px solid #0ea5e9;
+            border-radius: 14px;
+            padding: 20px 24px;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
+        }
+        .jenny-card-header { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
+        .jenny-card-icon { font-size: 28px; }
+        .jenny-card-title { font-size: 18px; font-weight: 700; color: #0ea5e9; text-transform: uppercase; letter-spacing: 0.5px; }
+        .jenny-card-chips { display: flex; gap: 12px; flex-wrap: wrap; }
+        .jenny-weather-chip, .jenny-fx-chip { display: flex; align-items: center; gap: 7px; background: #ffffff; padding: 11px 16px; border-radius: 16px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); border: 1px solid #e5e7eb; }
+        .jenny-chip-city { font-size: 20px; font-weight: 600; color: #374151; }
+        .jenny-chip-temp, .jenny-fx-value { font-size: 22px; font-weight: 700; color: #ea580c; }
+        .jenny-fx-flag { font-size: 24px; }
+        .jenny-fx-label { font-size: 17px; color: #6b7280; font-weight: 500; }
+        .jenny-fx-value { color: #059669; }
+        .jenny-card-source { font-size: 14px; color: #9ca3af; font-weight: 400; margin-left: 4px; }
+        /* 지표 1개 = 숫자칩(위) + 사각형 그래프 박스(아래) 한 묶음 */
+        .jenny-metric { display: flex; flex-direction: column; gap: 8px; flex: 1 1 220px; min-width: 200px; }
+        .jenny-metric .jenny-fx-chip { width: 100%; box-sizing: border-box; }
+        .jenny-graph-box {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 6px 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .jenny-graph-box svg { display: block; width: 100%; }
+        .jenny-graph-pending {
+            display: flex; align-items: center; justify-content: center;
+            min-height: 48px; color: #9ca3af; font-size: 13px; font-weight: 500;
+            text-align: center;
+        }
+        /* 뉴스 버튼은 정보 카드 아래 별도 줄로 (카드 사이에 끼지 않게) */
+        .jenny-filter-buttons {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end; /* 아코디언이 위로 펼쳐지므로 하단 정렬 */
+            margin-left: 0;
+            margin-top: 18px;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+        @media (max-width: 900px) {
+            .jenny-info-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .jenny-filter-buttons {
+                margin-left: 0;
+                margin-top: 12px;
                 width: 100%;
             }
             .jenny-archive-wrapper {
@@ -1381,7 +1941,7 @@ function jenny_get_styles()
         .jenny-filter-btn { display: inline-block; padding: 10px 20px; background: #f3f4f6; color: #374151; text-decoration: none; border: 1px solid #e5e7eb; font-size: 14px; font-weight: 600; cursor: pointer; }
         .jenny-filter-btn:hover { background: #e5e7eb; color: #111827; }
         .jenny-filter-btn.active { background: #ea580c; color: #ffffff; border-color: #ea580c; }
-        
+
         /* 섹션 네비게이션 스타일 */
         .jenny-section-nav {
             width: 100%;
@@ -1451,7 +2011,7 @@ function jenny_get_styles()
         .jenny-nav-label {
             font-size: 12px;
         }
-        
+
         /* 모바일에서 섹션 네비게이션 스타일 */
         @media (max-width: 768px) {
             .jenny-section-nav {
@@ -1471,14 +2031,14 @@ function jenny_get_styles()
                 font-size: 12px;
             }
         }
-        
+
         /* 섹션 제목에 스크롤 마진 추가 */
         .jenny-section-title {
             scroll-margin-top: 100px; /* 네비게이션 클릭 시 상단 여백 */
         }
-        
-        .jenny-archive-wrapper { 
-            position: relative; 
+
+        .jenny-archive-wrapper {
+            position: relative;
             width: 100%;
         }
         .jenny-archive-btn {
@@ -1495,13 +2055,13 @@ function jenny_get_styles()
             transform: rotate(180deg);
         }
         /* 인라인 확장 방식 - 페이지 플로우에 자연스럽게 포함 (가려지지 않음) */
-        .jenny-date-list { 
-            display: none; 
+        .jenny-date-list {
+            display: none;
             width: 100%;
-            background: #ffffff; 
-            border: 1px solid #e5e7eb; 
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
             border-top: none;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             margin-top: 0;
             border-radius: 0 0 8px 8px;
             /* 스크롤 가능하도록 설정 - 모든 날짜가 보이도록 */
@@ -1510,8 +2070,8 @@ function jenny_get_styles()
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
         }
-        .jenny-archive-wrapper.active .jenny-date-list { 
-            display: block !important; 
+        .jenny-archive-wrapper.active .jenny-date-list {
+            display: block !important;
         }
         /* PC에서는 클릭으로만 열기 (호버 제거로 흔들림 방지) */
         @media (min-width: 769px) {
@@ -1525,28 +2085,28 @@ function jenny_get_styles()
                 max-height: 70vh; /* 모바일에서는 더 많은 공간 */
             }
         }
-        .jenny-date-option { 
-            display: block; 
-            padding: 12px 16px; 
-            color: #374151; 
-            text-decoration: none; 
-            font-size: 14px; 
-            border-bottom: 1px solid #f3f4f6; 
+        .jenny-date-option {
+            display: block;
+            padding: 12px 16px;
+            color: #374151;
+            text-decoration: none;
+            font-size: 14px;
+            border-bottom: 1px solid #f3f4f6;
             min-height: 44px; /* 모바일 터치 영역 확보 */
             display: flex;
             align-items: center;
             transition: background-color 0.2s ease;
         }
-        .jenny-date-option:hover { 
-            background: #f3f4f6; 
+        .jenny-date-option:hover {
+            background: #f3f4f6;
         }
-        .jenny-date-option.selected { 
-            background: #fef3c7; 
-            color: #ea580c; 
-            font-weight: 600; 
+        .jenny-date-option.selected {
+            background: #fef3c7;
+            color: #ea580c;
+            font-weight: 600;
         }
-        .jenny-date-option:last-child { 
-            border-bottom: none; 
+        .jenny-date-option:last-child {
+            border-bottom: none;
         }
         .jenny-no-dates {
             color: #9ca3af;
@@ -1690,7 +2250,7 @@ function jenny_get_styles()
         }
         .jenny-filter-info { margin-top: 12px; padding: 10px 16px; background: #fef3c7; color: #92400e; font-size: 14px; border-left: 3px solid #ea580c; }
         .jenny-filter-info a { color: #ea580c; font-weight: 600; }
-        
+
         /* SEARCH BOX */
         .jenny-search-form {
             display: flex;
@@ -1751,7 +2311,7 @@ function jenny_get_styles()
                 width: 100%;
             }
         }
-        
+
         /* SECTION TITLES - 섹션 제목은 항상 검정색 */
         .jenny-section-title {
             font-size: 20px;
@@ -1812,7 +2372,7 @@ function jenny_get_styles()
                 gap: 20px !important; /* 모바일에서 간격 축소 */
                 margin-bottom: 30px !important; /* 하단 여백 축소 */
             }
-            .jenny-news-grid { 
+            .jenny-news-grid {
                 grid-template-columns: 1fr !important; /* 모바일에서 1열로 강제 */
                 gap: 20px !important; /* 모바일에서 간격 축소 */
                 padding-bottom: 30px !important; /* 하단 여백 축소 */
@@ -1886,11 +2446,11 @@ function jenny_get_styles()
         }
 
         /* CONTENT - 아래부분에 옅은 배경색 추가 */
-        .jenny-content { 
+        .jenny-content {
             padding: 16px; /* 패딩 추가 */
-            flex-grow: 1; 
-            display: flex; 
-            flex-direction: column; 
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
             text-align: left;
             background: #f9fafb; /* 옅은 회색 배경 */
             border-top: 1px solid #e5e7eb; /* 위부분과 구분선 */
@@ -1904,9 +2464,9 @@ function jenny_get_styles()
             margin: 0 0 6px 0;
             line-height: 1.35;
         }
-        .jenny-title a { 
+        .jenny-title a {
             color: #111827 !important; /* 검정색으로 확실하게 고정 */
-            text-decoration: none; 
+            text-decoration: none;
             display: block; /* 터치 영역 확보 */
             padding: 4px 0; /* 모바일 터치 영역 확보 */
         }
@@ -1915,7 +2475,7 @@ function jenny_get_styles()
         .jenny-news-card .jenny-title a:hover,
         .jenny-news-card .jenny-title:hover {
             color: #3b82f6 !important; /* 호버 시 파란색 */
-            text-decoration: underline; 
+            text-decoration: underline;
         }
 
         /* TOP NEWS BIGGER TITLE - 탑뉴스는 더 큰 제목 */
@@ -1928,7 +2488,7 @@ function jenny_get_styles()
         .jenny-top-news-container .jenny-title a:hover {
             color: #3b82f6 !important; /* 호버 시 파란색 */
         }
-        
+
         /* 일반 뉴스 그리드의 제목은 더 작게 (탑뉴스의 약 70%) */
         .jenny-news-grid .jenny-title {
             font-size: 16px !important;
@@ -2023,7 +2583,7 @@ function jenny_get_styles()
         /* ============================================
            광고 레이아웃 스타일
            ============================================ */
-        
+
         /* 전체 레이아웃 wrapper (메인 + 사이드바) */
         .jenny-layout-wrapper {
             display: flex;
@@ -2032,32 +2592,23 @@ function jenny_get_styles()
             max-width: 100%;
             position: relative;
         }
-        
+
         /* 메인 콘텐츠 영역 */
         .jenny-main-content {
             flex: 1;
             min-width: 0;
             width: 100%;
         }
-        
-        /* PC에서 사이드바 공간 확보 */
-        @media (min-width: 1400px) {
-            .jenny-layout-wrapper {
-                flex-direction: row;
-            }
-            .jenny-main-content {
-                flex: 1;
-                margin-right: 200px; /* 사이드바 공간 확보 */
-            }
-        }
-        
+
+        /* 사이드바 제거됨 → 본문이 항상 전체 폭 사용 (margin-right 예약 없음) */
+
         /* 광고 섹션 공통 스타일 */
         .jenny-ad-section {
             margin: 24px 0;
             text-align: center;
             width: 100%;
         }
-        
+
         .jenny-ad-placeholder {
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             border: 2px dashed #dee2e6;
@@ -2071,7 +2622,7 @@ function jenny_get_styles()
             justify-content: center;
             min-height: 100px;
         }
-        
+
         /* 상단 전면 광고 (더 크고 눈에 띔) */
         .jenny-ad-top-banner {
             margin: 0 0 24px 0;
@@ -2088,7 +2639,7 @@ function jenny_get_styles()
                 min-height: 200px; /* PC: 더 높음 */
             }
         }
-        
+
         /* 뉴스 4개당 중간 광고 */
         .jenny-ad-inline {
             margin: 20px 0;
@@ -2097,17 +2648,17 @@ function jenny_get_styles()
             min-height: 150px; /* 100px에서 50% 증가 */
             padding: 35px 20px;
         }
-        
+
         /* 섹션 끝 광고 */
         .jenny-ad-section:not(.jenny-ad-top-banner):not(.jenny-ad-inline) .jenny-ad-placeholder {
             min-height: 150px; /* 100px에서 50% 증가 */
         }
-        
+
         /* 사이드바 광고 (PC에서만 표시) */
         .jenny-sidebar-ad {
             display: none; /* 기본: 숨김 (모바일) */
         }
-        
+
         @media (min-width: 1400px) {
             .jenny-sidebar-ad {
                 display: block;
@@ -2130,7 +2681,7 @@ function jenny_get_styles()
                 flex-direction: column;
             }
         }
-        
+
         /* 모바일 광고 최적화 */
         @media (max-width: 768px) {
             .jenny-ad-section {
@@ -2150,7 +2701,7 @@ function jenny_get_styles()
                 padding: 25px 15px;
             }
         }
-        
+
         /* 섹션 뉴스 모달 스타일 */
         .jenny-section-modal {
             display: none;
@@ -2310,7 +2861,7 @@ function jenny_get_styles()
         .jenny-section-load-more:hover {
             transform: scale(1.02);
         }
-        
+
         /* 모바일 반응형 */
         @media (max-width: 768px) {
             .jenny-section-modal.show {
