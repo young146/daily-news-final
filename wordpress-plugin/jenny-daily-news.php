@@ -737,6 +737,50 @@ function jenny_get_fx_sparklines()
 }
 
 /**
+ * 항공권 추세 그래프용 시계열: Travelpayouts calendar API에서
+ * "출발일별 최저가"를 날짜순으로 반환한다 (ICN→$dest).
+ * 월별 1칸 적립(처음엔 1포인트라 그래프 안 그려짐) 대신, 이걸로 즉시 굴곡 그래프를 만든다.
+ * @return array 가격(int) 배열 (날짜 오름차순). 실패 시 빈 배열.
+ */
+function jenny_airfare_calendar_prices($dest, $token)
+{
+    $url = add_query_arg(array(
+        'origin' => 'ICN',
+        'destination' => $dest,
+        'currency' => 'krw',
+        'depart_date' => date('Y-m'),
+        'calendar_type' => 'departure_date',
+        'token' => $token,
+    ), 'https://api.travelpayouts.com/v1/prices/calendar');
+
+    $response = wp_remote_get($url, array('timeout' => 10, 'user-agent' => 'Mozilla/5.0'));
+    if (is_wp_error($response)) {
+        return array();
+    }
+    $body = json_decode(wp_remote_retrieve_body($response), true);
+    if (empty($body['success']) || empty($body['data']) || !is_array($body['data'])) {
+        return array();
+    }
+    // data 는 "YYYY-MM-DD" => {price:...} 형태 → 날짜순 정렬 후 가격만 추출
+    $dates = array_keys($body['data']);
+    sort($dates); // 날짜 문자열 오름차순
+    $out = array();
+    foreach ($dates as $d) {
+        if (isset($body['data'][$d]['price'])) {
+            $p = intval($body['data'][$d]['price']);
+            if ($p > 0) {
+                $out[] = $p;
+            }
+        }
+    }
+    // 너무 많으면 최근 30개만
+    if (count($out) > 30) {
+        $out = array_slice($out, -30);
+    }
+    return $out;
+}
+
+/**
  * 항공권 최저가 데이터 (Travelpayouts/Aviasales Flight Data API)
  * 인천(ICN) → 호치민(SGN), 하노이(HAN) 왕복 캐시 최저가를 KRW로 반환.
  * - 토큰만 있으면 계정 활성화 전에도 가격 데이터는 수신됨 (수익 집계는 활성화 후).
@@ -745,7 +789,7 @@ function jenny_get_fx_sparklines()
  */
 function jenny_get_airfare_data()
 {
-    $cache_key = 'jenny_airfare_v3'; // v3: 추세를 "월별 최저가 적립" 방식으로 변경
+    $cache_key = 'jenny_airfare_v4'; // v4: 추세 그래프를 calendar API(출발일별 최저가)로 즉시 굴곡 표시
     $cached = get_transient($cache_key);
     if ($cached !== false && is_array($cached) && array_key_exists('sgn', $cached)) {
         return $cached;
@@ -789,10 +833,13 @@ function jenny_get_airfare_data()
             }
         }
 
-        // 추세 = "월별 최저가 적립". 출발일별 곡선(month-matrix) 대신,
-        // 매달 이 노선의 최저가를 한 칸씩 기록해 달이 바뀌며 추세 그래프가 쌓이게 한다.
-        // (스파크라인은 2개월치가 모여야 그려짐 — 처음엔 1포인트라 박스가 비어 보일 수 있음)
-        if ($min_price !== null) {
+        // 추세 그래프 = calendar API의 "출발일별 최저가" (이번 달 날짜별 가격).
+        // → 한 번 호출로 굴곡 있는 추세선이 즉시 그려진다 (VN-Index와 동일 컨셉).
+        $cal = jenny_airfare_calendar_prices($dest, $token);
+        if (count($cal) >= 2) {
+            $data[$key]['spark'] = $cal;
+        } elseif ($min_price !== null) {
+            // calendar 실패 시 폴백: 기존 월별 적립 방식 (며칠/몇 달 쌓이면 그려짐)
             $logged = jenny_append_monthly_series('jenny_airfare_series_' . $key, $min_price, 12);
             $data[$key]['spark'] = array_values($logged);
         }
