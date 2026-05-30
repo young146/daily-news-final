@@ -508,7 +508,10 @@ function jenny_render_graph_box($points, $color = '#868e96', $w = 240, $h = 60)
     $min = min($points);
     $max = max($points);
     $range = $max - $min;
-    if ($range == 0) {
+    // 모든 값이 동일(변동 0)하면 바닥에 붙은 일직선이 되어 어색하다.
+    // 이 경우 선을 박스 "중앙"에 수평으로 그려 의도적으로 보이게 한다.
+    $flat = ($range == 0);
+    if ($flat) {
         $range = 1;
     }
 
@@ -516,7 +519,11 @@ function jenny_render_graph_box($points, $color = '#868e96', $w = 240, $h = 60)
     $coords = array();
     for ($i = 0; $i < $n; $i++) {
         $x = $pad + ($w - 2 * $pad) * $i / ($n - 1);
-        $y = $pad + ($h - 2 * $pad) * (1 - (($points[$i] - $min) / $range));
+        if ($flat) {
+            $y = $h / 2; // 변동 없음 → 수직 중앙
+        } else {
+            $y = $pad + ($h - 2 * $pad) * (1 - (($points[$i] - $min) / $range));
+        }
         $coords[] = round($x, 1) . ',' . round($y, 1);
     }
     $line = implode(' ', $coords);
@@ -659,6 +666,39 @@ function jenny_yahoo_closes($symbol)
 }
 
 /**
+ * VNDIRECT dchart API에서 VN-Index 일별 종가 배열 추출 (최근 약 30거래일).
+ * 야후가 VN-Index(^VNINDEX.VN) 일별 히스토리를 안 주는 문제를 해결하기 위한 소스.
+ * 응답은 TradingView UDF 형식: {"s":"ok","t":[ts...],"c":[close...]} (오래된→최신 순).
+ * @return array 종가 float 배열 (실패 시 빈 배열)
+ */
+function jenny_vndirect_closes()
+{
+    $to = time();
+    $from = $to - 60 * DAY_IN_SECONDS; // 60일 범위 → 거래일 약 30~40개 확보
+    $url = 'https://dchart-api.vndirect.com.vn/dchart/history?symbol=VNINDEX&resolution=D&from=' . $from . '&to=' . $to;
+
+    $raw = jenny_fetch_raw($url); // 네이티브 cURL 우선 (일부 호스트에서 wp_remote_get이 막힐 수 있음)
+    if ($raw === '') {
+        return array();
+    }
+    $body = json_decode($raw, true);
+    if (empty($body['s']) || $body['s'] !== 'ok' || empty($body['c']) || !is_array($body['c'])) {
+        return array();
+    }
+    $out = array();
+    foreach ($body['c'] as $c) {
+        if (is_numeric($c) && $c > 0) {
+            $out[] = floatval($c);
+        }
+    }
+    // 너무 많으면 최근 30개만 사용 (그래프 가독성)
+    if (count($out) > 30) {
+        $out = array_slice($out, -30);
+    }
+    return $out;
+}
+
+/**
  * 환율 스파크라인용 시계열: USD/VND 직접, KRW/VND = (USD/VND) ÷ (USD/KRW) × 100 합성.
  * 6시간 캐시.
  */
@@ -774,7 +814,7 @@ function jenny_get_airfare_data()
  */
 function jenny_get_stock_data()
 {
-    $cache_key = 'jenny_stock_v7'; // v7: VN-Index 스파크라인 — 적립 2일 미만이면 전일종가+현재가로 시드(첫날부터 선 표시)
+    $cache_key = 'jenny_stock_v9'; // v9: VN-Index 추세선을 VNDIRECT 실제 30일 종가로 표시(KOSPI처럼 굴곡)
     $cached = get_transient($cache_key);
     if ($cached !== false && is_array($cached) && array_key_exists('kospi', $cached)) {
         return $cached;
@@ -835,15 +875,19 @@ function jenny_get_stock_data()
             }
         }
 
-        // VN-Index는 야후가 일별 히스토리를 안 줌(1포인트) → 우리가 매일 적립한 시계열 사용
+        // VN-Index는 야후가 일별 히스토리를 안 줌(1포인트뿐) → VNDIRECT에서 실제 30일 종가를 가져온다.
+        // (이걸로 KOSPI처럼 굴곡 있는 추세선이 즉시 그려짐)
         if ($key === 'vnindex') {
-            $logged = jenny_append_daily_series('jenny_series_vnindex', $price, 30);
-            $spark = array_values($logged);
-            // 적립이 2일치 미만이면 그래프(jenny_render_graph_box)가 안 그려진다.
-            // 전일종가($prev)+현재가($price)로 최소 2점을 시드해 "어제→오늘" 선이 첫날부터 보이게 한다.
-            // 날이 지나며 적립 데이터가 쌓이면 자연스럽게 실제 30일 추세로 대체된다.
-            if (count($spark) < 2) {
-                $spark = array($prev, $price);
+            $vnd = jenny_vndirect_closes();
+            if (count($vnd) >= 2) {
+                $spark = $vnd;
+            } else {
+                // VNDIRECT 실패 시 폴백: 우리가 매일 적립하는 시계열 + 전일종가/현재가 시드
+                $logged = jenny_append_daily_series('jenny_series_vnindex', $price, 30);
+                $spark = array_values($logged);
+                if (count($spark) < 2) {
+                    $spark = array($prev, $price);
+                }
             }
         }
 
