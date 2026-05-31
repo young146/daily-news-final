@@ -1090,6 +1090,119 @@ function jenny_get_target_date($now, $category_id)
     return $today_vn;
 }
 
+/**
+ * 앱 설치 유도 배너 — 탑뉴스 직후 노출
+ * "베트남엔 당근이 없습니다. 씬짜오 앱이 당근입니다."
+ */
+function jenny_render_app_promo_banner()
+{
+    $android_url = 'https://play.google.com/store/apps/details?id=com.yourname.chaovnapp';
+    $ios_url     = 'https://apps.apple.com/us/app/id6754750793';
+
+    $features = array(
+        array('emoji' => '💼', 'title' => '구인구직',         'pain' => '카톡방 여러 개 뒤지다 공고 놓쳤던',          'gain' => '베트남 한인 기업 채용공고와 구직 정보가 한곳에 모여있습니다.'),
+        array('emoji' => '🏠', 'title' => '부동산',           'pain' => '모르는 사람 믿었다가 한 번 당했던',           'gain' => '교민 네트워크 기반 매물 정보. 아는 사람끼리 거래합니다.'),
+        array('emoji' => '📖', 'title' => '씬짜오베트남 잡지', 'pain' => '아는 사람한테 빌려봐야 했던',                'gain' => '격주마다 발행되는 전통 교민잡지 전체를 앱에서 바로 읽습니다.'),
+        array('emoji' => '📰', 'title' => '매일 베트남 뉴스', 'pain' => '비자 정책 바뀐 것도 한참 뒤에야 알았던',      'gain' => '사회·경제·문화·정책 주요 뉴스를 매일 아침 놓치지 않습니다.'),
+        array('emoji' => '🤝', 'title' => '진출업체 정보',    'pain' => '거래할 한국 기업 찾는 게 번거로웠던',         'gain' => '베트남 진출 한국 기업 소식과 거래처를 앱에서 바로 찾습니다.'),
+    );
+
+    $html  = '<style>';
+    $html .= '.jenny-app-promo{background:#0f172a;border-radius:16px;overflow:hidden;margin:24px 0;}';
+    $html .= '.jenny-app-promo-header{padding:32px 24px 20px;text-align:center;}';
+    $html .= '.jenny-app-promo-badge{display:inline-block;background:#ef4444;color:#fff;font-size:11px;font-weight:800;padding:5px 14px;border-radius:100px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:16px;}';
+    $html .= '.jenny-app-promo-title{color:#fff;font-size:24px;font-weight:900;line-height:1.3;margin:0 0 12px;}';
+    $html .= '.jenny-app-promo-accent{color:#fbbf24;}';
+    $html .= '.jenny-app-promo-desc{color:#94a3b8;font-size:14px;line-height:1.6;margin:0;}';
+    $html .= '.jenny-app-promo-body{padding:0 24px 16px;}';
+    $html .= '.jenny-app-promo-label{color:#64748b;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;text-align:center;margin-bottom:10px;}';
+    $html .= '.jenny-app-promo-hero{background:linear-gradient(135deg,rgba(249,115,22,.18),rgba(251,191,36,.08));border:2px solid rgba(249,115,22,.45);border-radius:12px;padding:18px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start;}';
+    $html .= '.jenny-app-promo-hero-emoji{font-size:40px;line-height:1;flex-shrink:0;}';
+    $html .= '.jenny-app-promo-hero-content{flex:1;}';
+    $html .= '.jenny-app-promo-hero-title-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;}';
+    $html .= '.jenny-app-promo-hero-title{color:#fff;font-size:16px;font-weight:900;}';
+    $html .= '.jenny-app-promo-hero-badge{background:#f97316;color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:100px;}';
+    $html .= '.jenny-app-promo-pain{color:#64748b;font-size:11px;text-decoration:line-through;margin:0 0 4px;}';
+    $html .= '.jenny-app-promo-gain{color:#fed7aa;font-size:13px;line-height:1.5;margin:0;}';
+    $html .= '.jenny-app-promo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px;}';
+    $html .= '.jenny-app-promo-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:10px;padding:14px;}';
+    $html .= '.jenny-app-promo-card-emoji{font-size:24px;margin-bottom:6px;}';
+    $html .= '.jenny-app-promo-card-title{color:#fff;font-size:13px;font-weight:700;margin:0 0 3px;}';
+    $html .= '.jenny-app-promo-card-pain{color:#475569;font-size:11px;text-decoration:line-through;margin:0 0 3px;}';
+    $html .= '.jenny-app-promo-card-gain{color:#cbd5e1;font-size:12px;line-height:1.5;margin:0;}';
+    $html .= '.jenny-app-promo-cta{padding:12px 24px 28px;text-align:center;}';
+    $html .= '.jenny-app-promo-cta-text{color:#64748b;font-size:13px;line-height:1.6;margin:0 0 14px;}';
+    $html .= '.jenny-app-promo-btns{display:flex;gap:10px;justify-content:center;max-width:320px;margin:0 auto;}';
+    $html .= '.jenny-app-promo-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:13px 12px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none!important;}';
+    $html .= '.jenny-app-promo-btn:hover{opacity:.85;text-decoration:none!important;}';
+    $html .= '.jenny-app-promo-btn-android{background:#3ddc84;color:#fff!important;}';
+    $html .= '.jenny-app-promo-btn-ios{background:#fff;color:#111!important;}';
+    $html .= '.jenny-app-promo-note{color:#334155;font-size:11px;margin-top:8px;}';
+    $html .= '@media(min-width:600px){.jenny-app-promo-title{font-size:30px;}.jenny-app-promo-grid{grid-template-columns:repeat(3,1fr);}}';
+    $html .= '</style>';
+
+    $html .= '<section class="jenny-app-promo">';
+
+    // 헤더
+    $html .= '<div class="jenny-app-promo-header">';
+    $html .= '<span class="jenny-app-promo-badge">교민 필수 앱</span>';
+    $html .= '<h2 class="jenny-app-promo-title">베트남엔 당근이 없습니다.<br><span class="jenny-app-promo-accent">씬짜오 앱이 당근입니다.</span></h2>';
+    $html .= '<p class="jenny-app-promo-desc">중고거래부터 구인구직, 부동산, 교민잡지, 매일 뉴스까지.<br>교민 생활에 필요한 모든 것이 앱 하나에 있습니다.</p>';
+    $html .= '</div>';
+
+    // 바디
+    $html .= '<div class="jenny-app-promo-body">';
+    $html .= '<p class="jenny-app-promo-label">설치 안 하면 손해인 6가지 이유</p>';
+
+    // 히어로 — 중고거래
+    $html .= '<div class="jenny-app-promo-hero">';
+    $html .= '<div class="jenny-app-promo-hero-emoji">🛒</div>';
+    $html .= '<div class="jenny-app-promo-hero-content">';
+    $html .= '<div class="jenny-app-promo-hero-title-row">';
+    $html .= '<span class="jenny-app-promo-hero-title">교민 중고거래 (당근 역할)</span>';
+    $html .= '<span class="jenny-app-promo-hero-badge">가장 많이 씁니다</span>';
+    $html .= '</div>';
+    $html .= '<p class="jenny-app-promo-pain">베트남엔 당근이 없어서 이사 올 때, 귀국할 때 물건 처리가 막막했던</p>';
+    $html .= '<p class="jenny-app-promo-gain">교민끼리 직거래합니다. 누군지 아는 사람과 거래하니 안전하고 빠릅니다. 베트남의 당근입니다.</p>';
+    $html .= '</div></div>';
+
+    // 나머지 5가지 카드
+    $html .= '<div class="jenny-app-promo-grid">';
+    foreach ($features as $f) {
+        $html .= '<div class="jenny-app-promo-card">';
+        $html .= '<div class="jenny-app-promo-card-emoji">' . $f['emoji'] . '</div>';
+        $html .= '<div class="jenny-app-promo-card-title">' . esc_html($f['title']) . '</div>';
+        $html .= '<div class="jenny-app-promo-card-pain">' . esc_html($f['pain']) . '</div>';
+        $html .= '<div class="jenny-app-promo-card-gain">' . esc_html($f['gain']) . '</div>';
+        $html .= '</div>';
+    }
+    $html .= '</div>';
+    $html .= '</div>'; // body
+
+    // CTA
+    $html .= '<div class="jenny-app-promo-cta">';
+    $html .= '<p class="jenny-app-promo-cta-text">지금 이 순간에도 교민들이 앱으로 중고 물건을 사고팔고,<br>일자리를 찾고, 집을 구하고, 뉴스를 읽고 있습니다.</p>';
+    $html .= '<div class="jenny-app-promo-btns">';
+
+    // Android 버튼
+    $html .= '<a href="' . esc_url($android_url) . '" target="_blank" rel="noopener noreferrer" class="jenny-app-promo-btn jenny-app-promo-btn-android">';
+    $html .= '<svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48C13.85 1.23 12.95 1 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31C6.97 3.26 6 5.01 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg>';
+    $html .= 'Google Play</a>';
+
+    // iOS 버튼
+    $html .= '<a href="' . esc_url($ios_url) . '" target="_blank" rel="noopener noreferrer" class="jenny-app-promo-btn jenny-app-promo-btn-ios">';
+    $html .= '<svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>';
+    $html .= 'App Store</a>';
+
+    $html .= '</div>';
+    $html .= '<p class="jenny-app-promo-note">무료 · Android / iOS</p>';
+    $html .= '</div>'; // cta
+
+    $html .= '</section>';
+
+    return $html;
+}
+
 function jenny_daily_news_shortcode($atts)
 {
     $atts = shortcode_atts(array(
@@ -1351,6 +1464,9 @@ function jenny_daily_news_shortcode($atts)
         $output .= '<div id="jenny-ad-after-topnews" class="jenny-ad-section"><div class="jenny-ad-placeholder">';
         $output .= '<!-- Ad Inserter: #jenny-ad-after-topnews -->';
         $output .= '</div></div>';
+
+        // 앱 설치 유도 배너 — 탑뉴스 맛본 직후 노출
+        $output .= jenny_render_app_promo_banner();
     }
 
     // --- 2. Render Sections ---
@@ -3515,7 +3631,117 @@ add_action('rest_api_init', function () {
         'callback' => 'jenny_get_sections_list_rest',
         'permission_callback' => '__return_true',
     ));
+
+    // 마켓 정보 API (앱 뉴스 탭 상단 카드용): 날씨·환율·항공권·주가 + 시계열
+    register_rest_route('jenny/v1', '/market', array(
+        'methods' => 'GET',
+        'callback' => 'jenny_get_market_rest',
+        'permission_callback' => '__return_true',
+    ));
 });
+
+/**
+ * REST API 핸들러: 마켓 정보 (앱 뉴스 탭 상단 가로 카드용).
+ * 웹 위젯과 동일한 데이터 소스(야후·VNDIRECT·Travelpayouts·Open-Meteo)를 재사용해
+ * 앱이 네이티브로 카드/그래프를 그릴 수 있도록 숫자 + 시계열(spark) 배열을 JSON으로 반환.
+ *
+ * 응답 예:
+ * {
+ *   "success": true,
+ *   "weather":  [ {"city":"하노이","temp":"28°C"}, ... ],
+ *   "exchange": { "usd":{"value":"26,324","unit":"₫","spark":[...]},
+ *                 "krw":{"value":"1,757","unit":"₫","spark":[...]} },
+ *   "airfare":  { "sgn":{"label":"호치민","price":"328,182","unit":"원~","spark":[...]},
+ *                 "han":{...} },
+ *   "stock":    { "kospi":{"label":"KOSPI","value":"8,476.15","pct":"26.68","dir":"up","spark":[...]},
+ *                 "vnindex":{...} },
+ *   "links": { "exchange":"https://finance.naver.com/marketindex/",
+ *              "stock":"https://kr.investing.com/indices/major-indices",
+ *              "airfare":"https://www.aviasales.com/?marker=733771",
+ *              "wise":"" }
+ * }
+ */
+function jenny_get_market_rest($request)
+{
+    // ── 날씨: 캐시 함수가 있으면 사용, 없으면 빈 배열 ──
+    $weather = array();
+    if (function_exists('get_cached_weather_data')) {
+        $wd = get_cached_weather_data();
+        if (!empty($wd) && is_array($wd)) {
+            foreach ($wd as $city => $temp) {
+                $weather[] = array('city' => $city, 'temp' => $temp);
+            }
+        }
+    }
+
+    // ── 환율: 현재값(jenny_get_exchange_data) + 30일 시계열(jenny_get_fx_sparklines) ──
+    $ex = jenny_get_exchange_data();
+    $fx = jenny_get_fx_sparklines();
+    $exchange = array(
+        'usd' => array(
+            'value' => isset($ex['usd']) ? $ex['usd'] : '',
+            'unit'  => '₫',
+            'spark' => isset($fx['usd']) ? array_map('floatval', array_values($fx['usd'])) : array(),
+        ),
+        'krw' => array(
+            'value' => isset($ex['krw_100']) ? $ex['krw_100'] : '',
+            'unit'  => '₫',
+            'label' => '100 KRW',
+            'spark' => isset($fx['krw']) ? array_map('floatval', array_values($fx['krw'])) : array(),
+        ),
+    );
+
+    // ── 항공권: jenny_get_airfare_data (price + spark) ──
+    $af = jenny_get_airfare_data();
+    $airfare = array(
+        'sgn' => array(
+            'label' => '호치민',
+            'price' => isset($af['sgn']['price']) ? $af['sgn']['price'] : '',
+            'unit'  => '원~',
+            'spark' => isset($af['sgn']['spark']) ? array_map('floatval', array_values($af['sgn']['spark'])) : array(),
+        ),
+        'han' => array(
+            'label' => '하노이',
+            'price' => isset($af['han']['price']) ? $af['han']['price'] : '',
+            'unit'  => '원~',
+            'spark' => isset($af['han']['spark']) ? array_map('floatval', array_values($af['han']['spark'])) : array(),
+        ),
+    );
+
+    // ── 주가: jenny_get_stock_data (value/pct/dir/spark) ──
+    $st = jenny_get_stock_data();
+    $stock = array();
+    $stock_labels = array('kospi' => 'KOSPI', 'vnindex' => 'VN-Index');
+    foreach ($stock_labels as $k => $label) {
+        if (!empty($st[$k]) && is_array($st[$k])) {
+            $stock[$k] = array(
+                'label' => $label,
+                'value' => isset($st[$k]['value']) ? $st[$k]['value'] : '',
+                'pct'   => isset($st[$k]['pct']) ? $st[$k]['pct'] : '',
+                'dir'   => isset($st[$k]['dir']) ? $st[$k]['dir'] : 'flat',
+                'spark' => isset($st[$k]['spark']) ? array_map('floatval', array_values($st[$k]['spark'])) : array(),
+            );
+        }
+    }
+
+    // ── 제휴/소스 링크 ──
+    $aff = function_exists('jenny_affiliate_destinations') ? jenny_affiliate_destinations() : array();
+    $links = array(
+        'exchange' => 'https://finance.naver.com/marketindex/',
+        'stock'    => 'https://kr.investing.com/indices/major-indices',
+        'airfare'  => !empty($aff['aviasales']) ? $aff['aviasales'] : '',
+        'wise'     => !empty($aff['wise']) ? home_url('/go/wise') : '',
+    );
+
+    return rest_ensure_response(array(
+        'success'  => true,
+        'weather'  => $weather,
+        'exchange' => $exchange,
+        'airfare'  => $airfare,
+        'stock'    => $stock,
+        'links'    => $links,
+    ));
+}
 
 /**
  * REST API 핸들러: 섹션 목록 반환 (앱에서 동적으로 가져감)
