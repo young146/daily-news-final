@@ -4,7 +4,6 @@ import AdBanner from "@/components/AdBanner";
 import Image from "next/image";
 import NewsImage from "@/components/NewsImage";
 import { Calendar } from "lucide-react";
-import AppInstallBanner from "@/components/AppInstallBanner";
 
 // Helper Component for List Items
 function NewsItem({ news }) {
@@ -94,8 +93,6 @@ export default async function Home() {
             <NewsCard key={news.id} news={news} />
           ))}
         </div>
-        {/* 앱 설치 유도 — 상단 뉴스 맛본 직후 노출 */}
-        <AppInstallBanner />
       </section>
 
       {/* Main Content Area: Categories & Ads */}
