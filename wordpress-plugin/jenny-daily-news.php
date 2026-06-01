@@ -861,7 +861,7 @@ function jenny_get_airfare_data()
  */
 function jenny_get_stock_data()
 {
-    $cache_key = 'jenny_stock_v9'; // v9: VN-Index 추세선을 VNDIRECT 실제 30일 종가로 표시(KOSPI처럼 굴곡)
+    $cache_key = 'jenny_stock_v10'; // v10: 전일대비 등락률을 일별 종가 직전값으로 계산(chartPreviousClose 범위 왜곡 수정)
     $cached = get_transient($cache_key);
     if ($cached !== false && is_array($cached) && array_key_exists('kospi', $cached)) {
         return $cached;
@@ -896,14 +896,35 @@ function jenny_get_stock_data()
         }
 
         $price = floatval($meta['regularMarketPrice']);
-        // 야후 chart API의 meta는 'previousClose' 가 아니라 'chartPreviousClose' 로 전일종가를 준다.
-        // (이전 코드가 없는 필드 previousClose 를 요구해 항상 continue → 카드가 안 떴음)
-        if (isset($meta['chartPreviousClose'])) {
+
+        // 일별 종가 시계열 (스파크라인 + 전일 대비 계산 공용)
+        $closes = array();
+        if (!empty($result['indicators']['quote'][0]['close'])) {
+            foreach ($result['indicators']['quote'][0]['close'] as $c) {
+                if (is_numeric($c) && $c > 0) {
+                    $closes[] = floatval($c);
+                }
+            }
+        }
+
+        // "전일 대비" 기준 종가(prev) 결정.
+        // ⚠️ 야후 meta의 chartPreviousClose 는 '직전 거래일'이 아니라 '차트 range 시작 직전' 종가라
+        // range 에 따라 값이 달라진다(1mo면 ~한 달 전). 이걸 전일종가로 쓰면 등락률이 크게 왜곡됨
+        // (예: KOSPI 가 한 달간 상승 시 "전일 대비 +33%" 같은 오류). 일별 종가 배열로 정확히 계산한다.
+        $n = count($closes);
+        $eps = max(0.01, $price * 0.0005);
+        $prev = 0;
+        if ($n >= 2 && abs($closes[$n - 1] - $price) <= $eps) {
+            // 마지막 종가가 현재가와 동일 = 오늘 종가 → 그 직전 종가가 전일종가
+            $prev = $closes[$n - 2];
+        } elseif ($n >= 1 && abs($closes[$n - 1] - $price) > $eps) {
+            // 마지막 종가가 현재가와 다름(장중 등) → 마지막 종가가 곧 전일종가
+            $prev = $closes[$n - 1];
+        } elseif (isset($meta['chartPreviousClose'])) {
+            // 일별 종가가 1개뿐(예: 야후의 VN-Index)일 때 폴백
             $prev = floatval($meta['chartPreviousClose']);
         } elseif (isset($meta['previousClose'])) {
             $prev = floatval($meta['previousClose']);
-        } else {
-            $prev = 0;
         }
         if ($price <= 0 || $prev <= 0) {
             continue;
@@ -912,15 +933,8 @@ function jenny_get_stock_data()
         $pct = (($price - $prev) / $prev) * 100;
         $dir = ($pct > 0.005) ? 'up' : (($pct < -0.005) ? 'down' : 'flat');
 
-        // 스파크라인용 일별 종가 배열
-        $spark = array();
-        if (!empty($result['indicators']['quote'][0]['close'])) {
-            foreach ($result['indicators']['quote'][0]['close'] as $c) {
-                if (is_numeric($c) && $c > 0) {
-                    $spark[] = floatval($c);
-                }
-            }
-        }
+        // 스파크라인용 일별 종가 배열 (위에서 만든 $closes 재사용)
+        $spark = $closes;
 
         // VN-Index는 야후가 일별 히스토리를 안 줌(1포인트뿐) → VNDIRECT에서 실제 30일 종가를 가져온다.
         // (이걸로 KOSPI처럼 굴곡 있는 추세선이 즉시 그려짐)
