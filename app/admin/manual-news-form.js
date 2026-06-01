@@ -28,9 +28,11 @@ export default function ManualNewsForm({ onClose, onSuccess, editData = null }) 
   }, [editData]);
 
   const categories = [
+    "Korea-Hot",
     "Society",
     "Economy",
     "Culture",
+    "Real Estate",
     "Politics",
     "International",
     "Korea-Vietnam",

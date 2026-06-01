@@ -28,6 +28,7 @@ export default function CategorySelector({ id, initialCategory }) {
             disabled={loading}
             className={`text-lg font-bold border-2 border-gray-400 rounded-lg p-2.5 bg-white text-gray-900 w-full ${loading ? 'opacity-50' : ''}`}
         >
+            <option value="Korea-Hot">Korea-Hot (한국 주요뉴스)</option>
             <option value="Society">Society (사회)</option>
             <option value="Economy">Economy (경제)</option>
             <option value="Culture">Culture (문화)</option>
