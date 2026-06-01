@@ -965,6 +965,84 @@ function jenny_get_stock_data()
     return $data;
 }
 
+/**
+ * 국제 원자재 시세 (금·유가) — Yahoo Finance chart API (무료·무인증).
+ * 금 GC=F (USD/oz), WTI 유가 CL=F (USD/bbl). 전일종가 대비 등락 + 30일 추세.
+ * 주가와 동일하게 일별 종가의 직전값으로 전일 대비를 계산한다. 30분 캐시.
+ * 실패 시 해당 항목 null → 카드 숨김.
+ */
+function jenny_get_commodity_data()
+{
+    $cache_key = 'jenny_commodity_v1';
+    $cached = get_transient($cache_key);
+    if ($cached !== false && is_array($cached) && array_key_exists('gold', $cached)) {
+        return $cached;
+    }
+
+    $symbols = array(
+        'gold' => 'GC%3DF', // ^ 처럼 '=' 도 %3D 로 인코딩 (wp_remote_get/cURL 안전)
+        'oil'  => 'CL%3DF',
+    );
+    $data = array('gold' => null, 'oil' => null);
+
+    foreach ($symbols as $key => $sym) {
+        $url = 'https://query1.finance.yahoo.com/v8/finance/chart/' . $sym . '?range=1mo&interval=1d';
+        $raw = jenny_fetch_raw($url);
+        if ($raw === '') {
+            continue;
+        }
+        $body = json_decode($raw, true);
+        if (empty($body['chart']['result'][0]['meta'])) {
+            continue;
+        }
+        $result = $body['chart']['result'][0];
+        $meta = $result['meta'];
+        if (!isset($meta['regularMarketPrice'])) {
+            continue;
+        }
+        $price = floatval($meta['regularMarketPrice']);
+
+        $closes = array();
+        if (!empty($result['indicators']['quote'][0]['close'])) {
+            foreach ($result['indicators']['quote'][0]['close'] as $c) {
+                if (is_numeric($c) && $c > 0) {
+                    $closes[] = floatval($c);
+                }
+            }
+        }
+
+        // 전일 대비 기준 종가 (주가와 동일 로직: chartPreviousClose 범위 왜곡 회피)
+        $n = count($closes);
+        $eps = max(0.01, $price * 0.0005);
+        $prev = 0;
+        if ($n >= 2 && abs($closes[$n - 1] - $price) <= $eps) {
+            $prev = $closes[$n - 2];
+        } elseif ($n >= 1 && abs($closes[$n - 1] - $price) > $eps) {
+            $prev = $closes[$n - 1];
+        } elseif (isset($meta['chartPreviousClose'])) {
+            $prev = floatval($meta['chartPreviousClose']);
+        }
+        if ($price <= 0 || $prev <= 0) {
+            continue;
+        }
+
+        $pct = (($price - $prev) / $prev) * 100;
+        $dir = ($pct > 0.005) ? 'up' : (($pct < -0.005) ? 'down' : 'flat');
+        $decimals = ($key === 'gold') ? 0 : 2; // 금은 정수, 유가는 소수 2자리
+
+        $data[$key] = array(
+            'value' => number_format($price, $decimals),
+            'pct'   => number_format(abs($pct), 2),
+            'dir'   => $dir,
+            'spark' => $closes,
+        );
+    }
+
+    $ttl = ($data['gold'] || $data['oil']) ? 30 * MINUTE_IN_SECONDS : 10 * MINUTE_IN_SECONDS;
+    set_transient($cache_key, $data, $ttl);
+    return $data;
+}
+
 
 /**
  * 특정 날짜의 포스트를 가져와서 top_news와 regular_posts로 분류
@@ -1174,7 +1252,9 @@ function jenny_daily_news_shortcode($atts)
 
     // ... (Filter Header Code remains mostly same, condensed for brevity) ...
     $output .= '<div class="jenny-info-bar">';
-    $output .= '<div class="jenny-info-card jenny-weather-card"><div class="jenny-card-header"><span class="jenny-card-icon">🌤</span><span class="jenny-card-title">오늘의 날씨</span><span class="jenny-card-source">(Open-Meteo)</span></div><div class="jenny-card-chips">' . jenny_get_weather_fallback() . '</div></div>';
+    $output .= '<div class="jenny-info-card jenny-weather-card"><div class="jenny-card-header"><span class="jenny-card-icon">🌤</span><span class="jenny-card-title">오늘의 날씨</span><span class="jenny-card-source">(Open-Meteo)</span></div><div class="jenny-card-chips">' . jenny_get_weather_fallback() . '</div>';
+    $output .= '<a href="https://www.accuweather.com/" rel="noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 18px;background:#0ea5e9;color:#ffffff;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">🌤 날씨 자세히 →</a>';
+    $output .= '</div>';
 
     $fx_spark = jenny_get_fx_sparklines();
     $usd_graph = jenny_render_graph_box($fx_spark['usd'], jenny_spark_color($fx_spark['usd']));
@@ -1248,6 +1328,43 @@ function jenny_daily_news_shortcode($atts)
         $output .= '<a href="https://kr.investing.com/indices/major-indices" rel="noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 18px;background:#7048e8;color:#ffffff;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">📈 주가 확인 →</a>';
 
         $output .= '</div>'; // close jenny-info-card (stock-card)
+    }
+
+    // 호텔 최저가 카드 (Hotellook 제휴 — /go/hotellook 로 클릭 집계 후 리다이렉트)
+    if (!empty($jenny_aff['hotellook'])) {
+        $output .= '<div class="jenny-info-card jenny-hotel-card"><div class="jenny-card-header"><span class="jenny-card-icon">🏨</span><span class="jenny-card-title">호텔 최저가</span><span class="jenny-card-source">(베트남)</span></div>';
+        $output .= '<div class="jenny-card-chips"><div class="jenny-metric"><span style="font-size:14px;color:#374151;font-weight:600;line-height:1.5;">하노이·호치민·다낭 등<br>주요 호텔 실시간 최저가 비교</span></div></div>';
+        $output .= '<a href="' . esc_url(home_url('/go/hotellook')) . '" class="jenny-fx-cta" rel="sponsored nofollow noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 18px;background:#0d9488;color:#ffffff;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">🏨 호텔 검색하기 →</a>';
+        $output .= '</div>';
+    }
+
+    // 여행 eSIM 카드 (Airalo — /go/airalo 로 클릭 집계 후 리다이렉트)
+    if (!empty($jenny_aff['airalo'])) {
+        $output .= '<div class="jenny-info-card jenny-esim-card"><div class="jenny-card-header"><span class="jenny-card-icon">📱</span><span class="jenny-card-title">여행 eSIM</span><span class="jenny-card-source">(Airalo)</span></div>';
+        $output .= '<div class="jenny-card-chips"><div class="jenny-metric"><span style="font-size:14px;color:#374151;font-weight:600;line-height:1.5;">베트남 도착 즉시 데이터<br>유심 교체 없이 QR 설치</span></div></div>';
+        $output .= '<a href="' . esc_url(home_url('/go/airalo')) . '" class="jenny-fx-cta" rel="sponsored nofollow noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 18px;background:#ff5b3a;color:#ffffff;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">📱 eSIM 보기 →</a>';
+        $output .= '</div>';
+    }
+
+    // 국제 금시세·유가 카드 (정보 — 제휴 없음, 소스 페이지로 이동)
+    $commodity = jenny_get_commodity_data();
+    $commodity_rows = array(
+        'gold' => array('icon' => '🥇', 'title' => '국제 금시세', 'unit' => '$/oz', 'link' => 'https://kr.investing.com/commodities/gold', 'btn' => '🥇 금시세 보기', 'accent' => '#d97706'),
+        'oil'  => array('icon' => '🛢️', 'title' => '국제 유가(WTI)', 'unit' => '$/bbl', 'link' => 'https://kr.investing.com/commodities/crude-oil', 'btn' => '🛢️ 유가 보기', 'accent' => '#0ea5e9'),
+    );
+    foreach ($commodity_rows as $ck => $ci) {
+        if (empty($commodity[$ck])) {
+            continue;
+        }
+        $c = $commodity[$ck];
+        $color = ($c['dir'] === 'up') ? '#e03131' : (($c['dir'] === 'down') ? '#1971c2' : '#868e96');
+        $arrow = ($c['dir'] === 'up') ? '▲' : (($c['dir'] === 'down') ? '▼' : '–');
+        $cgraph = jenny_render_graph_box(isset($c['spark']) ? $c['spark'] : array(), $color);
+        $output .= '<div class="jenny-info-card"><div class="jenny-card-header"><span class="jenny-card-icon">' . $ci['icon'] . '</span><span class="jenny-card-title">' . $ci['title'] . '</span><span class="jenny-card-source">(전일 대비)</span></div><div class="jenny-card-chips">';
+        $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-value">' . esc_html($c['value']) . ' <span style="font-size:12px;color:#9ca3af;font-weight:600;">' . $ci['unit'] . '</span> <span style="color:' . $color . ';font-weight:700;">' . $arrow . ' ' . esc_html($c['pct']) . '%</span></span></div>' . $cgraph . '</div>';
+        $output .= '</div>';
+        $output .= '<a href="' . esc_url($ci['link']) . '" rel="noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 18px;background:' . $ci['accent'] . ';color:#ffffff;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">' . $ci['btn'] . ' →</a>';
+        $output .= '</div>';
     }
 
     $output .= '<div class="jenny-filter-buttons">';
@@ -1473,6 +1590,13 @@ function jenny_affiliate_destinations()
 
         // Aviasales 항공권 제휴 (Travelpayouts). marker=733771 으로 클릭/예약이 집계됨.
         'aviasales' => 'https://www.aviasales.com/?marker=733771',
+
+        // Hotellook 호텔 메타서치 (Travelpayouts). 같은 marker=733771 로 집계됨 — 신규가입 불필요.
+        'hotellook' => 'https://search.hotellook.com/?marker=733771',
+
+        // Airalo eSIM. ⚠️ 현재는 추적 없는 기본 링크. Travelpayouts 대시보드에서 발급한
+        // Airalo 추적 링크로 이 한 줄만 교체하면 수익 집계가 잡힌다.
+        'airalo' => 'https://www.airalo.com/',
     );
 }
 
@@ -3626,11 +3750,49 @@ function jenny_get_market_rest($request)
         $out['weather'] = $weather;
     }
 
-    // 소스/제휴 링크 (웹 카드와 동일)
-    $out['links'] = array(
+    // 국제 금시세·유가 (정보)
+    $commodity = jenny_get_commodity_data();
+    $com = array();
+    if (!empty($commodity['gold'])) {
+        $com['gold'] = array(
+            'label' => '국제 금',
+            'value' => $commodity['gold']['value'],
+            'unit'  => '$/oz',
+            'dir'   => $commodity['gold']['dir'],
+            'pct'   => $commodity['gold']['pct'],
+            'spark' => !empty($commodity['gold']['spark']) ? array_values($commodity['gold']['spark']) : array(),
+        );
+    }
+    if (!empty($commodity['oil'])) {
+        $com['oil'] = array(
+            'label' => 'WTI 유가',
+            'value' => $commodity['oil']['value'],
+            'unit'  => '$/bbl',
+            'dir'   => $commodity['oil']['dir'],
+            'pct'   => $commodity['oil']['pct'],
+            'spark' => !empty($commodity['oil']['spark']) ? array_values($commodity['oil']['spark']) : array(),
+        );
+    }
+    if (!empty($com)) {
+        $out['commodity'] = $com;
+    }
+
+    // 소스/제휴 링크 (웹 카드와 동일). 제휴는 /go/{slug} 로 클릭 집계 후 리다이렉트.
+    $aff = jenny_affiliate_destinations();
+    $links = array(
         'exchange' => 'https://finance.naver.com/marketindex/',
         'stock'    => 'https://kr.investing.com/indices/major-indices',
+        'weather'  => 'https://www.accuweather.com/',
+        'gold'     => 'https://kr.investing.com/commodities/gold',
+        'oil'      => 'https://kr.investing.com/commodities/crude-oil',
     );
+    if (!empty($aff['hotellook'])) {
+        $links['hotel'] = home_url('/go/hotellook');
+    }
+    if (!empty($aff['airalo'])) {
+        $links['esim'] = home_url('/go/airalo');
+    }
+    $out['links'] = $links;
 
     return rest_ensure_response($out);
 }
