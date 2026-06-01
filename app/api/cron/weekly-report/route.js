@@ -19,18 +19,17 @@ export async function GET(request) {
             return new NextResponse(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
         }
 
-        const recipient = process.env.REPORT_EMAIL || process.env.ADMIN_EMAIL;
-        if (!recipient) {
-            return NextResponse.json({ success: false, error: 'REPORT_EMAIL/ADMIN_EMAIL 미설정' }, { status: 500 });
-        }
+        // 수신자: REPORT_EMAIL(쉼표 구분) 로 덮어쓰기 가능, 기본은 운영자 2곳
+        const recipients = (process.env.REPORT_EMAIL || 'younghan146@gmail.com,info@chaovietnam.co.kr')
+            .split(',').map((e) => e.trim()).filter(Boolean);
 
         const today = new Date().toISOString().slice(0, 10);
         const subject = `📊 씬짜오 주간 측정 리포트 (${today})`;
-        const result = await sendNewsletterWithFallback([recipient], subject, html, {
+        const result = await sendNewsletterWithFallback(recipients, subject, html, {
             campaignId: `weekly_report_${today.replace(/-/g, '')}`,
         });
 
-        return NextResponse.json({ success: true, recipient, sent: result?.succeeded ?? 0, property: kpis.propertyId });
+        return NextResponse.json({ success: true, recipients, sent: result?.succeeded ?? 0, property: kpis.propertyId });
     } catch (error) {
         console.error('[Cron] 주간 리포트 실패:', error);
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
