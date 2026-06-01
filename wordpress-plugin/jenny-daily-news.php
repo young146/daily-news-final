@@ -3515,7 +3515,165 @@ add_action('rest_api_init', function () {
         'callback' => 'jenny_get_sections_list_rest',
         'permission_callback' => '__return_true',
     ));
+
+    // 마켓 정보 API (앱 뉴스탭 상단 카드: 항공권·환율·주가·날씨)
+    // 웹 숏코드와 동일한 데이터 함수를 재사용해 JSON 으로 반환한다.
+    register_rest_route('jenny/v1', '/market', array(
+        'methods' => 'GET',
+        'callback' => 'jenny_get_market_rest',
+        'permission_callback' => '__return_true',
+    ));
 });
+
+/**
+ * REST API 핸들러: 마켓 정보(항공권·환율·주가·날씨) JSON 반환.
+ * 앱(chao-vn-app)의 MarketStrip 이 기대하는 형태로 매핑한다.
+ * 데이터는 웹 카드와 동일한 jenny_get_* 함수에서 가져오므로 별도 캐시/소스를 추가하지 않는다.
+ */
+function jenny_get_market_rest($request)
+{
+    $exchange = jenny_get_exchange_data();   // ['usd' => "25,400", 'krw_100' => "1,780"]
+    $fx       = jenny_get_fx_sparklines();   // ['usd' => [...], 'krw' => [...]]
+    $airfare  = jenny_get_airfare_data();    // ['sgn' => ['price','spark'], 'han' => [...]]
+    $stock    = jenny_get_stock_data();      // ['kospi' => ['value','pct','dir','spark']|null, 'vnindex' => ...]
+    $weather  = jenny_get_market_weather();  // [['city'=>'하노이','temp'=>'30°C'], ...]
+
+    $out = array('success' => true);
+
+    // 항공권 (인천→호치민/하노이 최저가 + 추세)
+    $af = array();
+    if (!empty($airfare['sgn']['price'])) {
+        $af['sgn'] = array(
+            'label' => '호치민',
+            'price' => $airfare['sgn']['price'],
+            'unit'  => '원~',
+            'spark' => !empty($airfare['sgn']['spark']) ? array_values($airfare['sgn']['spark']) : array(),
+        );
+    }
+    if (!empty($airfare['han']['price'])) {
+        $af['han'] = array(
+            'label' => '하노이',
+            'price' => $airfare['han']['price'],
+            'unit'  => '원~',
+            'spark' => !empty($airfare['han']['spark']) ? array_values($airfare['han']['spark']) : array(),
+        );
+    }
+    if (!empty($af)) {
+        $out['airfare'] = $af;
+    }
+
+    // 환율 (USD/VND, 100KRW/VND + 30일 추세)
+    $ex = array();
+    if (!empty($exchange['usd'])) {
+        $ex['usd'] = array(
+            'value' => $exchange['usd'],
+            'unit'  => '₫',
+            'spark' => !empty($fx['usd']) ? array_values($fx['usd']) : array(),
+        );
+    }
+    if (!empty($exchange['krw_100'])) {
+        $ex['krw'] = array(
+            'label' => '100 KRW',
+            'value' => $exchange['krw_100'],
+            'unit'  => '₫',
+            'spark' => !empty($fx['krw']) ? array_values($fx['krw']) : array(),
+        );
+    }
+    if (!empty($ex)) {
+        $out['exchange'] = $ex;
+    }
+
+    // 주가지수 (KOSPI·VN-Index, 전일 대비)
+    $stk = array();
+    if (!empty($stock['kospi'])) {
+        $stk['kospi'] = array(
+            'label' => 'KOSPI',
+            'value' => $stock['kospi']['value'],
+            'dir'   => $stock['kospi']['dir'],
+            'pct'   => $stock['kospi']['pct'],
+            'spark' => !empty($stock['kospi']['spark']) ? array_values($stock['kospi']['spark']) : array(),
+        );
+    }
+    if (!empty($stock['vnindex'])) {
+        $stk['vnindex'] = array(
+            'label' => 'VN-Index',
+            'value' => $stock['vnindex']['value'],
+            'dir'   => $stock['vnindex']['dir'],
+            'pct'   => $stock['vnindex']['pct'],
+            'spark' => !empty($stock['vnindex']['spark']) ? array_values($stock['vnindex']['spark']) : array(),
+        );
+    }
+    if (!empty($stk)) {
+        $out['stock'] = $stk;
+    }
+
+    // 날씨 (하노이·호치민·서울)
+    if (!empty($weather)) {
+        $out['weather'] = $weather;
+    }
+
+    // 소스/제휴 링크 (웹 카드와 동일)
+    $out['links'] = array(
+        'exchange' => 'https://finance.naver.com/marketindex/',
+        'stock'    => 'https://kr.investing.com/indices/major-indices',
+    );
+
+    return rest_ensure_response($out);
+}
+
+/**
+ * 마켓 API 용 날씨 원시 데이터 (앱은 [{city, temp}] 배열을 기대).
+ * functions.php 캐시가 있으면 재사용하고, 없으면 Open-Meteo 에서 직접 받아온다.
+ * 웹 카드(jenny_get_weather_fallback)는 HTML 을 반환하므로 별도로 배열 형태를 만든다.
+ */
+function jenny_get_market_weather()
+{
+    if (function_exists('get_cached_weather_data')) {
+        $wd = get_cached_weather_data();
+        if (!empty($wd) && is_array($wd)) {
+            $out = array();
+            foreach ($wd as $city => $temp) {
+                $out[] = array('city' => $city, 'temp' => $temp);
+            }
+            if (!empty($out)) {
+                return $out;
+            }
+        }
+    }
+
+    $cache_key = 'jenny_market_weather_v1';
+    $cached = get_transient($cache_key);
+    if ($cached !== false && is_array($cached)) {
+        return $cached;
+    }
+
+    $cities = array(
+        array('name' => '하노이', 'lat' => 21.0285, 'lon' => 105.8542),
+        array('name' => '호치민', 'lat' => 10.8231, 'lon' => 106.6297),
+        array('name' => '서울', 'lat' => 37.5665, 'lon' => 126.9780),
+    );
+
+    $out = array();
+    $has_temp = false;
+    foreach ($cities as $city) {
+        $url = 'https://api.open-meteo.com/v1/forecast?latitude=' . $city['lat'] . '&longitude=' . $city['lon'] . '&current_weather=true';
+        $response = wp_remote_get($url, array('timeout' => 10));
+        $temp = '--';
+        if (!is_wp_error($response)) {
+            $body = json_decode(wp_remote_retrieve_body($response), true);
+            if (isset($body['current_weather']['temperature'])) {
+                $temp = round($body['current_weather']['temperature']) . '°C';
+                $has_temp = true;
+            }
+        }
+        $out[] = array('city' => $city['name'], 'temp' => $temp);
+    }
+
+    if ($has_temp) {
+        set_transient($cache_key, $out, 30 * MINUTE_IN_SECONDS);
+    }
+    return $out;
+}
 
 /**
  * REST API 핸들러: 섹션 목록 반환 (앱에서 동적으로 가져감)
