@@ -27,6 +27,7 @@ export async function GET(request) {
         const subject = `📊 씬짜오 주간 측정 리포트 (${today})`;
         const result = await sendNewsletterWithFallback(recipients, subject, html, {
             campaignId: `weekly_report_${today.replace(/-/g, '')}`,
+            forceSmtp: true, // SendGrid 미배달 회피 — 데일리 뉴스레터와 동일 SMTP 경로 사용
         });
 
         return NextResponse.json({ success: true, recipients, sent: result?.succeeded ?? 0, property: kpis.propertyId });
