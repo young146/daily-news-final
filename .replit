@@ -11,7 +11,7 @@ packages = ["chromium"]
 [userenv.shared]
 WORDPRESS_URL = "https://chaovietnam.co.kr"
 WORDPRESS_USERNAME = "younghan146@gmail.com"
-ADMIN_EMAIL = "admin@chaovietnam.co.kr"
+ADMIN_EMAIL = "info@chaovietnam.co.kr"
 ADMIN_PASSWORD = "admin123"
 JWT_SECRET = "xinchao-vietnam-news-jwt-secret-2025"
 

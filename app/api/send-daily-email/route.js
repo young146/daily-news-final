@@ -31,7 +31,7 @@ export async function POST(request) {
         if (!fallback) {
           return Response.json({ success: false, error: '테스트 이메일 목록이 비어있습니다. 수신자를 먼저 추가해주세요.' });
         }
-        recipientEmails = [fallback];
+        recipientEmails = fallback.split(',').map(e => e.trim()).filter(Boolean);
       }
     } else {
       // 전체 구독자

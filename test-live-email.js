@@ -7,7 +7,7 @@ async function runTest() {
     console.log("=== STARTING LIVE BCC TEST ===");
     
     // We send only to the admin TEST_EMAIL
-    const dummies = [process.env.TEST_EMAIL || 'younghan146@gmail.com'];
+    const dummies = (process.env.TEST_EMAIL || 'younghan146@gmail.com,info@chaovietnam.co.kr').split(',').map(e => e.trim()).filter(Boolean);
     
     try {
         const result = await sendNewsletterBatchedBccSmtp(

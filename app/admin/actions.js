@@ -753,9 +753,9 @@ export async function sendDailyEmailAction(isTest = false, customEmail = null) {
       }
       targetEmails = [email];
     } else if (isTest) {
-      // 테스트 발송 (고정 주소)
-      const testEmail = process.env.TEST_EMAIL || 'younghan146@gmail.com';
-      targetEmails = [testEmail];
+      // 테스트 발송 — TEST_EMAIL 쉼표 구분 다중 수신 지원
+      targetEmails = (process.env.TEST_EMAIL || 'younghan146@gmail.com,info@chaovietnam.co.kr')
+        .split(',').map(e => e.trim()).filter(Boolean);
     } else {
       // 전체 구독자 발송
       const subscribers = await prisma.subscriber.findMany({

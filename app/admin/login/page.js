@@ -82,7 +82,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@chaovietnam.co.kr"
+              placeholder="info@chaovietnam.co.kr"
               required
               style={{
                 width: '100%',

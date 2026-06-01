@@ -286,7 +286,7 @@ export async function sendDailyDigest(isTest = false) {
     const subject = `[씬짜오베트남] 데일리뉴스 | ${todayString}`;
 
     const recipientEmails = isTest
-      ? [process.env.TEST_EMAIL || 'test@example.com']
+      ? (process.env.TEST_EMAIL || 'younghan146@gmail.com,info@chaovietnam.co.kr').split(',').map(e => e.trim()).filter(Boolean)
       : subscribers.map(s => s.email);
 
     console.log(`Sending email to ${recipientEmails.length} recipients...`);
