@@ -2103,17 +2103,19 @@ function jenny_get_styles()
             box-shadow: 0 4px 12px rgba(234, 88, 12, 0.1);
         }
         .jenny-info-bar {
-            display: flex;
-            gap: 22px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
             align-items: stretch;
-            flex-wrap: wrap;
         }
         .jenny-info-card {
             background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
-            border: 2px solid #0ea5e9;
+            border: 1px solid #d6e9f5;
             border-radius: 14px;
-            padding: 20px 24px;
-            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
+            padding: 18px 20px;
+            box-shadow: 0 2px 8px rgba(14, 165, 233, 0.08);
+            display: flex;
+            flex-direction: column;
         }
         .jenny-card-header { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
         .jenny-card-icon { font-size: 28px; }
@@ -2155,8 +2157,7 @@ function jenny_get_styles()
         }
         @media (max-width: 900px) {
             .jenny-info-bar {
-                flex-direction: column;
-                align-items: flex-start;
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
             }
             .jenny-filter-buttons {
                 margin-left: 0;
