@@ -1258,11 +1258,10 @@ function jenny_daily_news_shortcode($atts)
     // 실패 시 DuckDuckGo 아이콘으로 자동 대체 → 항상 선명한 브랜드 로고가 보인다.
     $brand_icon = function ($domain) {
         $ddg = 'https://icons.duckduckgo.com/ip3/' . $domain . '.ico';
-        $ih  = 'https://icon.horse/icon/' . $domain;
-        // Booking 은 DDG 가 진한 파란 'B' 로고를 줌. 나머지는 icon.horse 가 더 고해상도.
-        $primary  = ($domain === 'booking.com') ? $ddg : $ih;
-        $fallback = ($domain === 'booking.com') ? $ih : $ddg;
-        return '<img class="jenny-brand-logo" src="' . $primary . '" onerror="this.onerror=null;this.src=\'' . $fallback . '\';" width="28" height="28" alt="' . esc_attr($domain) . '" loading="lazy">';
+        $google = 'https://www.google.com/s2/favicons?domain=' . $domain . '&sz=128';
+        // Booking 은 구글 파비콘이 진한 파란 'B'(컬러)를 줌 → 1순위. 나머지는 icon.horse 고해상도.
+        $primary = ($domain === 'booking.com') ? $google : ('https://icon.horse/icon/' . $domain);
+        return '<img class="jenny-brand-logo" src="' . $primary . '" onerror="this.onerror=null;this.src=\'' . $ddg . '\';" width="28" height="28" alt="' . esc_attr($domain) . '" loading="lazy">';
     };
 
     // ========================= 정보 카드 (먼저) =========================
