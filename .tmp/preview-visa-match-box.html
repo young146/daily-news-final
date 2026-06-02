@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>씬짜오 비자 매칭 박스 미리보기</title>
+<style>
+  :root{
+    --ink:#0f172a; --sub:#475569; --line:#e2e8f0;
+    --brand:#1d4ed8; --brand-d:#1e40af; --brand-soft:#eff6ff;
+    --ok:#059669;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#f1f5f9;
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",
+      "Segoe UI",Roboto,sans-serif;
+    color:var(--ink); line-height:1.7; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:720px; margin:0 auto; padding:32px 20px 80px}
+  .pagehead{font-size:13px; color:var(--sub); margin:0 0 28px; text-align:center}
+  .pagehead b{color:var(--brand)}
+
+  /* 기사 본문 흉내 (맥락 보여주기용) */
+  .article h1{font-size:26px; line-height:1.35; margin:0 0 6px; letter-spacing:-.4px}
+  .article .meta{font-size:13px; color:#94a3b8; margin-bottom:22px}
+  .article p{font-size:16.5px; color:#1e293b; margin:0 0 18px}
+  .article p.dim{color:#64748b}
+
+  .label{
+    display:inline-flex; align-items:center; gap:5px;
+    font-size:11px; font-weight:700; letter-spacing:.3px;
+    color:#94a3b8; margin:38px 0 10px; text-transform:none;
+  }
+  .label::before{content:""; width:14px; height:1px; background:#cbd5e1; display:inline-block}
+
+  /* ===== 버전 A : 풀 신뢰형 박스 (추천) ===== */
+  .matchbox{
+    position:relative; overflow:hidden;
+    border:1px solid #dbe4f3; border-radius:18px;
+    background:
+      radial-gradient(120% 120% at 100% 0%, #f5f9ff 0%, #ffffff 46%);
+    box-shadow:0 10px 30px -16px rgba(29,78,216,.35);
+    padding:26px 26px 24px;
+  }
+  .matchbox .stamp{
+    position:absolute; right:-26px; top:18px; font-size:120px;
+    opacity:.05; transform:rotate(-8deg); pointer-events:none; line-height:1;
+  }
+  .verify{
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--brand-soft); color:var(--brand-d);
+    font-size:12.5px; font-weight:800; padding:5px 11px; border-radius:999px;
+    border:1px solid #d6e4ff; margin-bottom:14px;
+  }
+  .verify svg{width:14px;height:14px}
+  .matchbox h3{
+    font-size:21px; font-weight:800; letter-spacing:-.5px;
+    margin:0 0 8px; color:var(--ink);
+  }
+  .matchbox .desc{font-size:15px; color:var(--sub); margin:0 0 18px; max-width:90%}
+  .points{
+    display:flex; flex-wrap:wrap; gap:8px 16px; margin:0 0 22px; padding:0; list-style:none;
+  }
+  .points li{
+    display:flex; align-items:center; gap:6px;
+    font-size:13.5px; font-weight:600; color:#334155;
+  }
+  .points li svg{width:15px;height:15px;color:var(--ok);flex:none}
+  .cta{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    background:var(--brand); color:#fff; font-size:16px; font-weight:800;
+    text-decoration:none; padding:14px 26px; border-radius:12px;
+    box-shadow:0 8px 18px -8px rgba(29,78,216,.7);
+    transition:transform .12s ease, background .12s ease;
+  }
+  .cta:hover{background:var(--brand-d); transform:translateY(-1px)}
+  .cta svg{width:17px;height:17px}
+  .finehint{font-size:11.5px; color:#94a3b8; margin:13px 0 0}
+
+  /* ===== 버전 B : 컴팩트 인라인 ===== */
+  .mini{
+    display:flex; align-items:center; gap:16px;
+    border:1px solid var(--line); border-left:4px solid var(--brand);
+    border-radius:12px; background:#fff; padding:16px 18px;
+  }
+  .mini .ico{font-size:26px; flex:none}
+  .mini .body{flex:1; min-width:0}
+  .mini .body b{font-size:15.5px; display:block; margin-bottom:2px}
+  .mini .body span{font-size:13px; color:var(--sub)}
+  .mini .go{
+    flex:none; background:var(--brand-soft); color:var(--brand-d);
+    font-size:14px; font-weight:800; text-decoration:none;
+    padding:10px 18px; border-radius:9px; white-space:nowrap;
+    border:1px solid #d6e4ff;
+  }
+  .mini .go:hover{background:#e0ecff}
+
+  .vlabel{font-size:12px;font-weight:800;color:var(--brand);margin:34px 0 12px;letter-spacing:.2px}
+  hr.sep{border:0;border-top:1px dashed #cbd5e1;margin:46px 0}
+
+  @media(max-width:560px){
+    .matchbox .desc{max-width:100%}
+    .mini{flex-wrap:wrap}
+    .mini .go{width:100%;text-align:center;margin-top:6px}
+    .matchbox .stamp{font-size:90px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="pagehead"><b>씬짜오</b> 비자 기사용 매칭 박스 · 미리보기 (실제 기사 하단에 들어가는 모습)</p>
+
+  <!-- 기사 맥락 -->
+  <div class="article">
+    <h1>2026년 베트남 비자·체류 완전정리 — 종류·연장·주의사항</h1>
+    <div class="meta">씬짜오 편집부 · 2026.06.02</div>
+    <p>베트남에 머무는 한인이라면 가장 먼저 부딪치는 게 비자입니다. 관광(DL), 상용(DN),
+       노동허가서 기반 거주(TT)까지 종류가 다양하고, 연장 시점을 놓치면 벌금이나 출국 명령으로
+       이어질 수 있어 미리 챙겨두는 것이 좋습니다.</p>
+    <p class="dim">특히 노동허가서(Work Permit)와 임시거주증(TRC)은 발급 절차가 까다롭고,
+       서류 하나만 빠져도 처음부터 다시 진행해야 하는 경우가 많습니다. 행정 처리에 익숙하지 않다면
+       전문 대행을 통하는 편이 시간과 비용 모두 아끼는 길일 수 있습니다…</p>
+  </div>
+
+  <!-- ===================== 버전 A ===================== -->
+  <p class="vlabel">▸ 버전 A — 풀 신뢰형 (추천)</p>
+  <div class="label">씬짜오 제휴 안내</div>
+
+  <div class="matchbox">
+    <div class="stamp">🛂</div>
+    <div class="verify">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 4v6c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+      씬짜오가 직접 확인한 업체
+    </div>
+    <h3>비자 처리, 혼자 끙끙대지 마세요</h3>
+    <p class="desc">노동허가서·거주증·연장까지 — 씬짜오가 검증한 한인 행정 대행소에서
+       <b>무료 상담</b>부터 받아보실 수 있습니다.</p>
+    <ul class="points">
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>한국어 완벽 상담</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>상담은 무료·부담 없음</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>씬짜오가 검증한 업체만</li>
+    </ul>
+    <a class="cta" href="#">
+      무료 상담 신청하기
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+    <p class="finehint">이 안내는 비자·체류 관련 기사에 한해 제공됩니다. 신청 정보는 선택하신 대행 업체에만 전달됩니다.</p>
+  </div>
+
+  <hr class="sep">
+
+  <!-- ===================== 버전 B ===================== -->
+  <p class="vlabel">▸ 버전 B — 컴팩트 인라인 (가벼운 버전)</p>
+  <div class="label">씬짜오 제휴 안내</div>
+
+  <div class="mini">
+    <div class="ico">🛂</div>
+    <div class="body">
+      <b>비자 처리가 막막하신가요?</b>
+      <span>씬짜오가 검증한 한인 대행소 · 무료 상담부터</span>
+    </div>
+    <a class="go" href="#">무료 상담 →</a>
+  </div>
+
+</div>
+</body>
+</html>
