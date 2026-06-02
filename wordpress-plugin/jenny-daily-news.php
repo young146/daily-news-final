@@ -1257,8 +1257,12 @@ function jenny_daily_news_shortcode($atts)
     // 제휴 카드 아이콘 = 각 브랜드 실제 로고. icon.horse(고해상도 로고)를 1순위로,
     // 실패 시 DuckDuckGo 아이콘으로 자동 대체 → 항상 선명한 브랜드 로고가 보인다.
     $brand_icon = function ($domain) {
-        $fallback = 'https://icons.duckduckgo.com/ip3/' . $domain . '.ico';
-        return '<img class="jenny-brand-logo" src="https://icon.horse/icon/' . $domain . '" onerror="this.onerror=null;this.src=\'' . $fallback . '\';" width="26" height="26" alt="' . esc_attr($domain) . '" loading="lazy">';
+        $ddg = 'https://icons.duckduckgo.com/ip3/' . $domain . '.ico';
+        $ih  = 'https://icon.horse/icon/' . $domain;
+        // Booking 은 DDG 가 진한 파란 'B' 로고를 줌. 나머지는 icon.horse 가 더 고해상도.
+        $primary  = ($domain === 'booking.com') ? $ddg : $ih;
+        $fallback = ($domain === 'booking.com') ? $ih : $ddg;
+        return '<img class="jenny-brand-logo" src="' . $primary . '" onerror="this.onerror=null;this.src=\'' . $fallback . '\';" width="28" height="28" alt="' . esc_attr($domain) . '" loading="lazy">';
     };
 
     // ========================= 정보 카드 (먼저) =========================
@@ -1354,8 +1358,8 @@ function jenny_daily_news_shortcode($atts)
 
     // 7) 호텔·숙소 (Booking.com)
     if (!empty($jenny_aff['booking'])) {
-        $output .= '<div class="jenny-info-card jenny-hotel-card"><div class="jenny-card-header"><span class="jenny-card-icon">' . $brand_icon('booking.com') . '</span><span class="jenny-card-title">호텔·숙소</span><span class="jenny-card-source">(Booking.com)</span></div>';
-        $output .= '<div class="jenny-card-chips"><div class="jenny-metric"><span style="font-size:14px;color:#374151;font-weight:600;line-height:1.5;">하노이·호치민·다낭 등<br>호텔·아파트 최저가 비교 후 바로 예약</span></div></div>';
+        $output .= '<div class="jenny-info-card jenny-hotel-card"><span class="jenny-card-watermark">🏨</span><div class="jenny-card-header"><span class="jenny-card-icon">' . $brand_icon('booking.com') . '</span><span class="jenny-card-title">호텔·숙소</span><span class="jenny-card-source">(Booking.com)</span></div>';
+        $output .= '<div class="jenny-card-chips"><div class="jenny-metric"><span style="font-size:16px;color:#1f2937;font-weight:600;line-height:1.55;">하노이·호치민·다낭 등<br>호텔·아파트 최저가 비교 후 <b style="color:#003580;">바로 예약</b></span></div></div>';
         $output .= '<a href="' . esc_url(home_url('/go/booking')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#003580;">숙소 예약하기 →</a>';
         $output .= '</div>';
     }
@@ -1364,7 +1368,7 @@ function jenny_daily_news_shortcode($atts)
     $have_esim = !empty($jenny_aff['airalo']);
     $have_klook = !empty($jenny_aff['klook']);
     if ($have_esim || $have_klook) {
-        $output .= '<div class="jenny-info-card jenny-travel-card"><div class="jenny-card-header"><span class="jenny-card-icon">🧳</span><span class="jenny-card-title">여행 준비</span></div>';
+        $output .= '<div class="jenny-info-card jenny-travel-card"><span class="jenny-card-watermark">🧳</span><div class="jenny-card-header"><span class="jenny-card-icon">🧳</span><span class="jenny-card-title">여행 준비</span></div>';
         $output .= '<div class="jenny-travel-list">';
         if ($have_esim) {
             $output .= '<div class="jenny-travel-item"><div class="jenny-travel-info">' . $brand_icon('airalo.com') . '<span><b>Airalo eSIM</b><br>도착 즉시 데이터·QR 설치</span></div><a href="' . esc_url(home_url('/go/airalo')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn jenny-travel-btn" style="background:#ff5b3a;">eSIM 보기 →</a></div>';
@@ -2118,11 +2122,13 @@ function jenny_get_styles()
         }
         .jenny-info-bar {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            grid-template-columns: repeat(4, 1fr); /* 카드 8개 = 4+4 로 꽉 참 (빈칸 없음) */
             gap: 16px;
             align-items: stretch;
         }
         .jenny-info-card {
+            position: relative;
+            overflow: hidden;
             background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
             border: 1px solid #d6e9f5;
             border-radius: 14px;
@@ -2142,11 +2148,28 @@ function jenny_get_styles()
         .jenny-card-btns { margin-top: auto; display: flex; flex-wrap: wrap; gap: 8px; }
         .jenny-card-btns .jenny-card-btn { margin-top: 0; }
         /* 여행 준비(eSIM+투어) 결합 카드 */
-        .jenny-travel-list { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
+        .jenny-travel-list { display: flex; flex-direction: column; gap: 18px; margin-top: 6px; }
         .jenny-travel-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        .jenny-travel-info { display: flex; align-items: center; gap: 9px; font-size: 13px; color: #6b7280; font-weight: 500; line-height: 1.35; }
-        .jenny-travel-info b { color: #111827; font-size: 14px; font-weight: 700; }
-        .jenny-travel-btn { padding: 8px 14px; font-size: 14px; white-space: nowrap; }
+        .jenny-travel-info { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #4b5563; font-weight: 500; line-height: 1.4; }
+        .jenny-travel-info b { color: #111827; font-size: 15px; font-weight: 700; }
+        .jenny-travel-btn { padding: 9px 15px; font-size: 14px; white-space: nowrap; }
+        /* 카드 빈 공백을 채우는 큰 워터마크 이미지(호텔🏨·여행🧳). 내용은 그 위에. */
+        .jenny-card-watermark {
+            position: absolute;
+            right: -10px;
+            bottom: 26px;
+            font-size: 104px;
+            line-height: 1;
+            opacity: 0.07;
+            pointer-events: none;
+            z-index: 0;
+            user-select: none;
+        }
+        .jenny-hotel-card > :not(.jenny-card-watermark),
+        .jenny-travel-card > :not(.jenny-card-watermark) {
+            position: relative;
+            z-index: 1;
+        }
         .jenny-weather-chip, .jenny-fx-chip { display: flex; align-items: center; gap: 7px; background: #ffffff; padding: 11px 16px; border-radius: 16px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); border: 1px solid #e5e7eb; }
         .jenny-chip-city { font-size: 20px; font-weight: 600; color: #374151; }
         .jenny-chip-temp, .jenny-fx-value { font-size: 22px; font-weight: 700; color: #ea580c; }
@@ -2190,7 +2213,7 @@ function jenny_get_styles()
         }
         @media (max-width: 900px) {
             .jenny-info-bar {
-                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                grid-template-columns: repeat(2, 1fr);
             }
             .jenny-filter-buttons {
                 margin-left: 0;
@@ -2200,6 +2223,9 @@ function jenny_get_styles()
             .jenny-archive-wrapper {
                 width: 100%;
             }
+        }
+        @media (max-width: 520px) {
+            .jenny-info-bar { grid-template-columns: 1fr; }
         }
         .jenny-filter-btn { display: inline-block; padding: 10px 20px; background: #f3f4f6; color: #374151; text-decoration: none; border: 1px solid #e5e7eb; font-size: 14px; font-weight: 600; cursor: pointer; }
         .jenny-filter-btn:hover { background: #e5e7eb; color: #111827; }
