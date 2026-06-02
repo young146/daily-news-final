@@ -1375,6 +1375,11 @@ function jenny_daily_news_shortcode($atts)
         $output .= '</div></div>'; // close travel-list, travel-card
     }
 
+    $output .= '</div>'; // close jenny-info-bar (카드 그리드 끝)
+
+    // ===== 뉴스 네비게이션: 카드 그리드 밖, 전체폭 가로 영역 =====
+    $output .= '<div class="jenny-news-nav-wrap">';
+
     $output .= '<div class="jenny-filter-buttons">';
     $output .= $is_filtered ? '<a href="' . esc_url($page_url) . '" class="jenny-filter-btn">오늘의 뉴스</a>' : '<span class="jenny-filter-btn active">오늘의 뉴스</span>';
 
@@ -1418,7 +1423,7 @@ function jenny_daily_news_shortcode($atts)
 
     $output .= '</div>'; // Close jenny-section-nav-list
     $output .= '</div>'; // Close jenny-section-nav
-    $output .= '</div>'; // Close jenny-info-bar
+    $output .= '</div>'; // Close jenny-news-nav-wrap
     $output .= '</div>'; // Close jenny-date-filter
 
     if ($is_filtered) {
@@ -2166,13 +2171,20 @@ function jenny_get_styles()
             min-height: 48px; color: #9ca3af; font-size: 13px; font-weight: 500;
             text-align: center;
         }
-        /* 뉴스 버튼은 정보 카드 아래 별도 줄로 (카드 사이에 끼지 않게) */
+        /* 뉴스 네비게이션: 카드 그리드 밖, 전체폭 가로 영역 */
+        .jenny-news-nav-wrap {
+            margin-top: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        /* 뉴스 버튼(오늘/지난 뉴스)은 전체폭 가로 줄 */
         .jenny-filter-buttons {
             display: flex;
             gap: 12px;
             align-items: flex-end; /* 아코디언이 위로 펼쳐지므로 하단 정렬 */
             margin-left: 0;
-            margin-top: 18px;
+            margin-top: 0;
             width: 100%;
             flex-wrap: wrap;
         }
