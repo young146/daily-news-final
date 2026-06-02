@@ -1254,9 +1254,11 @@ function jenny_daily_news_shortcode($atts)
     $output .= '<div class="jenny-info-bar">';
 
     $jenny_aff = jenny_affiliate_destinations();
-    // 제휴 카드 아이콘 = 각 브랜드 로고(구글 파비콘). 정보 카드는 이모지 유지.
+    // 제휴 카드 아이콘 = 각 브랜드 실제 로고. DuckDuckGo 고해상도 아이콘(애플 터치 아이콘)을
+    // 1순위로 쓰고, 실패하면 구글 파비콘으로 자동 대체 → 깨짐 없이 항상 브랜드 로고가 보인다.
     $brand_icon = function ($domain) {
-        return '<img class="jenny-brand-logo" src="https://www.google.com/s2/favicons?domain=' . $domain . '&sz=64" width="24" height="24" alt="" loading="lazy">';
+        $fallback = 'https://www.google.com/s2/favicons?domain=' . $domain . '&sz=64';
+        return '<img class="jenny-brand-logo" src="https://icons.duckduckgo.com/ip3/' . $domain . '.ico" onerror="this.onerror=null;this.src=\'' . $fallback . '\';" width="26" height="26" alt="' . esc_attr($domain) . '" loading="lazy">';
     };
 
     // ========================= 정보 카드 (먼저) =========================
@@ -1365,10 +1367,10 @@ function jenny_daily_news_shortcode($atts)
         $output .= '<div class="jenny-info-card jenny-travel-card"><div class="jenny-card-header"><span class="jenny-card-icon">🧳</span><span class="jenny-card-title">여행 준비</span></div>';
         $output .= '<div class="jenny-travel-list">';
         if ($have_esim) {
-            $output .= '<div class="jenny-travel-item"><div class="jenny-travel-info">' . $brand_icon('airalo.com') . '<span><b>eSIM</b><br>도착 즉시 데이터·QR 설치</span></div><a href="' . esc_url(home_url('/go/airalo')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn jenny-travel-btn" style="background:#ff5b3a;">eSIM →</a></div>';
+            $output .= '<div class="jenny-travel-item"><div class="jenny-travel-info">' . $brand_icon('airalo.com') . '<span><b>Airalo eSIM</b><br>도착 즉시 데이터·QR 설치</span></div><a href="' . esc_url(home_url('/go/airalo')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn jenny-travel-btn" style="background:#ff5b3a;">eSIM 보기 →</a></div>';
         }
         if ($have_klook) {
-            $output .= '<div class="jenny-travel-item"><div class="jenny-travel-info">' . $brand_icon('klook.com') . '<span><b>투어·입장권</b><br>바나힐·하롱베이·공항픽업</span></div><a href="' . esc_url(home_url('/go/klook')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn jenny-travel-btn" style="background:#ff6b2c;">투어 →</a></div>';
+            $output .= '<div class="jenny-travel-item"><div class="jenny-travel-info">' . $brand_icon('klook.com') . '<span><b>Klook 투어·입장권</b><br>바나힐·하롱베이·공항픽업</span></div><a href="' . esc_url(home_url('/go/klook')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn jenny-travel-btn" style="background:#ff6b2c;">투어 예약 →</a></div>';
         }
         $output .= '</div></div>'; // close travel-list, travel-card
     }
