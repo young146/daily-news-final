@@ -1252,10 +1252,21 @@ function jenny_daily_news_shortcode($atts)
 
     // ... (Filter Header Code remains mostly same, condensed for brevity) ...
     $output .= '<div class="jenny-info-bar">';
+
+    $jenny_aff = jenny_affiliate_destinations();
+    // 제휴 카드 아이콘 = 각 브랜드 로고(구글 파비콘). 정보 카드는 이모지 유지.
+    $brand_icon = function ($domain) {
+        return '<img class="jenny-brand-logo" src="https://www.google.com/s2/favicons?domain=' . $domain . '&sz=64" width="24" height="24" alt="" loading="lazy">';
+    };
+
+    // ========================= 정보 카드 (먼저) =========================
+
+    // 1) 오늘의 날씨
     $output .= '<div class="jenny-info-card jenny-weather-card"><div class="jenny-card-header"><span class="jenny-card-icon">🌤</span><span class="jenny-card-title">오늘의 날씨</span><span class="jenny-card-source">(Open-Meteo)</span></div><div class="jenny-card-chips">' . jenny_get_weather_fallback() . '</div>';
-    $output .= '<a href="https://www.accuweather.com/" rel="noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 18px;background:#0ea5e9;color:#ffffff;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">🌤 날씨 자세히 →</a>';
+    $output .= '<a href="https://www.accuweather.com/" rel="noopener" target="_blank" class="jenny-card-btn" style="background:#0ea5e9;">날씨 자세히 →</a>';
     $output .= '</div>';
 
+    // 2) 환율 (+ Wise 송금 버튼: 환율 본 자리 = 송금 의향 최고점)
     $fx_spark = jenny_get_fx_sparklines();
     $usd_graph = jenny_render_graph_box($fx_spark['usd'], jenny_spark_color($fx_spark['usd']));
     $krw_graph = jenny_render_graph_box($fx_spark['krw'], jenny_spark_color($fx_spark['krw']));
@@ -1263,43 +1274,15 @@ function jenny_daily_news_shortcode($atts)
     $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">🇺🇸</span><span class="jenny-fx-label">1 USD</span><span class="jenny-fx-value">' . esc_html($exchange['usd']) . '₫</span></div>' . $usd_graph . '</div>';
     $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">🇰🇷</span><span class="jenny-fx-label">100 KRW</span><span class="jenny-fx-value">' . esc_html($exchange['krw_100']) . '₫</span></div>' . $krw_graph . '</div>';
     $output .= '</div>'; // close jenny-card-chips
-
-    // 환율 검색 버튼: 네이버 금융 환율 페이지로 (USD/KRW + 베트남 동 환율계산기 포함)
-    $output .= '<a href="https://finance.naver.com/marketindex/" rel="noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 18px;background:#059669;color:#ffffff;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">🔍 환율 검색 →</a>';
-
-    // 환율 보러 온 자리 = 송금 의향 최고점 → Wise 송금 제휴 버튼.
-    // 목적지 URL이 설정된 경우에만 노출 (jenny_affiliate_destinations()).
-    $jenny_aff = jenny_affiliate_destinations();
+    $output .= '<div class="jenny-card-btns">';
+    $output .= '<a href="https://finance.naver.com/marketindex/" rel="noopener" target="_blank" class="jenny-card-btn" style="background:#059669;">🔍 환율 검색 →</a>';
     if (!empty($jenny_aff['wise'])) {
-        $output .= '<a href="' . esc_url(home_url('/go/wise')) . '" class="jenny-fx-cta" rel="sponsored nofollow noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;margin-left:8px;padding:10px 18px;background:#163300;color:#9fe870;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">💸 이 환율로 송금하기 →</a>';
+        $output .= '<a href="' . esc_url(home_url('/go/wise')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#163300;color:#9fe870;">' . $brand_icon('wise.com') . ' 이 환율로 송금 →</a>';
     }
+    $output .= '</div>';
+    $output .= '</div>'; // close fx-card
 
-    $output .= '</div>'; // close jenny-info-card (fx-card)
-
-    // 항공권 최저가 카드 (인천→호치민/하노이 왕복). 정보는 항상 노출.
-    // "항공권 검색" 버튼은 jenny_affiliate_destinations()['aviasales']가 설정된 경우에만 노출.
-    $airfare = jenny_get_airfare_data();
-    if (!empty($airfare['sgn']['price']) || !empty($airfare['han']['price'])) {
-        $output .= '<div class="jenny-info-card jenny-airfare-card"><div class="jenny-card-header"><span class="jenny-card-icon">✈️</span><span class="jenny-card-title">항공권 최저가</span><span class="jenny-card-source">(월별 추세)</span></div><div class="jenny-card-chips">';
-        if (!empty($airfare['sgn']['price'])) {
-            $sgn_graph = jenny_render_graph_box($airfare['sgn']['spark'], jenny_spark_color($airfare['sgn']['spark']));
-            $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">🇻🇳</span><span class="jenny-fx-label">호치민</span><span class="jenny-fx-value">' . esc_html($airfare['sgn']['price']) . '원~</span></div>' . $sgn_graph . '</div>';
-        }
-        if (!empty($airfare['han']['price'])) {
-            $han_graph = jenny_render_graph_box($airfare['han']['spark'], jenny_spark_color($airfare['han']['spark']));
-            $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">🇻🇳</span><span class="jenny-fx-label">하노이</span><span class="jenny-fx-value">' . esc_html($airfare['han']['price']) . '원~</span></div>' . $han_graph . '</div>';
-        }
-        $output .= '</div>'; // close jenny-card-chips
-
-        if (!empty($jenny_aff['aviasales'])) {
-            $output .= '<a href="' . esc_url(home_url('/go/aviasales')) . '" class="jenny-fx-cta" rel="sponsored nofollow noopener" target="_blank" style="display:inline-flex;align-items:center;gap:5px;margin-top:10px;padding:8px 14px;background:#1a73e8;color:#fff;font-weight:600;font-size:13px;border-radius:16px;text-decoration:none;line-height:1;">✈️ 항공권 검색하기 →</a>';
-        }
-
-        $output .= '</div>'; // close jenny-info-card (airfare-card)
-    }
-
-    // 주가지수 카드 (KOSPI·VN-Index, 전일종가 대비 등락). retention용 정보.
-    // 한국 관례: 상승=빨강, 하락=파랑.
+    // 3) 주가지수 (KOSPI·VN-Index). 한국 관례: 상승=빨강, 하락=파랑.
     $stock = jenny_get_stock_data();
     if (!empty($stock['kospi']) || !empty($stock['vnindex'])) {
         $output .= '<div class="jenny-info-card jenny-stock-card"><div class="jenny-card-header"><span class="jenny-card-icon">📈</span><span class="jenny-card-title">주가지수</span><span class="jenny-card-source">(전일 대비)</span></div><div class="jenny-card-chips">';
@@ -1315,46 +1298,17 @@ function jenny_daily_news_shortcode($atts)
             $color = ($s['dir'] === 'up') ? '#e03131' : (($s['dir'] === 'down') ? '#1971c2' : '#868e96');
             $arrow = ($s['dir'] === 'up') ? '▲' : (($s['dir'] === 'down') ? '▼' : '–');
             $stock_graph = jenny_render_graph_box(isset($s['spark']) ? $s['spark'] : array(), $color);
-            // VN-Index는 야후가 과거 데이터를 안 줘서 우리가 매일 1칸씩 적립 → 2일 이상 쌓여야 그래프가 그려짐.
-            // 그 전까지는 빈 박스 대신 "적립 중" 안내를 보여 카드가 깨져 보이지 않게 한다.
             if ($stock_graph === '') {
                 $stock_graph = '<div class="jenny-graph-box jenny-graph-pending">📊 추세 데이터 적립 중 (며칠 후 표시)</div>';
             }
             $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">' . $info['flag'] . '</span><span class="jenny-fx-label">' . $info['label'] . '</span><span class="jenny-fx-value">' . esc_html($s['value']) . ' <span style="color:' . $color . ';font-weight:700;">' . $arrow . ' ' . esc_html($s['pct']) . '%</span></span></div>' . $stock_graph . '</div>';
         }
         $output .= '</div>'; // close jenny-card-chips
-
-        // 주가 확인 버튼: 소스 페이지(인베스팅닷컴 주요 지수 - KOSPI·VN-Index 등 한 곳에서 확인)로 이동
-        $output .= '<a href="https://kr.investing.com/indices/major-indices" rel="noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 18px;background:#7048e8;color:#ffffff;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">📈 주가 확인 →</a>';
-
-        $output .= '</div>'; // close jenny-info-card (stock-card)
+        $output .= '<a href="https://kr.investing.com/indices/major-indices" rel="noopener" target="_blank" class="jenny-card-btn" style="background:#7048e8;">📈 주가 확인 →</a>';
+        $output .= '</div>'; // close stock-card
     }
 
-    // 호텔 최저가 카드 (Hotellook 제휴 — /go/hotellook 로 클릭 집계 후 리다이렉트)
-    if (!empty($jenny_aff['hotellook'])) {
-        $output .= '<div class="jenny-info-card jenny-hotel-card"><div class="jenny-card-header"><span class="jenny-card-icon">🏨</span><span class="jenny-card-title">호텔·숙소</span><span class="jenny-card-source">(베트남)</span></div>';
-        $output .= '<div class="jenny-card-chips"><div class="jenny-metric"><span style="font-size:14px;color:#374151;font-weight:600;line-height:1.5;">하노이·호치민·다낭 등<br>호텔·아파트·게스트하우스 최저가 비교</span></div></div>';
-        $output .= '<a href="' . esc_url(home_url('/go/hotellook')) . '" class="jenny-fx-cta" rel="sponsored nofollow noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 18px;background:#0d9488;color:#ffffff;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">🏨 숙소 검색하기 →</a>';
-        $output .= '</div>';
-    }
-
-    // 여행 eSIM 카드 (Airalo — /go/airalo 로 클릭 집계 후 리다이렉트)
-    if (!empty($jenny_aff['airalo'])) {
-        $output .= '<div class="jenny-info-card jenny-esim-card"><div class="jenny-card-header"><span class="jenny-card-icon">📱</span><span class="jenny-card-title">여행 eSIM</span><span class="jenny-card-source">(Airalo)</span></div>';
-        $output .= '<div class="jenny-card-chips"><div class="jenny-metric"><span style="font-size:14px;color:#374151;font-weight:600;line-height:1.5;">베트남 도착 즉시 데이터<br>유심 교체 없이 QR 설치</span></div></div>';
-        $output .= '<a href="' . esc_url(home_url('/go/airalo')) . '" class="jenny-fx-cta" rel="sponsored nofollow noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 18px;background:#ff5b3a;color:#ffffff;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">📱 eSIM 보기 →</a>';
-        $output .= '</div>';
-    }
-
-    // 투어·입장권 카드 (Klook — /go/klook 로 클릭 집계 후 리다이렉트)
-    if (!empty($jenny_aff['klook'])) {
-        $output .= '<div class="jenny-info-card jenny-klook-card"><div class="jenny-card-header"><span class="jenny-card-icon">🎟️</span><span class="jenny-card-title">투어·입장권</span><span class="jenny-card-source">(Klook)</span></div>';
-        $output .= '<div class="jenny-card-chips"><div class="jenny-metric"><span style="font-size:14px;color:#374151;font-weight:600;line-height:1.5;">바나힐·하롱베이·공항픽업 등<br>액티비티·입장권 예약</span></div></div>';
-        $output .= '<a href="' . esc_url(home_url('/go/klook')) . '" class="jenny-fx-cta" rel="sponsored nofollow noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 18px;background:#ff6b2c;color:#ffffff;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">🎟️ 투어 예약하기 →</a>';
-        $output .= '</div>';
-    }
-
-    // 국제 금시세·유가 카드 (정보 — 제휴 없음, 소스 페이지로 이동)
+    // 4) 금시세, 5) 유가 (정보 — 제휴 없음, 소스 페이지로 이동)
     $commodity = jenny_get_commodity_data();
     $commodity_rows = array(
         'gold' => array('icon' => '🥇', 'title' => '국제 금시세', 'unit' => '$/oz', 'link' => 'https://kr.investing.com/commodities/gold', 'btn' => '🥇 금시세 보기', 'accent' => '#d97706'),
@@ -1371,8 +1325,52 @@ function jenny_daily_news_shortcode($atts)
         $output .= '<div class="jenny-info-card"><div class="jenny-card-header"><span class="jenny-card-icon">' . $ci['icon'] . '</span><span class="jenny-card-title">' . $ci['title'] . '</span><span class="jenny-card-source">(전일 대비)</span></div><div class="jenny-card-chips">';
         $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-value">' . esc_html($c['value']) . ' <span style="font-size:12px;color:#9ca3af;font-weight:600;">' . $ci['unit'] . '</span> <span style="color:' . $color . ';font-weight:700;">' . $arrow . ' ' . esc_html($c['pct']) . '%</span></span></div>' . $cgraph . '</div>';
         $output .= '</div>';
-        $output .= '<a href="' . esc_url($ci['link']) . '" rel="noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 18px;background:' . $ci['accent'] . ';color:#ffffff;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">' . $ci['btn'] . ' →</a>';
+        $output .= '<a href="' . esc_url($ci['link']) . '" rel="noopener" target="_blank" class="jenny-card-btn" style="background:' . $ci['accent'] . ';">' . $ci['btn'] . ' →</a>';
         $output .= '</div>';
+    }
+
+    // ========================= 커머스 카드 (그다음) =========================
+
+    // 6) 항공권 (Aviasales)
+    $airfare = jenny_get_airfare_data();
+    if (!empty($airfare['sgn']['price']) || !empty($airfare['han']['price'])) {
+        $output .= '<div class="jenny-info-card jenny-airfare-card"><div class="jenny-card-header"><span class="jenny-card-icon">' . $brand_icon('aviasales.com') . '</span><span class="jenny-card-title">항공권 최저가</span><span class="jenny-card-source">(인천 출발)</span></div><div class="jenny-card-chips">';
+        if (!empty($airfare['sgn']['price'])) {
+            $sgn_graph = jenny_render_graph_box($airfare['sgn']['spark'], jenny_spark_color($airfare['sgn']['spark']));
+            $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">🇻🇳</span><span class="jenny-fx-label">호치민</span><span class="jenny-fx-value">' . esc_html($airfare['sgn']['price']) . '원~</span></div>' . $sgn_graph . '</div>';
+        }
+        if (!empty($airfare['han']['price'])) {
+            $han_graph = jenny_render_graph_box($airfare['han']['spark'], jenny_spark_color($airfare['han']['spark']));
+            $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">🇻🇳</span><span class="jenny-fx-label">하노이</span><span class="jenny-fx-value">' . esc_html($airfare['han']['price']) . '원~</span></div>' . $han_graph . '</div>';
+        }
+        $output .= '</div>'; // close jenny-card-chips
+        if (!empty($jenny_aff['aviasales'])) {
+            $output .= '<a href="' . esc_url(home_url('/go/aviasales')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#1a73e8;">항공권 검색하기 →</a>';
+        }
+        $output .= '</div>'; // close airfare-card
+    }
+
+    // 7) 호텔·숙소 (Hotellook)
+    if (!empty($jenny_aff['hotellook'])) {
+        $output .= '<div class="jenny-info-card jenny-hotel-card"><div class="jenny-card-header"><span class="jenny-card-icon">' . $brand_icon('hotellook.com') . '</span><span class="jenny-card-title">호텔·숙소</span><span class="jenny-card-source">(베트남)</span></div>';
+        $output .= '<div class="jenny-card-chips"><div class="jenny-metric"><span style="font-size:14px;color:#374151;font-weight:600;line-height:1.5;">하노이·호치민·다낭 등<br>호텔·아파트·게스트하우스 최저가 비교</span></div></div>';
+        $output .= '<a href="' . esc_url(home_url('/go/hotellook')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#0d9488;">숙소 검색하기 →</a>';
+        $output .= '</div>';
+    }
+
+    // 8) 여행 준비 = eSIM(Airalo) + 투어·입장권(Klook) — 한 박스
+    $have_esim = !empty($jenny_aff['airalo']);
+    $have_klook = !empty($jenny_aff['klook']);
+    if ($have_esim || $have_klook) {
+        $output .= '<div class="jenny-info-card jenny-travel-card"><div class="jenny-card-header"><span class="jenny-card-icon">🧳</span><span class="jenny-card-title">여행 준비</span></div>';
+        $output .= '<div class="jenny-travel-list">';
+        if ($have_esim) {
+            $output .= '<div class="jenny-travel-item"><div class="jenny-travel-info">' . $brand_icon('airalo.com') . '<span><b>eSIM</b><br>도착 즉시 데이터·QR 설치</span></div><a href="' . esc_url(home_url('/go/airalo')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn jenny-travel-btn" style="background:#ff5b3a;">eSIM →</a></div>';
+        }
+        if ($have_klook) {
+            $output .= '<div class="jenny-travel-item"><div class="jenny-travel-info">' . $brand_icon('klook.com') . '<span><b>투어·입장권</b><br>바나힐·하롱베이·공항픽업</span></div><a href="' . esc_url(home_url('/go/klook')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn jenny-travel-btn" style="background:#ff6b2c;">투어 →</a></div>';
+        }
+        $output .= '</div></div>'; // close travel-list, travel-card
     }
 
     $output .= '<div class="jenny-filter-buttons">';
@@ -2127,9 +2125,21 @@ function jenny_get_styles()
             flex-direction: column;
         }
         .jenny-card-header { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
-        .jenny-card-icon { font-size: 28px; }
-        .jenny-card-title { font-size: 18px; font-weight: 700; color: #0ea5e9; text-transform: uppercase; letter-spacing: 0.5px; }
+        .jenny-card-icon { font-size: 26px; display: inline-flex; align-items: center; }
+        .jenny-brand-logo { width: 24px; height: 24px; border-radius: 6px; display: block; }
+        .jenny-card-title { font-size: 18px; font-weight: 800; color: #0f172a; letter-spacing: -0.2px; }
         .jenny-card-chips { display: flex; gap: 12px; flex-wrap: wrap; }
+        /* 정보/제휴 카드 버튼: 카드 맨 아래로 정렬(줄 맞춤) */
+        .jenny-card-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px; border-radius: 18px; color: #ffffff; font-weight: 700; font-size: 15px; line-height: 1; text-decoration: none; }
+        .jenny-info-card > .jenny-card-btn { margin-top: auto; }
+        .jenny-card-btns { margin-top: auto; display: flex; flex-wrap: wrap; gap: 8px; }
+        .jenny-card-btns .jenny-card-btn { margin-top: 0; }
+        /* 여행 준비(eSIM+투어) 결합 카드 */
+        .jenny-travel-list { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
+        .jenny-travel-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .jenny-travel-info { display: flex; align-items: center; gap: 9px; font-size: 13px; color: #6b7280; font-weight: 500; line-height: 1.35; }
+        .jenny-travel-info b { color: #111827; font-size: 14px; font-weight: 700; }
+        .jenny-travel-btn { padding: 8px 14px; font-size: 14px; white-space: nowrap; }
         .jenny-weather-chip, .jenny-fx-chip { display: flex; align-items: center; gap: 7px; background: #ffffff; padding: 11px 16px; border-radius: 16px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); border: 1px solid #e5e7eb; }
         .jenny-chip-city { font-size: 20px; font-weight: 600; color: #374151; }
         .jenny-chip-temp, .jenny-fx-value { font-size: 22px; font-weight: 700; color: #ea580c; }
