@@ -1254,11 +1254,11 @@ function jenny_daily_news_shortcode($atts)
     $output .= '<div class="jenny-info-bar">';
 
     $jenny_aff = jenny_affiliate_destinations();
-    // 제휴 카드 아이콘 = 각 브랜드 실제 로고. DuckDuckGo 고해상도 아이콘(애플 터치 아이콘)을
-    // 1순위로 쓰고, 실패하면 구글 파비콘으로 자동 대체 → 깨짐 없이 항상 브랜드 로고가 보인다.
+    // 제휴 카드 아이콘 = 각 브랜드 실제 로고. icon.horse(고해상도 로고)를 1순위로,
+    // 실패 시 DuckDuckGo 아이콘으로 자동 대체 → 항상 선명한 브랜드 로고가 보인다.
     $brand_icon = function ($domain) {
-        $fallback = 'https://www.google.com/s2/favicons?domain=' . $domain . '&sz=64';
-        return '<img class="jenny-brand-logo" src="https://icons.duckduckgo.com/ip3/' . $domain . '.ico" onerror="this.onerror=null;this.src=\'' . $fallback . '\';" width="26" height="26" alt="' . esc_attr($domain) . '" loading="lazy">';
+        $fallback = 'https://icons.duckduckgo.com/ip3/' . $domain . '.ico';
+        return '<img class="jenny-brand-logo" src="https://icon.horse/icon/' . $domain . '" onerror="this.onerror=null;this.src=\'' . $fallback . '\';" width="26" height="26" alt="' . esc_attr($domain) . '" loading="lazy">';
     };
 
     // ========================= 정보 카드 (먼저) =========================
