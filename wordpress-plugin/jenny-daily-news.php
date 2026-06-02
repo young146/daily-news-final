@@ -1593,9 +1593,8 @@ function jenny_affiliate_destinations()
         // Hotellook 호텔 메타서치 (Travelpayouts). 같은 marker=733771 로 집계됨 — 신규가입 불필요.
         'hotellook' => 'https://search.hotellook.com/?marker=733771',
 
-        // Airalo eSIM. ⚠️ 현재는 추적 없는 기본 링크. Travelpayouts 대시보드에서 발급한
-        // Airalo 추적 링크로 이 한 줄만 교체하면 수익 집계가 잡힌다.
-        'airalo' => 'https://www.airalo.com/',
+        // Airalo eSIM 제휴 (Travelpayouts). 추적 링크 — /go/airalo 로 클릭 집계 후 리다이렉트.
+        'airalo' => 'https://airalo.tpk.ro/3j311Yp9',
     );
 }
 
