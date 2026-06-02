@@ -1584,9 +1584,8 @@ add_action('init', 'jenny_register_meta_fields');
 function jenny_affiliate_destinations()
 {
     return array(
-        // Wise 송금 제휴. Partnerize 승인 후 발급되는 추적 링크를 여기에 붙여넣기.
-        // 예: 'wise' => 'https://prf.hn/click/camref:xxxx/...',
-        'wise' => '',
+        // Wise 송금 제휴 (Partnerize). camref 추적 링크 — /go/wise 로 클릭 집계 후 리다이렉트.
+        'wise' => 'https://wise.prf.hn/click/camref:1011l5JK4m',
 
         // Aviasales 항공권 제휴 (Travelpayouts). marker=733771 으로 클릭/예약이 집계됨.
         'aviasales' => 'https://www.aviasales.com/?marker=733771',
@@ -3792,6 +3791,9 @@ function jenny_get_market_rest($request)
     }
     if (!empty($aff['airalo'])) {
         $links['esim'] = home_url('/go/airalo');
+    }
+    if (!empty($aff['wise'])) {
+        $links['send'] = home_url('/go/wise');
     }
     $out['links'] = $links;
 
