@@ -1352,11 +1352,11 @@ function jenny_daily_news_shortcode($atts)
         $output .= '</div>'; // close airfare-card
     }
 
-    // 7) 호텔·숙소 (Hotellook)
-    if (!empty($jenny_aff['hotellook'])) {
-        $output .= '<div class="jenny-info-card jenny-hotel-card"><div class="jenny-card-header"><span class="jenny-card-icon">' . $brand_icon('hotellook.com') . '</span><span class="jenny-card-title">호텔·숙소</span><span class="jenny-card-source">(베트남)</span></div>';
-        $output .= '<div class="jenny-card-chips"><div class="jenny-metric"><span style="font-size:14px;color:#374151;font-weight:600;line-height:1.5;">하노이·호치민·다낭 등<br>호텔·아파트·게스트하우스 최저가 비교</span></div></div>';
-        $output .= '<a href="' . esc_url(home_url('/go/hotellook')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#0d9488;">숙소 검색하기 →</a>';
+    // 7) 호텔·숙소 (Booking.com)
+    if (!empty($jenny_aff['booking'])) {
+        $output .= '<div class="jenny-info-card jenny-hotel-card"><div class="jenny-card-header"><span class="jenny-card-icon">' . $brand_icon('booking.com') . '</span><span class="jenny-card-title">호텔·숙소</span><span class="jenny-card-source">(Booking.com)</span></div>';
+        $output .= '<div class="jenny-card-chips"><div class="jenny-metric"><span style="font-size:14px;color:#374151;font-weight:600;line-height:1.5;">하노이·호치민·다낭 등<br>호텔·아파트 최저가 비교 후 바로 예약</span></div></div>';
+        $output .= '<a href="' . esc_url(home_url('/go/booking')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#003580;">숙소 예약하기 →</a>';
         $output .= '</div>';
     }
 
@@ -1603,8 +1603,8 @@ function jenny_affiliate_destinations()
         // Aviasales 항공권 제휴 (Travelpayouts). marker=733771 으로 클릭/예약이 집계됨.
         'aviasales' => 'https://www.aviasales.com/?marker=733771',
 
-        // Hotellook 호텔 메타서치 (Travelpayouts). 같은 marker=733771 로 집계됨 — 신규가입 불필요.
-        'hotellook' => 'https://search.hotellook.com/?marker=733771',
+        // Booking.com 호텔·숙소 제휴 (Travelpayouts). 추적 링크 — /go/booking 로 집계 후 리다이렉트.
+        'booking' => 'https://booking.tpk.ro/jJzJ2A1i',
 
         // Airalo eSIM 제휴 (Travelpayouts). 추적 링크 — /go/airalo 로 클릭 집계 후 리다이렉트.
         'airalo' => 'https://airalo.tpk.ro/3j311Yp9',
@@ -3820,8 +3820,8 @@ function jenny_get_market_rest($request)
         'gold'     => 'https://kr.investing.com/commodities/gold',
         'oil'      => 'https://kr.investing.com/commodities/crude-oil',
     );
-    if (!empty($aff['hotellook'])) {
-        $links['hotel'] = home_url('/go/hotellook');
+    if (!empty($aff['booking'])) {
+        $links['hotel'] = home_url('/go/booking');
     }
     if (!empty($aff['airalo'])) {
         $links['esim'] = home_url('/go/airalo');
