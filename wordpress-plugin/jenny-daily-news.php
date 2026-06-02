@@ -1346,6 +1346,14 @@ function jenny_daily_news_shortcode($atts)
         $output .= '</div>';
     }
 
+    // 투어·입장권 카드 (Klook — /go/klook 로 클릭 집계 후 리다이렉트)
+    if (!empty($jenny_aff['klook'])) {
+        $output .= '<div class="jenny-info-card jenny-klook-card"><div class="jenny-card-header"><span class="jenny-card-icon">🎟️</span><span class="jenny-card-title">투어·입장권</span><span class="jenny-card-source">(Klook)</span></div>';
+        $output .= '<div class="jenny-card-chips"><div class="jenny-metric"><span style="font-size:14px;color:#374151;font-weight:600;line-height:1.5;">바나힐·하롱베이·공항픽업 등<br>액티비티·입장권 예약</span></div></div>';
+        $output .= '<a href="' . esc_url(home_url('/go/klook')) . '" class="jenny-fx-cta" rel="sponsored nofollow noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 18px;background:#ff6b2c;color:#ffffff;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">🎟️ 투어 예약하기 →</a>';
+        $output .= '</div>';
+    }
+
     // 국제 금시세·유가 카드 (정보 — 제휴 없음, 소스 페이지로 이동)
     $commodity = jenny_get_commodity_data();
     $commodity_rows = array(
@@ -1595,6 +1603,9 @@ function jenny_affiliate_destinations()
 
         // Airalo eSIM 제휴 (Travelpayouts). 추적 링크 — /go/airalo 로 클릭 집계 후 리다이렉트.
         'airalo' => 'https://airalo.tpk.ro/3j311Yp9',
+
+        // Klook 투어·입장권 제휴 (Travelpayouts). 추적 링크 — /go/klook 로 클릭 집계 후 리다이렉트.
+        'klook' => 'https://klook.tpk.ro/Yb8nDzwF',
     );
 }
 
@@ -3790,6 +3801,9 @@ function jenny_get_market_rest($request)
     }
     if (!empty($aff['airalo'])) {
         $links['esim'] = home_url('/go/airalo');
+    }
+    if (!empty($aff['klook'])) {
+        $links['tour'] = home_url('/go/klook');
     }
     if (!empty($aff['wise'])) {
         $links['send'] = home_url('/go/wise');
