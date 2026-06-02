@@ -1332,9 +1332,9 @@ function jenny_daily_news_shortcode($atts)
 
     // 호텔 최저가 카드 (Hotellook 제휴 — /go/hotellook 로 클릭 집계 후 리다이렉트)
     if (!empty($jenny_aff['hotellook'])) {
-        $output .= '<div class="jenny-info-card jenny-hotel-card"><div class="jenny-card-header"><span class="jenny-card-icon">🏨</span><span class="jenny-card-title">호텔 최저가</span><span class="jenny-card-source">(베트남)</span></div>';
-        $output .= '<div class="jenny-card-chips"><div class="jenny-metric"><span style="font-size:14px;color:#374151;font-weight:600;line-height:1.5;">하노이·호치민·다낭 등<br>주요 호텔 실시간 최저가 비교</span></div></div>';
-        $output .= '<a href="' . esc_url(home_url('/go/hotellook')) . '" class="jenny-fx-cta" rel="sponsored nofollow noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 18px;background:#0d9488;color:#ffffff;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">🏨 호텔 검색하기 →</a>';
+        $output .= '<div class="jenny-info-card jenny-hotel-card"><div class="jenny-card-header"><span class="jenny-card-icon">🏨</span><span class="jenny-card-title">호텔·숙소</span><span class="jenny-card-source">(베트남)</span></div>';
+        $output .= '<div class="jenny-card-chips"><div class="jenny-metric"><span style="font-size:14px;color:#374151;font-weight:600;line-height:1.5;">하노이·호치민·다낭 등<br>호텔·아파트·게스트하우스 최저가 비교</span></div></div>';
+        $output .= '<a href="' . esc_url(home_url('/go/hotellook')) . '" class="jenny-fx-cta" rel="sponsored nofollow noopener" target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:10px 18px;background:#0d9488;color:#ffffff;font-weight:700;font-size:16px;border-radius:18px;text-decoration:none;line-height:1;">🏨 숙소 검색하기 →</a>';
         $output .= '</div>';
     }
 
