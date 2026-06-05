@@ -1,0 +1,11 @@
+#!/bin/sh
+# 커밋마다 "수정작업현황.md" 맨 아래에 한 줄 자동 기록 (날짜 · 작업PC · 커밋)
+root=$(git rev-parse --show-toplevel)
+log="$root/수정작업현황.md"
+[ -f "$log" ] || exit 0
+machine=$(git config changelog.machine 2>/dev/null)
+[ -z "$machine" ] && machine=$(hostname)
+hash=$(git rev-parse --short HEAD)
+subj=$(git log -1 --pretty=%s)
+when=$(date "+%Y-%m-%d %H:%M")
+printf -- '- %s | %s | %s %s\n' "$when" "$machine" "$hash" "$subj" >> "$log"
