@@ -151,8 +151,9 @@ export default function SubscribersPage() {
 
     const handleAddSubscriber = async (e) => {
         e.preventDefault();
-        if (!newEmail || !newEmail.includes('@')) {
-            alert('유효한 이메일 주소를 입력해주세요.');
+        const email = (newEmail || '').trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+            alert(`이메일 주소 형식이 올바르지 않습니다.\n예: name@company.com\n입력값: ${email}`);
             return;
         }
         setAdding(true);
@@ -160,7 +161,7 @@ export default function SubscribersPage() {
             const res = await fetch('/api/admin/subscribers', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: newEmail }),
+                body: JSON.stringify({ email }),
             });
             const data = await res.json();
             if (res.ok) { setNewEmail(''); fetchSubscribers(page, search, statusFilter); alert(data.message); }
@@ -275,14 +276,17 @@ export default function SubscribersPage() {
             email: subscriber.email || '',
             name: subscriber.name || '',
             company: subscriber.company || '',
-            phone: subscriber.phone || ''
+            phone: subscriber.phone || '',
+            category: subscriber.category || 'general'
         });
     };
 
     const handleEditSubmit = async (e) => {
         e.preventDefault();
-        if (!editForm.email || !editForm.email.includes('@')) {
-            alert('유효한 이메일 주소를 입력해주세요.');
+        const email = (editForm.email || '').trim();
+        // 친절한 한글 검증 (브라우저 기본 영어 에러 대신)
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+            alert(`이메일 주소 형식이 올바르지 않습니다.\n예: name@company.com\n입력값: ${email}`);
             return;
         }
 
@@ -292,7 +296,8 @@ export default function SubscribersPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     id: editingSubscriber,
-                    ...editForm
+                    ...editForm,
+                    email
                 }),
             });
             const data = await res.json();
@@ -358,7 +363,7 @@ export default function SubscribersPage() {
             <div className="bg-white p-7 rounded-xl shadow-sm border-2 border-gray-300">
                 <h2 className="text-xl font-bold mb-4 text-gray-900">새 구독자 직접 추가</h2>
                 <form onSubmit={handleAddSubscriber} className="flex gap-4 max-w-md">
-                    <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)}
+                    <input type="text" inputMode="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)}
                         placeholder="이메일 주소 입력" required
                         className="flex-1 px-4 py-3 text-base font-medium border-2 border-gray-400 rounded-lg focus:ring-blue-500 focus:border-blue-600 text-gray-900" />
                     <button type="submit" disabled={adding}
@@ -505,8 +510,17 @@ export default function SubscribersPage() {
                         <form onSubmit={handleEditSubmit} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">이메일 *</label>
-                                <input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} required
+                                <input type="text" inputMode="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} required
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">분류</label>
+                                <select value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white">
+                                    <option value="customer">🏷️ 고객 (홍보카드 발송 대상)</option>
+                                    <option value="directory">🏢 기업디렉토리</option>
+                                    <option value="general">👤 일반</option>
+                                </select>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">회사명</label>

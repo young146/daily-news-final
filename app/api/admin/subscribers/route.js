@@ -186,21 +186,31 @@ export async function PUT(req) {
 
         // Single toggle or Edit update
         if (body.id) {
-            const { id, isActive, email, name, company, phone } = body;
+            const { id, isActive, email, name, company, phone, category } = body;
             const updateData = {};
 
             if (isActive !== undefined) updateData.isActive = isActive;
             if (email !== undefined) {
+                const cleanEmail = String(email).trim();
+                // 서버측 이메일 형식 검증 (깨진 주소 재유입 방지)
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleanEmail)) {
+                    return NextResponse.json({ message: `이메일 형식이 올바르지 않습니다: ${cleanEmail}` }, { status: 400 });
+                }
                 // Check if the new email already exists for another subscriber
-                const existing = await prisma.subscriber.findUnique({ where: { email } });
+                const existing = await prisma.subscriber.findUnique({ where: { email: cleanEmail } });
                 if (existing && existing.id !== id) {
                     return NextResponse.json({ message: "이미 사용 중인 이메일입니다." }, { status: 400 });
                 }
-                updateData.email = email;
+                updateData.email = cleanEmail;
             }
             if (name !== undefined) updateData.name = name;
             if (company !== undefined) updateData.company = company;
             if (phone !== undefined) updateData.phone = phone;
+            // 분류 수동 변경 — isCustomer 도 동기화 (customer=true, 그 외 false)
+            if (category !== undefined && ['customer', 'general', 'directory'].includes(category)) {
+                updateData.category = category;
+                updateData.isCustomer = category === 'customer';
+            }
 
             const updated = await prisma.subscriber.update({
                 where: { id },
