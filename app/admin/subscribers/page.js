@@ -55,12 +55,14 @@ export default function SubscribersPage() {
             const data = await res.json();
             const allSubscribers = data.subscribers;
 
-            const headers = ['회사명', '이메일', '이름', '전화번호', '상태', '구독 일시'];
+            const catLabel = (c) => c === 'customer' ? '고객' : c === 'directory' ? '기업디렉토리' : '일반';
+            const headers = ['회사명', '이메일', '이름', '전화번호', '분류', '상태', '구독 일시'];
             const rows = allSubscribers.map(s => [
                 (s.company || '').replace(/,/g, ' '),
                 (s.email || '').replace(/,/g, ' '),
                 (s.name || '').replace(/,/g, ' '),
                 (s.phone || '').replace(/,/g, ' '),
+                catLabel(s.category),
                 s.isActive ? '활성' : '취소됨',
                 new Date(s.createdAt).toLocaleString('ko-KR')
             ]);
@@ -377,8 +379,9 @@ export default function SubscribersPage() {
                         <option value="all">모든 상태</option>
                         <option value="active">활성 (ON)</option>
                         <option value="inactive">비활성 (OFF)</option>
-                        <option value="customer">🏷️ CRM 고객만</option>
-                        <option value="general">일반 구독자만</option>
+                        <option value="customer">🏷️ 고객</option>
+                        <option value="directory">🏢 기업디렉토리</option>
+                        <option value="general">👤 일반</option>
                     </select>
                     <input
                         type="text" value={searchInput}
@@ -427,9 +430,14 @@ export default function SubscribersPage() {
                                         <td className="px-4 py-4 whitespace-nowrap text-gray-800 text-base font-medium">{s.company || '-'}</td>
                                         <td className="px-4 py-4 whitespace-nowrap font-bold text-gray-900 text-base">
                                             <span>{s.email}</span>
-                                            {s.isCustomer && (
-                                                <span className="ml-2 inline-flex items-center px-2 py-1 rounded text-sm font-bold bg-amber-100 text-amber-900 border-2 border-amber-300" title="CRM 거래 고객 — 자체 홍보 카드 발송 대상">
+                                            {s.category === 'customer' && (
+                                                <span className="ml-2 inline-flex items-center px-2 py-1 rounded text-sm font-bold bg-amber-100 text-amber-900 border-2 border-amber-300" title="고객 (CRM 시트 ∪ 광고주) — 자체 홍보 카드 발송 대상">
                                                     고객
+                                                </span>
+                                            )}
+                                            {s.category === 'directory' && (
+                                                <span className="ml-2 inline-flex items-center px-2 py-1 rounded text-sm font-bold bg-blue-100 text-blue-900 border-2 border-blue-300" title="기업 디렉토리 (chaovietnam.co.kr 등록 회사)">
+                                                    기업디렉토리
                                                 </span>
                                             )}
                                         </td>

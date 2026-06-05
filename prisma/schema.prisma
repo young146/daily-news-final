@@ -76,9 +76,13 @@ model Subscriber {
   isActive  Boolean  @default(true)
   // CRM 거래 고객(광고주) 여부. 데일리 뉴스는 전체 발송, 홍보 카드는 isCustomer=true 만 발송.
   isCustomer Boolean @default(false)
+  // 분류: customer(고객=CRM시트∪광고주) / directory(기업디렉토리, WP) / general(일반).
+  // 우선순위 customer > directory > general. isCustomer=true 면 category=customer 로 동기화.
+  category  String   @default("general")
   createdAt DateTime @default(now())
 
   @@index([isCustomer])
+  @@index([category])
 }
 
 model PromoCard {

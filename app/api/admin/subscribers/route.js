@@ -19,8 +19,10 @@ export async function GET(req) {
         const where = { ...baseWhere };
         if (status === 'active') where.isActive = true;
         if (status === 'inactive') where.isActive = false;
-        if (status === 'customer') where.isCustomer = true;
-        if (status === 'general') where.isCustomer = false;
+        // 분류 필터 (고객/일반/기업디렉토리) — category 기준
+        if (status === 'customer') where.category = 'customer';
+        if (status === 'general') where.category = 'general';
+        if (status === 'directory') where.category = 'directory';
 
         const [subscribers, total] = await Promise.all([
             prisma.subscriber.findMany({
@@ -69,13 +71,15 @@ export async function POST(req) {
                                 name: name || existing.name,
                                 phone: phone || existing.phone,
                                 isCustomer: nextIsCustomer,
+                                // 고객이 되면 category=customer 로 승격(기존 directory/general 덮음)
+                                ...(nextIsCustomer ? { category: 'customer' } : {}),
                             }
                         });
                         if (justPromoted) promotedToCustomer++;
                         else updated++;
                     } else {
                         await prisma.subscriber.create({
-                            data: { email, company, name, phone, isActive: true, isCustomer }
+                            data: { email, company, name, phone, isActive: true, isCustomer, category: isCustomer ? 'customer' : 'general' }
                         });
                         added++;
                     }

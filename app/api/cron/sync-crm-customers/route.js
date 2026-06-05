@@ -95,6 +95,7 @@ export async function GET() {
                         data: {
                             isActive: true,
                             isCustomer: true, // 강제 승격
+                            category: 'customer', // 분류도 고객으로
                             company: e.customer || existing.company,
                             name: e.contact || existing.name,
                             phone: e.phone || existing.phone,
@@ -110,6 +111,7 @@ export async function GET() {
                             phone: e.phone || null,
                             isActive: true,
                             isCustomer: true,
+                            category: 'customer',
                         },
                     });
                     added++;
