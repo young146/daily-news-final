@@ -74,3 +74,6 @@ __pycache__/
 # Claude 스케줄러 락파일 (로컬 전용)
 .claude/scheduled_tasks.lock
 
+
+# 임시 작업 산출물 (고객 이메일 등 PII 포함 — 커밋 금지)
+.tmp/
