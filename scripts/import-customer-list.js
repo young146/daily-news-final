@@ -1,4 +1,5 @@
 // 고객 통합 리스트를 구독자 DB와 동기화 (라이브 DB 기준)
+//  ⓪ bounced-list.txt 대조 — 과거 바운스/삭제 이메일은 후보에서 제외 (active 부활 방지)
 //  ① 신규 이메일 INSERT (광고주→isCustomer=true, 개인회원→false)
 //  ② 이미 존재하지만 광고주인데 isCustomer=false인 항목 → true로 UPGRADE
 // isActive(활성/비활성)는 절대 건드리지 않음 — 바운스/수신거부 보존.
@@ -72,6 +73,18 @@ async function main() {
     });
   }
   console.log(`  리스트: ${cand.size}건 (무효 ${invalid} / 중복 ${dup} 제외)`);
+
+  // 바운스 명단 대조 — 과거 바운스/삭제된 이메일이 active로 부활하는 것 방지
+  let bounced = new Set();
+  const blPath = path.join(__dirname, '..', 'bounced-list.txt');
+  if (fs.existsSync(blPath)) {
+    bounced = new Set(fs.readFileSync(blPath, 'utf-8').split(/\r?\n/).map(s => s.trim().toLowerCase()).filter(Boolean));
+  }
+  let skippedBounce = 0;
+  for (const email of [...cand.keys()]) {
+    if (bounced.has(email)) { cand.delete(email); skippedBounce++; }
+  }
+  console.log(`  바운스 대조(bounced-list.txt ${bounced.size}건): ${skippedBounce}건 제외 → 남은 후보 ${cand.size}`);
 
   const emails = [...cand.keys()];
   const db = await prisma.subscriber.findMany({
