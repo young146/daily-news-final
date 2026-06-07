@@ -3873,6 +3873,9 @@ function jenny_get_market_rest($request)
         'gold'     => 'https://kr.investing.com/commodities/gold',
         'oil'      => 'https://kr.investing.com/commodities/crude-oil',
     );
+    if (!empty($aff['trip_flights'])) {
+        $links['flights'] = home_url('/go/trip_flights');
+    }
     if (!empty($aff['booking'])) {
         $links['hotel'] = home_url('/go/booking');
     }
