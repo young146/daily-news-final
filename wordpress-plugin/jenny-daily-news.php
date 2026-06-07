@@ -1349,8 +1349,17 @@ function jenny_daily_news_shortcode($atts)
             $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">🇻🇳</span><span class="jenny-fx-label">하노이</span><span class="jenny-fx-value">' . esc_html($airfare['han']['price']) . '원~</span></div>' . $han_graph . '</div>';
         }
         $output .= '</div>'; // close jenny-card-chips
+        // 노선별 "최저가 검색" 버튼 — 누르면 인천→해당 도시 검색결과가 바로 뜬다(메인 홈 X).
+        // 가격이 잡힌 노선만 버튼 노출. /go/aviasales_sgn|han 로 클릭 집계.
         if (!empty($jenny_aff['aviasales'])) {
-            $output .= '<a href="' . esc_url(home_url('/go/aviasales')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#1a73e8;">항공권 검색하기 →</a>';
+            $output .= '<div class="jenny-card-btns">';
+            if (!empty($airfare['sgn']['price'])) {
+                $output .= '<a href="' . esc_url(home_url('/go/aviasales_sgn')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#1a73e8;">✈️ 호치민 최저가 검색 →</a>';
+            }
+            if (!empty($airfare['han']['price'])) {
+                $output .= '<a href="' . esc_url(home_url('/go/aviasales_han')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#1a73e8;">✈️ 하노이 최저가 검색 →</a>';
+            }
+            $output .= '</div>';
         }
         $output .= '</div>'; // close airfare-card
     }
@@ -1606,12 +1615,25 @@ add_action('init', 'jenny_register_meta_fields');
 // ============================================================================
 function jenny_affiliate_destinations()
 {
+    // Aviasales 노선별 딥링크: 출발 인천(ICN) 고정, 날짜는 자동(2주 뒤 출발·3주 뒤 귀국)이라 항상 유효.
+    // 누르면 Aviasales 메인이 아니라 "인천→해당도시 최저가 검색결과"가 바로 뜬다. marker=733771 으로 예약 집계.
+    $av_depart = date('Y-m-d', strtotime('+14 days'));
+    $av_return = date('Y-m-d', strtotime('+21 days'));
+    $av_search = function ($dest) use ($av_depart, $av_return) {
+        return 'https://search.aviasales.com/flights/?origin_iata=ICN&destination_iata=' . $dest
+            . '&depart_date=' . $av_depart . '&return_date=' . $av_return
+            . '&adults=1&children=0&infants=0&trip_class=0&locale=ko&one_way=false&marker=733771';
+    };
+
     return array(
         // Wise 송금 제휴 (Partnerize). camref 추적 링크 — /go/wise 로 클릭 집계 후 리다이렉트.
         'wise' => 'https://wise.prf.hn/click/camref:1011l5JK4m',
 
         // Aviasales 항공권 제휴 (Travelpayouts). marker=733771 으로 클릭/예약이 집계됨.
         'aviasales' => 'https://www.aviasales.com/?marker=733771',
+        // 노선별 딥링크 — 누르면 인천→해당 도시 최저가 검색결과가 바로 뜸 (/go/aviasales_sgn|han 로 집계).
+        'aviasales_sgn' => $av_search('SGN'),
+        'aviasales_han' => $av_search('HAN'),
 
         // Booking.com 호텔·숙소 제휴 (Travelpayouts). 추적 링크 — /go/booking 로 집계 후 리다이렉트.
         'booking' => 'https://booking.tpk.ro/jJzJ2A1i',
