@@ -1373,10 +1373,11 @@ function jenny_daily_news_shortcode($atts)
         $output .= '</div>';
     }
 
-    // 8) 여행 준비 = eSIM(Airalo) + 투어·입장권(Klook) — 한 박스
+    // 8) 여행 준비 = eSIM(Airalo) + 투어·입장권(Klook) + 맛집·다이닝(Klook) — 한 박스
     $have_esim = !empty($jenny_aff['airalo']);
     $have_klook = !empty($jenny_aff['klook']);
-    if ($have_esim || $have_klook) {
+    $have_dining = !empty($jenny_aff['klook_dining']);
+    if ($have_esim || $have_klook || $have_dining) {
         $output .= '<div class="jenny-info-card jenny-travel-card"><span class="jenny-card-watermark">🧳</span><div class="jenny-card-header"><span class="jenny-card-icon">🧳</span><span class="jenny-card-title">여행 준비</span></div>';
         $output .= '<div class="jenny-travel-list">';
         if ($have_esim) {
@@ -1384,6 +1385,9 @@ function jenny_daily_news_shortcode($atts)
         }
         if ($have_klook) {
             $output .= '<div class="jenny-travel-item"><div class="jenny-travel-info">' . $brand_icon('klook.com') . '<span><b>Klook 투어·입장권</b><br>바나힐·하롱베이·공항픽업</span></div><a href="' . esc_url(home_url('/go/klook')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn jenny-travel-btn" style="background:#ff6b2c;">투어 예약 →</a></div>';
+        }
+        if ($have_dining) {
+            $output .= '<div class="jenny-travel-item"><div class="jenny-travel-info"><span class="jenny-card-icon" style="font-size:22px;">🍜</span><span><b>맛집·다이닝 할인</b><br>인기 식당 예약·할인권 (Klook)</span></div><a href="' . esc_url(home_url('/go/klook_dining')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn jenny-travel-btn" style="background:#e8590c;">맛집 할인 →</a></div>';
         }
         $output .= '</div></div>'; // close travel-list, travel-card
     }
@@ -1635,6 +1639,10 @@ function jenny_affiliate_destinations()
 
         // Klook 투어·입장권 제휴 (Travelpayouts). 추적 링크 — /go/klook 로 클릭 집계 후 리다이렉트.
         'klook' => 'https://klook.tpk.ro/Yb8nDzwF',
+
+        // Klook 맛집·다이닝 할인 (같은 Klook 제휴, 다이닝 검색 딥링크). 누르면 베트남 식당 할인권 목록.
+        // affiliate.klook.com/redirect 로 aff_pid=733771·utm_campaign=13694 유지 → 수수료 집계. /go/klook_dining.
+        'klook_dining' => 'https://affiliate.klook.com/redirect?aid=api%7C13694%7Ce4bfd7bb108645829889e4211-733771%7Cpid%7C733771&k_site=https%3A%2F%2Fwww.klook.com%2Fko%2Fsearch%2F%3Fquery%3DVietnam%20dining',
     );
 }
 
@@ -3887,6 +3895,9 @@ function jenny_get_market_rest($request)
     }
     if (!empty($aff['klook'])) {
         $links['tour'] = home_url('/go/klook');
+    }
+    if (!empty($aff['klook_dining'])) {
+        $links['dining'] = home_url('/go/klook_dining');
     }
     if (!empty($aff['wise'])) {
         $links['send'] = home_url('/go/wise');
