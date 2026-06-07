@@ -1358,6 +1358,10 @@ function jenny_daily_news_shortcode($atts)
             if (!empty($airfare['sgn']['price'])) {
                 $output .= '<a href="' . esc_url(home_url('/go/aviasales_sgn')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#1a73e8;">✈️ 호치민 검색·예약 →</a>';
             }
+            // Trip.com — OTA(한 사이트에서 검색~결제 완결). 발급 링크가 있을 때만 노출.
+            if (!empty($jenny_aff['trip'])) {
+                $output .= '<a href="' . esc_url(home_url('/go/trip')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#287dfa;">' . $brand_icon('trip.com') . ' Trip.com 바로 예약 →</a>';
+            }
             $output .= '</div>';
         }
         $output .= '</div>'; // close airfare-card
@@ -1633,6 +1637,9 @@ function jenny_affiliate_destinations()
         // 노선별 딥링크 — 누르면 인천→해당 도시 최저가 검색결과가 바로 뜸 (/go/aviasales_sgn|han 로 집계).
         'aviasales_sgn' => $av_search('SGN'),
         'aviasales_han' => $av_search('HAN'),
+
+        // Trip.com 항공 제휴 (Travelpayouts). OTA라 검색~결제를 한 사이트에서 완결 — /go/trip 로 집계.
+        'trip' => 'https://trip.tpk.ro/pA9hcyJ8',
 
         // Booking.com 호텔·숙소 제휴 (Travelpayouts). 추적 링크 — /go/booking 로 집계 후 리다이렉트.
         'booking' => 'https://booking.tpk.ro/jJzJ2A1i',
