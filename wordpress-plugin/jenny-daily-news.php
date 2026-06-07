@@ -1336,28 +1336,27 @@ function jenny_daily_news_shortcode($atts)
 
     // ========================= 커머스 카드 (그다음) =========================
 
-    // 6) 항공권 (Aviasales)
+    // 6) 항공권 (Aviasales) — 그래프 제거, 노선·최저가 리스트 + "검색·예약" CTA
     $airfare = jenny_get_airfare_data();
     if (!empty($airfare['sgn']['price']) || !empty($airfare['han']['price'])) {
-        $output .= '<div class="jenny-info-card jenny-airfare-card"><div class="jenny-card-header"><span class="jenny-card-icon">' . $brand_icon('aviasales.com') . '</span><span class="jenny-card-title">항공권 최저가</span><span class="jenny-card-source">(인천 출발)</span></div><div class="jenny-card-chips">';
-        if (!empty($airfare['sgn']['price'])) {
-            $sgn_graph = jenny_render_graph_box($airfare['sgn']['spark'], jenny_spark_color($airfare['sgn']['spark']));
-            $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">🇻🇳</span><span class="jenny-fx-label">호치민</span><span class="jenny-fx-value">' . esc_html($airfare['sgn']['price']) . '원~</span></div>' . $sgn_graph . '</div>';
-        }
+        $output .= '<div class="jenny-info-card jenny-airfare-card"><span class="jenny-card-watermark">✈️</span><div class="jenny-card-header"><span class="jenny-card-icon">' . $brand_icon('aviasales.com') . '</span><span class="jenny-card-title">항공권 최저가</span><span class="jenny-card-source">(인천 출발)</span></div>';
+        $output .= '<div class="jenny-fare-list">';
         if (!empty($airfare['han']['price'])) {
-            $han_graph = jenny_render_graph_box($airfare['han']['spark'], jenny_spark_color($airfare['han']['spark']));
-            $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">🇻🇳</span><span class="jenny-fx-label">하노이</span><span class="jenny-fx-value">' . esc_html($airfare['han']['price']) . '원~</span></div>' . $han_graph . '</div>';
+            $output .= '<div class="jenny-fare-row"><span class="jenny-fare-route">인천 → 하노이</span><span class="jenny-fare-price">' . esc_html($airfare['han']['price']) . '원~</span></div>';
         }
-        $output .= '</div>'; // close jenny-card-chips
-        // 노선별 "최저가 검색" 버튼 — 누르면 인천→해당 도시 검색결과가 바로 뜬다(메인 홈 X).
-        // 가격이 잡힌 노선만 버튼 노출. /go/aviasales_sgn|han 로 클릭 집계.
+        if (!empty($airfare['sgn']['price'])) {
+            $output .= '<div class="jenny-fare-row"><span class="jenny-fare-route">인천 → 호치민</span><span class="jenny-fare-price">' . esc_html($airfare['sgn']['price']) . '원~</span></div>';
+        }
+        $output .= '</div>'; // close jenny-fare-list
+        // "최저가 검색·예약" — 누르면 해당 노선 검색결과가 바로 뜨고, 거기서 항공사/예약처로 연결돼 예약 완결.
+        // 가격이 잡힌 노선만 버튼 노출. /go/aviasales_han|sgn 로 노선별 클릭 집계.
         if (!empty($jenny_aff['aviasales'])) {
             $output .= '<div class="jenny-card-btns">';
-            if (!empty($airfare['sgn']['price'])) {
-                $output .= '<a href="' . esc_url(home_url('/go/aviasales_sgn')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#1a73e8;">✈️ 호치민 최저가 검색 →</a>';
-            }
             if (!empty($airfare['han']['price'])) {
-                $output .= '<a href="' . esc_url(home_url('/go/aviasales_han')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#1a73e8;">✈️ 하노이 최저가 검색 →</a>';
+                $output .= '<a href="' . esc_url(home_url('/go/aviasales_han')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#1a73e8;">✈️ 하노이 검색·예약 →</a>';
+            }
+            if (!empty($airfare['sgn']['price'])) {
+                $output .= '<a href="' . esc_url(home_url('/go/aviasales_sgn')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#1a73e8;">✈️ 호치민 검색·예약 →</a>';
             }
             $output .= '</div>';
         }
@@ -2179,6 +2178,12 @@ function jenny_get_styles()
         .jenny-info-card > .jenny-card-btn { margin-top: auto; }
         .jenny-card-btns { margin-top: auto; display: flex; flex-wrap: wrap; gap: 8px; }
         .jenny-card-btns .jenny-card-btn { margin-top: 0; }
+        /* 항공권 카드: 그래프 없이 노선·최저가 리스트 */
+        .jenny-fare-list { display: flex; flex-direction: column; margin: 2px 0 14px; }
+        .jenny-fare-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 2px; border-bottom: 1px dashed #e5e7eb; }
+        .jenny-fare-row:last-child { border-bottom: none; }
+        .jenny-fare-route { font-size: 16px; font-weight: 600; color: #374151; }
+        .jenny-fare-price { font-size: 22px; font-weight: 800; color: #1a73e8; }
         /* 여행 준비(eSIM+투어) 결합 카드 */
         .jenny-travel-list { display: flex; flex-direction: column; gap: 18px; margin-top: 6px; }
         .jenny-travel-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -2198,7 +2203,8 @@ function jenny_get_styles()
             user-select: none;
         }
         .jenny-hotel-card > :not(.jenny-card-watermark),
-        .jenny-travel-card > :not(.jenny-card-watermark) {
+        .jenny-travel-card > :not(.jenny-card-watermark),
+        .jenny-airfare-card > :not(.jenny-card-watermark) {
             position: relative;
             z-index: 1;
         }
