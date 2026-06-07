@@ -1355,11 +1355,18 @@ function jenny_daily_news_shortcode($atts)
         $output .= '</div>'; // close airfare-card
     }
 
-    // 7) 호텔·숙소 (Booking.com)
-    if (!empty($jenny_aff['booking'])) {
-        $output .= '<div class="jenny-info-card jenny-hotel-card"><span class="jenny-card-watermark">🏨</span><div class="jenny-card-header"><span class="jenny-card-icon">' . $brand_icon('booking.com') . '</span><span class="jenny-card-title">호텔·숙소</span><span class="jenny-card-source">(Booking.com)</span></div>';
+    // 7) 호텔·숙소 (Booking.com · Agoda) — 두 곳 최저가 비교 후 바로 예약
+    if (!empty($jenny_aff['booking']) || !empty($jenny_aff['agoda'])) {
+        $output .= '<div class="jenny-info-card jenny-hotel-card"><span class="jenny-card-watermark">🏨</span><div class="jenny-card-header"><span class="jenny-card-icon">🏨</span><span class="jenny-card-title">호텔·숙소</span><span class="jenny-card-source">(최저가 비교)</span></div>';
         $output .= '<div class="jenny-card-chips"><div class="jenny-metric"><span style="font-size:16px;color:#1f2937;font-weight:600;line-height:1.55;">하노이·호치민·다낭 등<br>호텔·아파트 최저가 비교 후 <b style="color:#003580;">바로 예약</b></span></div></div>';
-        $output .= '<a href="' . esc_url(home_url('/go/booking')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#003580;">숙소 예약하기 →</a>';
+        $output .= '<div class="jenny-card-btns">';
+        if (!empty($jenny_aff['booking'])) {
+            $output .= '<a href="' . esc_url(home_url('/go/booking')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#003580;">' . $brand_icon('booking.com') . ' Booking 예약 →</a>';
+        }
+        if (!empty($jenny_aff['agoda'])) {
+            $output .= '<a href="' . esc_url(home_url('/go/agoda')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#f5455c;">' . $brand_icon('agoda.com') . ' Agoda 예약 →</a>';
+        }
+        $output .= '</div>';
         $output .= '</div>';
     }
 
@@ -1608,6 +1615,10 @@ function jenny_affiliate_destinations()
 
         // Booking.com 호텔·숙소 제휴 (Travelpayouts). 추적 링크 — /go/booking 로 집계 후 리다이렉트.
         'booking' => 'https://booking.tpk.ro/jJzJ2A1i',
+
+        // Agoda 호텔·숙소 제휴 (Travelpayouts). 추적 링크 — /go/agoda 로 집계 후 리다이렉트.
+        // Travelpayouts 에서 발급한 Agoda 딥링크(예: https://agoda.tpk.ro/XXXXXXXX)를 붙여넣으면 버튼이 자동 노출됨.
+        'agoda' => 'https://agoda.tpk.ro/O9ASEMAa',
 
         // Airalo eSIM 제휴 (Travelpayouts). 추적 링크 — /go/airalo 로 클릭 집계 후 리다이렉트.
         'airalo' => 'https://airalo.tpk.ro/3j311Yp9',
@@ -3847,6 +3858,9 @@ function jenny_get_market_rest($request)
     );
     if (!empty($aff['booking'])) {
         $links['hotel'] = home_url('/go/booking');
+    }
+    if (!empty($aff['agoda'])) {
+        $links['hotel_agoda'] = home_url('/go/agoda');
     }
     if (!empty($aff['airalo'])) {
         $links['esim'] = home_url('/go/airalo');
