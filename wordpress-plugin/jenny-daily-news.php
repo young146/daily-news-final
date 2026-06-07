@@ -1348,16 +1348,13 @@ function jenny_daily_news_shortcode($atts)
             $output .= '<div class="jenny-fare-row"><span class="jenny-fare-route">인천 → 호치민</span><span class="jenny-fare-price">' . esc_html($airfare['sgn']['price']) . '원~</span></div>';
         }
         $output .= '</div>'; // close jenny-fare-list
-        // 노선별 "예약" 버튼 = Trip.com 딥링크. OTA라 이 버튼 하나로 검색→결제까지 한 곳에서 끝(원스톱).
-        // 가격이 잡힌 노선만 노출. /go/trip_han|sgn 로 노선별 클릭 집계.
-        $output .= '<div class="jenny-card-btns">';
-        if (!empty($airfare['han']['price']) && !empty($jenny_aff['trip_han'])) {
-            $output .= '<a href="' . esc_url(home_url('/go/trip_han')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#287dfa;">' . $brand_icon('trip.com') . ' 하노이 예약 →</a>';
+        // 단일 CTA = Trip.com 항공권 검색·예약(출발·도착·날짜 자유 선택). 위 가격은 인기 노선 "예시"일 뿐.
+        // 버튼을 노선별로 두면 "그 노선만 되는 것"처럼 오해되므로 하나로 통합. /go/trip_flights 로 집계.
+        if (!empty($jenny_aff['trip_flights'])) {
+            $output .= '<div class="jenny-card-btns">';
+            $output .= '<a href="' . esc_url(home_url('/go/trip_flights')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#287dfa;">' . $brand_icon('trip.com') . ' 항공권 검색 및 예약 →</a>';
+            $output .= '</div>';
         }
-        if (!empty($airfare['sgn']['price']) && !empty($jenny_aff['trip_sgn'])) {
-            $output .= '<a href="' . esc_url(home_url('/go/trip_sgn')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#287dfa;">' . $brand_icon('trip.com') . ' 호치민 예약 →</a>';
-        }
-        $output .= '</div>';
         $output .= '</div>'; // close airfare-card
     }
 
@@ -1612,18 +1609,8 @@ add_action('init', 'jenny_register_meta_fields');
 // ============================================================================
 function jenny_affiliate_destinations()
 {
-    // Trip.com 노선별 딥링크: 인천(SEL) 출발 고정, 날짜 자동(2주 뒤 출발·3주 뒤 귀국).
-    // Trip.com 은 OTA라 이 링크 하나로 "검색 → 예약 결제"까지 한 사이트에서 끝난다(원스톱).
-    // 제휴 추적: Allianceid/SID/utm_campaign — trip.tpk.ro 단축링크가 실제로 넘기는 값과 동일하게 박는다.
-    $trip_depart = date('Y-m-d', strtotime('+14 days'));
-    $trip_return = date('Y-m-d', strtotime('+21 days'));
-    $trip_search = function ($acity) use ($trip_depart, $trip_return) {
-        return 'https://www.trip.com/flights/showfarefirst?dcity=sel&acity=' . $acity
-            . '&ddate=' . $trip_depart . '&rdate=' . $trip_return
-            . '&triptype=rt&quantity=1&locale=ko-KR&curr=KRW'
-            . '&Allianceid=1094387&SID=2209817&trip_sub1=jenny' . $acity . '-733771&utm_campaign=733771';
-    };
-
+    // Trip.com 항공 — OTA라 한 사이트에서 검색~예약 결제까지 끝난다(원스톱).
+    // 제휴 추적: Allianceid/SID/utm_campaign — trip.tpk.ro 단축링크가 넘기는 값과 동일하게 박는다.
     return array(
         // Wise 송금 제휴 (Partnerize). camref 추적 링크 — /go/wise 로 클릭 집계 후 리다이렉트.
         'wise' => 'https://wise.prf.hn/click/camref:1011l5JK4m',
@@ -1631,9 +1618,8 @@ function jenny_affiliate_destinations()
         // Aviasales 항공 메타서치(최저가 비교) — 현재 버튼 미사용, 향후 비교용으로 보존.
         'aviasales' => 'https://www.aviasales.com/?marker=733771',
 
-        // Trip.com 항공 노선별 딥링크 (OTA, 검색~예약 원스톱). /go/trip_han|sgn 로 노선별 집계.
-        'trip_han' => $trip_search('han'),
-        'trip_sgn' => $trip_search('sgn'),
+        // Trip.com 항공권 검색·예약 (OTA, 출발·도착·날짜 자유 선택). /go/trip_flights 로 집계.
+        'trip_flights' => 'https://www.trip.com/flights/?locale=ko-KR&curr=KRW&Allianceid=1094387&SID=2209817&trip_sub1=jennyflights-733771&utm_campaign=733771',
         // Trip.com 일반(첫 화면) 단축링크 — 필요 시 사용.
         'trip' => 'https://trip.tpk.ro/pA9hcyJ8',
 
@@ -2198,9 +2184,9 @@ function jenny_get_styles()
             position: absolute;
             right: -10px;
             bottom: 26px;
-            font-size: 104px;
+            font-size: 96px;
             line-height: 1;
-            opacity: 0.07;
+            opacity: 0.2;
             pointer-events: none;
             z-index: 0;
             user-select: none;
