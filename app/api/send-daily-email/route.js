@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import { sendNewsletterWithFallback } from '../../../lib/email-service.js';
 import { filterCardsForToday } from '@/lib/promo-card-filters';
+import { getSponsor, emailSubject, emailHeaderHtml } from '@/lib/sponsor';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // Vercel Pro: 최대 5분 (대량 발송용)
@@ -109,8 +110,10 @@ export async function POST(request) {
     const weekday = weekdays[dateObj.getDay()];
     const todayString = `${year}년 ${month}월 ${day}일 (${weekday})`;
 
-    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards);
-    const subject = `[씬짜오베트남] 데일리뉴스 | ${todayString}`;
+    // 명명권(스폰서) 설정 — 비활성(기본)이면 씬짜오 브랜딩 그대로
+    const sponsor = await getSponsor();
+    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards, sponsor);
+    const subject = emailSubject(sponsor, todayString);
 
     // Preview mode: return HTML only, don't send
     if (body.preview === true) {
@@ -140,7 +143,7 @@ export async function POST(request) {
   }
 }
 
-function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = []) {
+function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], sponsor = null) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chaovietnam.co.kr';
   const directUrl = (target) => target || '#';
 
@@ -148,8 +151,7 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
 
   let html = `
     <div style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; max-width: 700px; margin: 0 auto; color: #333; padding: 20px; background-color: #fff;">
-      <h2 style="font-size: 16px; color: #666; margin-bottom: 20px;">씬짜오베트남 데일리뉴스 | ${dateString}</h2>
-      <h1 style="font-size: 24px; color: #d1121d; margin-bottom: 20px;">씬짜오베트남 오늘의 뉴스</h1>
+      ${emailHeaderHtml(sponsor, dateString)}
   `;
 
   if (cardImageUrl) {

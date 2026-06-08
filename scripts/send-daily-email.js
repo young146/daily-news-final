@@ -4,6 +4,7 @@ import { autoLinkHtml } from '@/lib/html-utils';
 import { buildKakaoBroadcastText } from '@/lib/kakao-broadcast';
 import { getFirestore } from '@/lib/firebase-admin';
 import { filterCardsForToday, getVietnamIsoWeekday } from '@/lib/promo-card-filters';
+import { getSponsor, emailSubject, emailHeaderHtml } from '@/lib/sponsor';
 import fs from 'node:fs';
 import path from 'node:path';
 import dotenv from 'dotenv';
@@ -37,7 +38,7 @@ async function fetchRecentJobsAndRealEstate() {
 
 const prisma = new PrismaClient();
 
-function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], appFunnel = null) {
+function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], appFunnel = null, sponsor = null) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chaovietnam.co.kr';
   const trackUrl = (target, type) => {
     if (!target) return '#';
@@ -60,12 +61,7 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
 
   let html = `
     <div style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; max-width: 700px; margin: 0 auto; color: #333; padding: 20px; background-color: #fff;">
-      <h2 style="font-size: 16px; color: #666; margin-bottom: 20px;">
-        씬짜오베트남 데일리뉴스 | ${dateString}
-      </h2>
-      <h1 style="font-size: 24px; color: #d1121d; margin-bottom: 20px;">
-        씬짜오베트남 오늘의 뉴스
-      </h1>
+      ${emailHeaderHtml(sponsor, dateString)}
       ${topBannerHtml}
   `;
 
@@ -282,8 +278,9 @@ export async function sendDailyDigest(isTest = false) {
     const appFunnel = await fetchRecentJobsAndRealEstate();
     console.log(`[이메일] 신규 채용 ${appFunnel.newJobs}건, 신규 부동산 ${appFunnel.newRealEstate}건`);
 
-    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards, appFunnel);
-    const subject = `[씬짜오베트남] 데일리뉴스 | ${todayString}`;
+    const sponsor = await getSponsor();
+    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards, appFunnel, sponsor);
+    const subject = emailSubject(sponsor, todayString);
 
     const recipientEmails = isTest
       ? (process.env.TEST_EMAIL || 'younghan146@gmail.com,info@chaovietnam.co.kr').split(',').map(e => e.trim()).filter(Boolean)

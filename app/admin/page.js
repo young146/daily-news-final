@@ -211,6 +211,12 @@ export default async function AdminPage() {
             📊 통계
           </Link>
           <Link
+            href="/admin/sponsor"
+            className="bg-blue-600 text-white px-5 py-3 rounded-lg hover:bg-blue-700 transition flex items-center gap-2 font-bold text-base shadow-sm"
+          >
+            🏷️ 명명권
+          </Link>
+          <Link
             href="/admin/settings"
             className="bg-gray-700 text-white px-5 py-3 rounded-lg hover:bg-gray-800 transition flex items-center gap-2 font-bold text-base shadow-sm"
           >

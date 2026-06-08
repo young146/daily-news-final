@@ -5,6 +5,7 @@ import {
 } from "@/lib/publisher";
 import { getSeoulWeather, getExchangeRates } from "@/lib/external-data";
 import { generateCardImageBuffer } from "@/lib/card-generator";
+import { getSponsor, cardImageSponsorOpts } from "@/lib/sponsor";
 import fs from 'fs';
 import path from 'path';
 
@@ -264,6 +265,8 @@ export async function POST(request) {
       const krwRate = rates?.krwVnd?.toLocaleString() ?? "17.8";
 
       console.log("[CardNews API] Generating card image buffer directly using Canvas (WP source)...");
+      // 명명권(스폰서) 설정 — 비활성(기본)이면 씬짜오 텍스트 헤더 그대로
+      const sponsor = await getSponsor();
       try {
         imageBuffer = await generateCardImageBuffer({
           title,
@@ -271,6 +274,7 @@ export async function POST(request) {
           weatherTemp: String(weatherTemp),
           usdRate: String(usdRate),
           krwRate: String(krwRate),
+          ...cardImageSponsorOpts(sponsor),
         });
 
         if (!imageBuffer || imageBuffer.length === 0) {

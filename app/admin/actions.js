@@ -2,10 +2,11 @@
 
 import prisma from "@/lib/prisma";
 import { translateNewsItem, translateText } from "@/lib/translator";
-import { publishToMainSite, deleteWordPressPost } from "@/lib/publisher";
+import { publishToMainSite, deleteWordPressPost, uploadMediaToWordPress } from "@/lib/publisher";
 import { postToSNS } from "@/lib/sns";
 import { sendNewsletterWithFallback } from "@/lib/email-service";
 import { filterCardsForToday } from "@/lib/promo-card-filters";
+import { getSponsor, setSponsor, emailSubject, emailHeaderHtml } from "@/lib/sponsor";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -815,9 +816,12 @@ export async function sendDailyEmailAction(isTest = false, customEmail = null) {
     });
     const promoCards = filterCardsForToday(allPromoCards);
 
+    // 명명권(스폰서) 설정 로드 — 비활성(기본)이면 씬짜오 브랜딩 그대로
+    const sponsor = await getSponsor();
+
     // HTML 생성 (route.js의 로직과 동일)
-    const htmlContent = buildEmailHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards);
-    const subject = `[씬짜오베트남] 데일리뉴스 | ${todayString}`;
+    const htmlContent = buildEmailHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards, sponsor);
+    const subject = emailSubject(sponsor, todayString);
 
     await sendNewsletterWithFallback(targetEmails, subject, htmlContent);
 
@@ -828,10 +832,52 @@ export async function sendDailyEmailAction(isTest = false, customEmail = null) {
   }
 }
 
-function buildEmailHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = []) {
+/**
+ * 명명권(스폰서) 현재 설정 조회 — 관리 페이지 초기 로딩용.
+ */
+export async function getSponsorAction() {
+  try {
+    return { success: true, sponsor: await getSponsor() };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+/**
+ * 명명권(스폰서) 설정 저장 — 관리 페이지에서 호출.
+ * formData: name(텍스트), active('true'/'on'), logoUrl(기존 유지), logo(File 업로드, 선택)
+ */
+export async function saveSponsorAction(formData) {
+  try {
+    const activeRaw = (formData.get("active") || "").toString();
+    const active = activeRaw === "true" || activeRaw === "on" || activeRaw === "1";
+    const name = (formData.get("name") || "").toString().trim();
+    let logoUrl = (formData.get("logoUrl") || "").toString().trim(); // 기존 로고 URL 유지
+
+    // 새 로고 파일이 올라왔으면 워드프레스에 업로드 후 URL 교체
+    const file = formData.get("logo");
+    if (file && typeof file === "object" && typeof file.arrayBuffer === "function" && file.size > 0) {
+      const buf = Buffer.from(await file.arrayBuffer());
+      const contentType = file.type || "image/png";
+      const up = await uploadMediaToWordPress(buf, `sponsor-logo-${Date.now()}`, contentType);
+      if (!up?.url) {
+        return { success: false, error: "로고 업로드에 실패했습니다 (워드프레스). 잠시 후 다시 시도하세요." };
+      }
+      logoUrl = up.url;
+    }
+
+    const saved = await setSponsor({ active, name, logoUrl });
+    revalidatePath("/admin/sponsor");
+    return { success: true, sponsor: saved };
+  } catch (e) {
+    console.error("saveSponsorAction failed:", e);
+    return { success: false, error: e.message };
+  }
+}
+
+function buildEmailHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], sponsor = null) {
   let html = `<div style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; max-width: 700px; margin: 0 auto; color: #333; padding: 20px; background-color: #fff;">
-    <h2 style="font-size: 16px; color: #666; margin-bottom: 20px;">씬짜오베트남 데일리뉴스 | ${dateString}</h2>
-    <h1 style="font-size: 24px; color: #d1121d; margin-bottom: 20px;">씬짜오베트남 오늘의 뉴스</h1>`;
+    ${emailHeaderHtml(sponsor, dateString)}`;
 
   if (cardImageUrl) {
     html += `<div style="margin-bottom: 30px;"><a href="${terminalUrl}" target="_blank" style="text-decoration: none;">

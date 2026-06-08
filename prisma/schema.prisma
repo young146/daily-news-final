@@ -162,3 +162,11 @@ model ClickLog {
   @@index([type])
   @@index([clickedAt])
 }
+
+// 범용 키-값 설정 저장소 (관리 메뉴에서 변경하는 런타임 설정)
+// 현재 용도: key='sponsorConfig' → 명명권(스폰서) 이름/로고/활성여부 JSON
+model Setting {
+  key       String   @id            // 설정 키
+  value     String                  // 설정 값 (JSON 문자열 등)
+  updatedAt DateTime @updatedAt
+}

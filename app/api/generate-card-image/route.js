@@ -1,4 +1,5 @@
 import { generateCardImageBuffer } from "@/lib/card-generator";
+import { getSponsor, cardImageSponsorOpts } from "@/lib/sponsor";
 
 export const runtime = 'nodejs';
 
@@ -34,13 +35,15 @@ export async function GET(request) {
   const useGradient = searchParams.get("useGradient") === "true";
 
   try {
+    const sponsor = await getSponsor();
     const pngBuffer = await generateCardImageBuffer({
       title,
       imageUrl,
       weatherTemp,
       usdRate,
       krwRate,
-      useGradient
+      useGradient,
+      ...cardImageSponsorOpts(sponsor),
     });
 
     console.log("[CardImage API] ✅ Image generated successfully, size:", pngBuffer.length, "bytes");
