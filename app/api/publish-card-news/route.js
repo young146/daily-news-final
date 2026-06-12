@@ -6,6 +6,7 @@ import {
 import { getSeoulWeather, getExchangeRates } from "@/lib/external-data";
 import { generateCardImageBuffer } from "@/lib/card-generator";
 import { getSponsor, cardImageSponsorOpts } from "@/lib/sponsor";
+import sharp from "sharp";
 import fs from 'fs';
 import path from 'path';
 
@@ -182,9 +183,6 @@ export async function POST(request) {
     currentTopNewsTitle = topNews.translatedTitle || topNews.title || "Daily News Card";
     const title = currentTopNewsTitle;
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/122b107d-03ae-4b48-9b30-1372e8e984b7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H4',location:'app/api/publish-card-news/route.js:165',message:'Selected top news before image generation',data:{topNewsId:topNews?.id,hasWordpressImage:!!topNews?.wordpressImageUrl,hasLocalImage:!!topNews?.localImagePath,useGradient:body.useGradient===true},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
 
     // 2. 이미지가 업로드되지 않았으면 서버에서 생성
     let finalImagePath = null;
@@ -289,10 +287,19 @@ export async function POST(request) {
     }
 
     // 4. Publish to WordPress
+    // 카카오톡 링크 미리보기(og:image)는 파일이 500KB를 넘으면 표시하지 않는다.
+    // 스폰서 브랜딩 추가 후 PNG 카드가 520~530KB로 커져 카카오에서만 사진이 안 떴음.
+    // → 업로드 직전 JPEG(q85)로 재인코딩해 ~120KB로 낮춘다. (Zalo/페북엔 영향 없음, 화질 유지)
+    try {
+      const jpegBuffer = await sharp(imageBuffer).jpeg({ quality: 85 }).toBuffer();
+      console.log(
+        `[CardNews API] OG card re-encoded PNG→JPEG: ${imageBuffer.length} → ${jpegBuffer.length} bytes`
+      );
+      imageBuffer = jpegBuffer;
+    } catch (jpgErr) {
+      console.error("[CardNews API] ⚠️ JPEG re-encode failed, uploading original:", jpgErr.message);
+    }
     console.log(`[CardNews API] Publishing to WordPress: ${title}`);
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/122b107d-03ae-4b48-9b30-1372e8e984b7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H8',location:'app/api/publish-card-news/route.js:327',message:'Calling publishCardNewsToWordPress',data:{bufferBytes:imageBuffer?.length||0,dateStr,titleSnippet:title?.slice?.(0,80)||null},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     const result = await publishCardNewsToWordPress(imageBuffer, dateStr, {
       topNewsTitle: title,
       terminalUrl: "https://chaovietnam.co.kr/daily-news-terminal/",
@@ -340,9 +347,6 @@ export async function POST(request) {
     );
   } catch (error) {
     console.error("[CardNews API] Error:", error);
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/122b107d-03ae-4b48-9b30-1372e8e984b7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H12',location:'app/api/publish-card-news/route.js:357',message:'Publish flow caught error',data:{error:error?.message||null},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
 
     // 6. 실패 로그 기록
     await prisma.crawlerLog.create({
