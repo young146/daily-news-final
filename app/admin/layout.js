@@ -1,14 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, FileText, Settings, LogOut, Users, Newspaper, Mail, Megaphone, ClipboardList, Contact, Bell, Building2 } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings, Users, Newspaper, Mail, Megaphone, ClipboardList, Contact, Bell, Building2 } from 'lucide-react';
 
 export default function AdminLayout({ children }) {
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const router = useRouter();
     const pathname = usePathname();
 
     useEffect(() => {
@@ -24,18 +22,6 @@ export default function AdminLayout({ children }) {
             }
         } catch (error) {
             console.error('Failed to fetch user:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleLogout = async () => {
-        try {
-            await fetch('/api/auth/logout', { method: 'POST' });
-            router.push('/admin/login');
-            router.refresh();
-        } catch (error) {
-            console.error('Logout error:', error);
         }
     };
 
@@ -91,21 +77,14 @@ export default function AdminLayout({ children }) {
                     })}
                 </nav>
 
-                <div className="p-4 border-t border-slate-800">
-                    {user && (
-                        <div className="px-4 py-2 mb-2 text-xs text-slate-400">
+                {user && (
+                    <div className="p-4 border-t border-slate-800">
+                        <div className="px-4 py-2 text-xs text-slate-400">
                             <div className="font-medium text-slate-300">{user.name || user.email}</div>
                             <div>{user.role === 'ADMIN' ? '관리자' : '편집자'}</div>
                         </div>
-                    )}
-                    <button
-                        onClick={handleLogout}
-                        className="flex items-center space-x-3 px-4 py-3 w-full rounded-lg text-red-400 hover:bg-slate-800 transition-colors"
-                    >
-                        <LogOut size={20} />
-                        <span>로그아웃</span>
-                    </button>
-                </div>
+                    </div>
+                )}
             </aside>
 
             <main className="flex-grow overflow-auto">
