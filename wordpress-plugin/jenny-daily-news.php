@@ -1280,7 +1280,7 @@ function jenny_daily_news_shortcode($atts)
     $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">🇰🇷</span><span class="jenny-fx-label">100 KRW</span><span class="jenny-fx-value">' . esc_html($exchange['krw_100']) . '₫</span></div>' . $krw_graph . '</div>';
     $output .= '</div>'; // close jenny-card-chips
     $output .= '<div class="jenny-card-btns">';
-    $output .= '<a href="https://finance.naver.com/marketindex/" rel="noopener" target="_blank" class="jenny-card-btn" style="background:#059669;">🔍 환율 검색 →</a>';
+    $output .= '<a href="https://finance.naver.com/marketindex/" rel="noopener" target="_blank" class="jenny-card-btn" style="background:#059669;">🔍 네이버 환율 검색 →</a>';
     if (!empty($jenny_aff['wise'])) {
         $output .= '<a href="' . esc_url(home_url('/go/wise')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#163300;color:#9fe870;">' . $brand_icon('wise.com') . ' 이 환율로 송금 →</a>';
     }
@@ -1635,6 +1635,13 @@ function jenny_affiliate_destinations()
 
         // Klook 투어·입장권 제휴 (Travelpayouts). 추적 링크 — /go/klook 로 클릭 집계 후 리다이렉트.
         'klook' => 'https://klook.tpk.ro/Yb8nDzwF',
+
+        // Investing.com 시세 정보 (제휴 아님, 정보용). 앱에서 kr.investing.com 직링크는
+        // OS가 'Investing.com 앱'으로 가로채 안 열리는 문제가 있어, /go 로 chaovietnam을
+        // 먼저 거치게 해서 앱 가로채기를 우회한다(=브라우저/인앱브라우저에서 정상 오픈).
+        'investing_indices' => 'https://kr.investing.com/indices/major-indices',
+        'investing_gold'    => 'https://kr.investing.com/commodities/gold',
+        'investing_oil'     => 'https://kr.investing.com/commodities/crude-oil',
     );
 }
 
@@ -3866,12 +3873,14 @@ function jenny_get_market_rest($request)
 
     // 소스/제휴 링크 (웹 카드와 동일). 제휴는 /go/{slug} 로 클릭 집계 후 리다이렉트.
     $aff = jenny_affiliate_destinations();
+    // investing.com 직링크는 앱이 'Investing.com 앱'으로 가로채여 안 열리므로 /go 경유로 우회.
+    // (naver/accuweather는 앱 가로채기 없어 직링크 유지)
     $links = array(
         'exchange' => 'https://finance.naver.com/marketindex/',
-        'stock'    => 'https://kr.investing.com/indices/major-indices',
+        'stock'    => home_url('/go/investing_indices'),
         'weather'  => 'https://www.accuweather.com/',
-        'gold'     => 'https://kr.investing.com/commodities/gold',
-        'oil'      => 'https://kr.investing.com/commodities/crude-oil',
+        'gold'     => home_url('/go/investing_gold'),
+        'oil'      => home_url('/go/investing_oil'),
     );
     if (!empty($aff['trip_flights'])) {
         $links['flights'] = home_url('/go/trip_flights');
