@@ -1640,8 +1640,8 @@ function jenny_affiliate_destinations()
         // investing.com 은 인앱에서 자기 앱으로 튕기거나 webview를 막아 안 열려서 교체.
         // /go 경유로 앱 가로채기 회피 + 클릭 집계.
         'mkt_stock' => 'https://m.stock.naver.com/domestic/index/KOSPI/total',
-        'mkt_gold'  => 'https://m.stock.naver.com/marketindex/metals/CMDT_GC',
-        'mkt_oil'   => 'https://m.stock.naver.com/marketindex/energy/OIL_CL',
+        'mkt_gold'  => 'https://m.stock.naver.com/marketindex/home/metals',
+        'mkt_oil'   => 'https://m.stock.naver.com/marketindex/home/energy',
     );
 }
 
