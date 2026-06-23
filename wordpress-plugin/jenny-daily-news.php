@@ -1309,15 +1309,15 @@ function jenny_daily_news_shortcode($atts)
             $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">' . $info['flag'] . '</span><span class="jenny-fx-label">' . $info['label'] . '</span><span class="jenny-fx-value">' . esc_html($s['value']) . ' <span style="color:' . $color . ';font-weight:700;">' . $arrow . ' ' . esc_html($s['pct']) . '%</span></span></div>' . $stock_graph . '</div>';
         }
         $output .= '</div>'; // close jenny-card-chips
-        $output .= '<a href="https://kr.investing.com/indices/major-indices" rel="noopener" target="_blank" class="jenny-card-btn" style="background:#7048e8;">📈 주가 확인 →</a>';
+        $output .= '<a href="' . esc_url(home_url('/go/mkt_stock')) . '" rel="noopener" target="_blank" class="jenny-card-btn" style="background:#7048e8;">📈 주가 확인 →</a>';
         $output .= '</div>'; // close stock-card
     }
 
     // 4) 금시세, 5) 유가 (정보 — 제휴 없음, 소스 페이지로 이동)
     $commodity = jenny_get_commodity_data();
     $commodity_rows = array(
-        'gold' => array('icon' => '🥇', 'title' => '국제 금시세', 'unit' => '$/oz', 'link' => 'https://kr.investing.com/commodities/gold', 'btn' => '🥇 금시세 보기', 'accent' => '#d97706'),
-        'oil'  => array('icon' => '🛢️', 'title' => '국제 유가(WTI)', 'unit' => '$/bbl', 'link' => 'https://kr.investing.com/commodities/crude-oil', 'btn' => '🛢️ 유가 보기', 'accent' => '#0ea5e9'),
+        'gold' => array('icon' => '🥇', 'title' => '국제 금시세', 'unit' => '$/oz', 'link' => home_url('/go/mkt_gold'), 'btn' => '🥇 금시세 보기', 'accent' => '#d97706'),
+        'oil'  => array('icon' => '🛢️', 'title' => '국제 유가(WTI)', 'unit' => '$/bbl', 'link' => home_url('/go/mkt_oil'), 'btn' => '🛢️ 유가 보기', 'accent' => '#0ea5e9'),
     );
     foreach ($commodity_rows as $ck => $ci) {
         if (empty($commodity[$ck])) {
@@ -1636,12 +1636,12 @@ function jenny_affiliate_destinations()
         // Klook 투어·입장권 제휴 (Travelpayouts). 추적 링크 — /go/klook 로 클릭 집계 후 리다이렉트.
         'klook' => 'https://klook.tpk.ro/Yb8nDzwF',
 
-        // Investing.com 시세 정보 (제휴 아님, 정보용). 앱에서 kr.investing.com 직링크는
-        // OS가 'Investing.com 앱'으로 가로채 안 열리는 문제가 있어, /go 로 chaovietnam을
-        // 먼저 거치게 해서 앱 가로채기를 우회한다(=브라우저/인앱브라우저에서 정상 오픈).
-        'investing_indices' => 'https://kr.investing.com/indices/major-indices',
-        'investing_gold'    => 'https://kr.investing.com/commodities/gold',
-        'investing_oil'     => 'https://kr.investing.com/commodities/crude-oil',
+        // 시세 정보 링크 (제휴 아님, 정보용). 앱 인앱 브라우저에서 잘 열리는 네이버 모바일 증권으로.
+        // investing.com 은 인앱에서 자기 앱으로 튕기거나 webview를 막아 안 열려서 교체.
+        // /go 경유로 앱 가로채기 회피 + 클릭 집계.
+        'mkt_stock' => 'https://m.stock.naver.com/domestic/index/KOSPI/total',
+        'mkt_gold'  => 'https://m.stock.naver.com/marketindex/metals/CMDT_GC',
+        'mkt_oil'   => 'https://m.stock.naver.com/marketindex/energy/OIL_CL',
     );
 }
 
@@ -3873,14 +3873,14 @@ function jenny_get_market_rest($request)
 
     // 소스/제휴 링크 (웹 카드와 동일). 제휴는 /go/{slug} 로 클릭 집계 후 리다이렉트.
     $aff = jenny_affiliate_destinations();
-    // investing.com 직링크는 앱이 'Investing.com 앱'으로 가로채여 안 열리므로 /go 경유로 우회.
-    // (naver/accuweather는 앱 가로채기 없어 직링크 유지)
+    // 주가/금/유가는 네이버 모바일 증권으로(investing.com은 앱에서 안 열려 교체).
+    // /go 경유로 앱 가로채기 회피 + 클릭 집계.
     $links = array(
         'exchange' => 'https://finance.naver.com/marketindex/',
-        'stock'    => home_url('/go/investing_indices'),
+        'stock'    => home_url('/go/mkt_stock'),
         'weather'  => 'https://www.accuweather.com/',
-        'gold'     => home_url('/go/investing_gold'),
-        'oil'      => home_url('/go/investing_oil'),
+        'gold'     => home_url('/go/mkt_gold'),
+        'oil'      => home_url('/go/mkt_oil'),
     );
     if (!empty($aff['trip_flights'])) {
         $links['flights'] = home_url('/go/trip_flights');
