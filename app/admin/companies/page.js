@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -89,6 +89,8 @@ function StatsCards({ stats, loading }) {
 const EMPTY_FORM = {
     company: '', director: '', industry_group: '', industry_detail: '',
     area: '', address: '', tel: '', homepage: '', email: '', source: '', source_url: '',
+    description: '', products: '', employees: '', country: '', mobile: '',
+    additional_emails: '', founded_year: '',
 };
 
 function CompanyModal({ mode, initial, onClose, onSaved }) {
@@ -179,6 +181,28 @@ function CompanyModal({ mode, initial, onClose, onSaved }) {
                             value={form.industry_detail}
                             onChange={(e) => set('industry_detail', e.target.value)}
                             rows={4}
+                            className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg text-sm font-medium text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-600 resize-y"
+                        />
+                    </div>
+
+                    <div className="mt-4">
+                        <label className="block text-sm font-bold text-gray-700 mb-1">회사 소개 (description)</label>
+                        <textarea
+                            value={form.description}
+                            onChange={(e) => set('description', e.target.value)}
+                            rows={5}
+                            placeholder="회사 소개, 설립 배경, 주요 사업 분야 등..."
+                            className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg text-sm font-medium text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-600 resize-y"
+                        />
+                    </div>
+
+                    <div className="mt-4">
+                        <label className="block text-sm font-bold text-gray-700 mb-1">주요 제품/서비스 (products)</label>
+                        <textarea
+                            value={form.products}
+                            onChange={(e) => set('products', e.target.value)}
+                            rows={4}
+                            placeholder="공급 제품 및 서비스 상세..."
                             className="w-full px-3 py-2.5 border-2 border-gray-300 rounded-lg text-sm font-medium text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-600 resize-y"
                         />
                     </div>
@@ -615,7 +639,10 @@ export default function CompaniesPage() {
                             )}
                             {!loading && companies.map((c) => (
                                 <tr key={c.id} className="border-b-2 border-gray-100 hover:bg-gray-50 transition-colors">
-                                    <td className="px-5 py-3 font-bold text-gray-900">{c.company}</td>
+                                    <td className="px-5 py-3 font-bold text-gray-900">
+                                        {c.company}
+                                        {c.enriched_at && <span className="ml-2 inline-block px-1.5 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-700 rounded">보강됨</span>}
+                                    </td>
                                     <td className="px-5 py-3 text-gray-700 font-medium">{c.director || '-'}</td>
                                     <td className="px-5 py-3 text-gray-700 font-medium">
                                         <div>{c.industry_group || '-'}</div>
