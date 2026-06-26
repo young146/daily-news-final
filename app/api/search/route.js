@@ -31,7 +31,10 @@ export async function GET(request) {
   const page = Math.max(1, parseInt(sp.get("page") || "1", 10) || 1);
   const offset = (page - 1) * PAGE_SIZE;
 
-  if (q.length < 1) {
+  // browse 모드: 검색어 없이 필터(type/도시/구군/카테고리)만으로 목록.
+  // 검색어도 필터도 없으면 전체 나열 방지 위해 빈 결과.
+  const browse = q.length < 1;
+  if (browse && !type && !city && !district && !category) {
     return NextResponse.json(
       { results: [], facets: { type: {} }, total: 0, page },
       { headers: CORS }
@@ -40,9 +43,10 @@ export async function GET(request) {
 
   try {
     // q 외 공통 필터 (패싯 계산용 — type 제외)
-    const base = [
-      Prisma.sql`("searchText" ILIKE ${"%" + q + "%"} OR similarity("searchText", ${q}) > 0.1)`,
-    ];
+    const base = [];
+    if (!browse) {
+      base.push(Prisma.sql`("searchText" ILIKE ${"%" + q + "%"} OR similarity("searchText", ${q}) > 0.1)`);
+    }
     if (city) base.push(Prisma.sql`city = ${city}`);
     if (district) base.push(Prisma.sql`district = ${district}`);
     if (category) base.push(Prisma.sql`category = ${category}`);
@@ -53,13 +57,19 @@ export async function GET(request) {
     if (type) full.push(Prisma.sql`type = ${type}`);
     const fullWhere = Prisma.join(full, " AND ");
 
+    // 정렬: 검색은 관련도순, browse 는 우선순위→이름순
+    const orderBy = browse
+      ? Prisma.sql`priority DESC, title ASC`
+      : Prisma.sql`priority DESC, similarity("searchText", ${q}) DESC, "publishedAt" DESC NULLS LAST`;
+    const simSelect = browse ? Prisma.sql`0 AS sim` : Prisma.sql`similarity("searchText", ${q}) AS sim`;
+
     const [results, totalRows, facetRows] = await Promise.all([
       prisma.$queryRaw`
         SELECT id, type, title, summary, url, phone, address, city, district, category, lat, lng, priority,
-               "publishedAt", similarity("searchText", ${q}) AS sim
+               "publishedAt", ${simSelect}
         FROM "SearchIndex"
         WHERE ${fullWhere}
-        ORDER BY priority DESC, sim DESC, "publishedAt" DESC NULLS LAST
+        ORDER BY ${orderBy}
         LIMIT ${PAGE_SIZE} OFFSET ${offset}`,
       prisma.$queryRaw`SELECT count(*)::int AS n FROM "SearchIndex" WHERE ${fullWhere}`,
       prisma.$queryRaw`SELECT type, count(*)::int AS n FROM "SearchIndex" WHERE ${baseWhere} GROUP BY type`,

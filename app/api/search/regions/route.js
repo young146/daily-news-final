@@ -31,7 +31,17 @@ export async function GET() {
     for (const r of pairs) {
       (districtsByCity[r.city] = districtsByCity[r.city] || []).push({ district: r.district, n: r.n });
     }
-    return NextResponse.json({ cities, districtsByCity }, { headers: CORS });
+    // 타입별 카테고리(옐로페이지 둘러보기 칩 등)
+    const cats = await prisma.$queryRawUnsafe(
+      `SELECT type, category, count(*)::int AS n FROM "SearchIndex"
+       WHERE category IS NOT NULL GROUP BY type, category HAVING count(*) >= ${DISTRICT_MIN}
+       ORDER BY n DESC`
+    );
+    const categoriesByType = {};
+    for (const r of cats) {
+      (categoriesByType[r.type] = categoriesByType[r.type] || []).push({ category: r.category, n: r.n });
+    }
+    return NextResponse.json({ cities, districtsByCity, categoriesByType }, { headers: CORS });
   } catch (e) {
     console.error("[/api/search/regions] error:", e);
     return NextResponse.json({ cities: [], districtsByCity: {} }, { status: 500, headers: CORS });
