@@ -31,6 +31,7 @@ async function main() {
   // 전화·주소 컬럼 추가 (기존 테이블에도 멱등 적용)
   await prisma.$executeRawUnsafe(`ALTER TABLE "SearchIndex" ADD COLUMN IF NOT EXISTS "phone" TEXT;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "SearchIndex" ADD COLUMN IF NOT EXISTS "address" TEXT;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "SearchIndex" ADD COLUMN IF NOT EXISTS "imageUrl" TEXT;`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SearchIndex_type_city_idx" ON "SearchIndex" ("type", "city");`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SearchIndex_publishedAt_idx" ON "SearchIndex" ("publishedAt");`);
   await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "SearchIndex_searchText_trgm_idx" ON "SearchIndex" USING gin ("searchText" gin_trgm_ops);`);

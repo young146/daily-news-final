@@ -23,7 +23,7 @@ export async function GET(request) {
       where: { id },
       select: {
         id: true, type: true, title: true, summary: true, url: true, phone: true,
-        address: true, city: true, district: true, category: true, lat: true, lng: true,
+        address: true, imageUrl: true, city: true, district: true, category: true, lat: true, lng: true,
       },
     });
     if (!idx) return NextResponse.json({ error: "not_found" }, { status: 404, headers: CORS });

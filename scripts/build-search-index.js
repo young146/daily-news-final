@@ -36,6 +36,28 @@ const stripHtml = s => String(s || '').replace(/<[^>]+>/g, ' ')
   .replace(/&#?\w+;/g, ' ').replace(/\s+/g, ' ').trim();
 const lc = s => String(s || '').toLowerCase();
 const md5 = s => crypto.createHash('md5').update(s).digest('hex').slice(0, 16);
+// 중복 판정용 키
+const phoneKey = p => { let d = String(p || '').split(/[/,;~]/)[0].replace(/[^0-9]/g, ''); if (d.startsWith('84')) d = d.slice(2); d = d.replace(/^0+/, ''); return d.length >= 8 ? d : ''; };
+const nameKey = s => String(s || '').replace(/\([^)]*\)/g, '').replace(/[\s.,'"·\-_/]/g, '').toLowerCase();
+
+// 이웃업소(프리미엄) — Firestore 클라이언트 SDK로 공개 읽기(서비스계정 불필요)
+async function fetchNeighbor() {
+  const { initializeApp, getApps } = await import('firebase/app');
+  const { getFirestore, collection, getDocs, query, where } = await import('firebase/firestore');
+  const cfg = { apiKey: 'AIzaSyAAtT9gcu8eVQIhQxYEgBTGp2XZ6ghz_NU', authDomain: 'chaovietnam-login.firebaseapp.com',
+    projectId: 'chaovietnam-login', storageBucket: 'chaovietnam-login.firebasestorage.app',
+    messagingSenderId: '249390849714', appId: '1:249390849714:web:34c894772258dad5e973ab' };
+  const app = getApps().length ? getApps()[0] : initializeApp(cfg);
+  const db = getFirestore(app);
+  const snap = await getDocs(query(collection(db, 'NeighborBusinesses'), where('active', '==', true)));
+  const out = [];
+  snap.forEach(d => {
+    const x = d.data();
+    if (x.approvalStatus && x.approvalStatus !== 'approved') return; // 승인된 것만
+    out.push({ id: d.id, ...x });
+  });
+  return out;
+}
 
 async function fetchJson(url, opts = {}, retries = 2) {
   for (let i = 0; i <= retries; i++) {
@@ -90,7 +112,7 @@ function wpToRecord(p, type) {
     id: `${type}:${p.id}`, type,
     title: title || '(제목없음)', summary: summary || null,
     url: p.link || null,                 // 우리 WordPress — 외부링크 OK
-    phone: null, address: null,
+    phone: null, address: null, imageUrl: null,
     searchText: lc(`${title} ${summary}`),
     city: null, district: null, category: null,
     lat: null, lng: null, priority: 0,
@@ -180,6 +202,7 @@ async function buildCompany() {
       url: c.homepage || null,
       phone: c.tel || c.mobile || null,
       address: c.address || null,
+      imageUrl: null,
       searchText: lc(parts),
       city: koCity, district: null,
       category: c.industry_group || null,
@@ -190,42 +213,82 @@ async function buildCompany() {
   return replaceType('company', records);
 }
 
-// ---- 어댑터: 옐로페이지 (마스터 JSON) ----
+// ---- 어댑터: 옐로페이지 (이웃업소 프리미엄 + 매거진/라이프플라자 마스터 JSON 병합) ----
+// 이웃업소(사진·등록) = 최상단 프리미엄. 중복 시 이웃업소가 이기고 일반 옐로는 제외.
 async function buildYellow() {
-  console.log('📒 yellow: 마스터 JSON 읽는 중...');
-  if (!fs.existsSync(YELLOW_JSON)) { console.log('  ⚠️ JSON 없음, 건너뜀:', YELLOW_JSON); return 0; }
-  const list = JSON.parse(fs.readFileSync(YELLOW_JSON, 'utf8'));
-  const seen = new Set();
-  const records = [];
-  for (const y of list) {
-    if (!y.name || !String(y.name).trim()) continue;   // 이름 없는 업소는 검색 무의미 → 제외
-    const phones = Array.isArray(y.phones) ? y.phones : (y.phones ? [y.phones] : []);
-    const key = md5(`${y.name || ''}|${phones[0] || ''}|${y.address || ''}`);
-    const id = `yellow:${key}`;
-    if (seen.has(id)) continue;
-    seen.add(id);
-    const parts = [y.name, y.name_en, y.contact_person, ...phones, y.address,
-      y.category, y.city, y.district, y.extra].filter(Boolean).join(' ');
-    records.push({
-      id, type: 'yellow',
-      title: y.name || '(이름없음)',
-      summary: [y.category, [y.city, y.district].filter(Boolean).join(' '), y.address]
-        .filter(Boolean).join(' · ') || null,
-      // 라이프플라자 등 외부 출처 링크 금지(자해). 항상 내부 상세페이지로.
-      url: null,
-      phone: phones.join(' / ') || null,
-      address: y.address || null,
+  // 1) 이웃업소(프리미엄) — 사진 + 최상단
+  let neighbor = [];
+  try { neighbor = await fetchNeighbor(); } catch (e) { console.log('  ⚠️ 이웃업소 읽기 실패:', e.message); }
+  console.log(`📍 이웃업소(프리미엄): ${neighbor.length}곳`);
+  const nKeys = new Set(); // 중복판정 키(전화/이름)
+  const neighborRecords = neighbor.map(n => {
+    const phone = (n.contacts && n.contacts.phone) || '';
+    const pk = phoneKey(phone); if (pk) nKeys.add('p:' + pk);
+    const nk = nameKey(n.name); if (nk) nKeys.add('n:' + nk);
+    const imgs = Array.isArray(n.images) ? n.images : [];
+    const thumb = imgs[n.thumbnailIndex || 0] || imgs[0] || null;
+    const loc = n.location || {};
+    const parts = [n.name, n.description, n.category, n.city, n.district, n.address, phone, ...(n.tags || [])]
+      .filter(Boolean).join(' ');
+    return {
+      id: `neighbor:${n.id}`, type: 'yellow',
+      title: n.name || '(이름없음)',
+      summary: [n.category, [n.city, n.district].filter(Boolean).join(' '), n.address].filter(Boolean).join(' · ') || null,
+      url: (n.contacts && n.contacts.website) || n.externalLink || null,
+      phone: phone || null,
+      address: n.address || null,
+      imageUrl: thumb,
       searchText: lc(parts),
-      city: normalizeCity(y.city), district: cleanDistrict(y.district),
-      category: y.appCategory || y.category || null,
-      lat: typeof y.lat === 'number' ? y.lat : null,
-      lng: typeof y.lng === 'number' ? y.lng : null,
-      // 자체 검증(own) 우선 노출
-      priority: y.source === 'own' ? 10 : 0,
+      city: normalizeCity(n.city), district: cleanDistrict(n.district),
+      category: n.category || null,
+      lat: typeof loc.lat === 'number' ? loc.lat : null,
+      lng: typeof loc.lng === 'number' ? loc.lng : null,
+      priority: 100 + (Number(n.priority) || 0), // 프리미엄 최상단
       publishedAt: null,
-    });
+    };
+  });
+
+  // 2) 매거진/라이프플라자 옐로 — 이웃업소와 중복되면 제외
+  const yellowRecords = [];
+  if (!fs.existsSync(YELLOW_JSON)) {
+    console.log('  ⚠️ 마스터 JSON 없음:', YELLOW_JSON);
+  } else {
+    const list = JSON.parse(fs.readFileSync(YELLOW_JSON, 'utf8'));
+    const seen = new Set();
+    let skipped = 0;
+    for (const y of list) {
+      if (!y.name || !String(y.name).trim()) continue;
+      const phones = Array.isArray(y.phones) ? y.phones : (y.phones ? [y.phones] : []);
+      // 이웃업소와 중복 → 제외(사진 있는 프리미엄이 이김)
+      const dup = phones.some(p => nKeys.has('p:' + phoneKey(p))) || nKeys.has('n:' + nameKey(y.name));
+      if (dup) { skipped++; continue; }
+      const key = md5(`${y.name || ''}|${phones[0] || ''}|${y.address || ''}`);
+      const id = `yellow:${key}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const parts = [y.name, y.name_en, y.contact_person, ...phones, y.address,
+        y.category, y.city, y.district, y.extra].filter(Boolean).join(' ');
+      yellowRecords.push({
+        id, type: 'yellow',
+        title: y.name || '(이름없음)',
+        summary: [y.category, [y.city, y.district].filter(Boolean).join(' '), y.address].filter(Boolean).join(' · ') || null,
+        url: null,
+        phone: phones.join(' / ') || null,
+        address: y.address || null,
+        imageUrl: null,
+        searchText: lc(parts),
+        city: normalizeCity(y.city), district: cleanDistrict(y.district),
+        category: y.appCategory || y.category || null,
+        lat: typeof y.lat === 'number' ? y.lat : null,
+        lng: typeof y.lng === 'number' ? y.lng : null,
+        priority: y.source === 'own' ? 10 : 0,
+        publishedAt: null,
+      });
+    }
+    if (skipped) console.log(`  ↳ 이웃업소와 중복 ${skipped}건 제외`);
   }
-  return replaceType('yellow', records);
+
+  return replaceType('yellow', [...neighborRecords, ...yellowRecords]);
 }
 
 // ---- 어댑터: 매거진 (WP posts, 데일리뉴스 카테고리 제외 = 매거진·교민 콘텐츠 ~7k) ----

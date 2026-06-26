@@ -67,7 +67,7 @@ export async function GET(request) {
 
     const [results, totalRows, facetRows] = await Promise.all([
       prisma.$queryRaw`
-        SELECT id, type, title, summary, url, phone, address, city, district, category, lat, lng, priority,
+        SELECT id, type, title, summary, url, phone, address, "imageUrl", city, district, category, lat, lng, priority,
                "publishedAt", ${simSelect}
         FROM "SearchIndex"
         WHERE ${fullWhere}
@@ -91,6 +91,7 @@ export async function GET(request) {
           url: r.url,
           phone: r.phone,
           address: r.address,
+          imageUrl: r.imageUrl,
           city: r.city,
           district: r.district,
           category: r.category,

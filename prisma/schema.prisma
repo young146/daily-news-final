@@ -182,6 +182,7 @@ model SearchIndex {
   url         String?                // 외부 링크(뉴스·매거진=우리 WP). 디렉토리는 null → 내부 상세페이지로
   phone       String?                // 디렉토리(옐로·진출기업) 연락처
   address     String?                // 디렉토리 주소
+  imageUrl    String?                // 이웃업소(프리미엄) 대표 사진 — 검색·목록 썸네일
   searchText  String    @db.Text     // 검색 대상(제목+요약+상호+주소 등 소문자 결합)
   city        String?                // 호치민/다낭… (지역 필터·정렬)
   district    String?
