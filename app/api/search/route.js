@@ -50,12 +50,14 @@ export async function GET(request) {
     if (city) base.push(Prisma.sql`city = ${city}`);
     if (district) base.push(Prisma.sql`district = ${district}`);
     if (category) base.push(Prisma.sql`category = ${category}`);
-    const baseWhere = Prisma.join(base, " AND ");
+    // 조건이 하나도 없으면(browse+type만) WHERE 가 비지 않게 TRUE 사용 (join([]) 빈배열 에러 방지)
+    const whereOf = (arr) => (arr.length ? Prisma.join(arr, " AND ") : Prisma.sql`TRUE`);
+    const baseWhere = whereOf(base);
 
     // 결과용 — type 필터 추가
     const full = [...base];
     if (type) full.push(Prisma.sql`type = ${type}`);
-    const fullWhere = Prisma.join(full, " AND ");
+    const fullWhere = whereOf(full);
 
     // 정렬: 검색은 관련도순, browse 는 우선순위→이름순
     const orderBy = browse
