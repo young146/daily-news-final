@@ -170,3 +170,39 @@ model Setting {
   value     String                  // 설정 값 (JSON 문자열 등)
   updatedAt DateTime @updatedAt
 }
+
+// 통합검색 색인 — 4개 분리 소스(뉴스/매거진/진출기업/옐로페이지)를 한 테이블로 모아
+// 교민 통합 허브 검색의 단일 질의 대상. scripts/build-search-index.js 가 야간 동기화로 채움.
+// 한글 부분일치·오타 보정은 searchText 에 pg_trgm GIN 인덱스(raw SQL로 생성)로 처리.
+model SearchIndex {
+  id          String    @id          // "type:nativeId" 예: news:<uuid>, company:123, yellow:<hash>, magazine:<postId>
+  type        String                 // news | magazine | company | yellow
+  title       String
+  summary     String?   @db.Text
+  url         String?                // 외부 링크(뉴스·매거진=우리 WP). 디렉토리는 null → 내부 상세페이지로
+  phone       String?                // 디렉토리(옐로·진출기업) 연락처
+  address     String?                // 디렉토리 주소
+  searchText  String    @db.Text     // 검색 대상(제목+요약+상호+주소 등 소문자 결합)
+  city        String?                // 호치민/다낭… (지역 필터·정렬)
+  district    String?
+  category    String?                // 카테고리 패싯
+  lat         Float?
+  lng         Float?
+  priority    Int       @default(0)  // 정렬 가중치(스폰서/검증 우선)
+  publishedAt DateTime?              // 최신순 정렬
+  updatedAt   DateTime  @updatedAt
+
+  @@index([type, city])
+  @@index([publishedAt])
+}
+
+// 디렉토리(옐로페이지·진출기업) 관리자 수정/기타 — 검색 색인과 같은 DB에 보관.
+// 야간 재색인(replaceType)이 SearchIndex 를 지워도 이 테이블은 그대로 → 수정 보존.
+// 저장 시 overrides 의 핵심 항목을 SearchIndex 행에도 즉시 반영(검색 결과에도 적용).
+model DirectoryEdit {
+  id        String   @id          // = SearchIndex.id (예: company:123, yellow:<hash>)
+  overrides Json?                  // 관리자가 수정한 항목 맵 {title, phone, address, director, ...}
+  extra     String?  @db.Text      // 기타 자유 입력 박스
+  updatedBy String?                // 수정한 관리자 이메일
+  updatedAt DateTime @updatedAt
+}
