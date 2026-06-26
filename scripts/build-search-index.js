@@ -9,56 +9,23 @@
 // ============================================================
 require('dotenv').config();
 const fs = require('fs');
+const path = require('path');
 const { PrismaClient } = require('@prisma/client');
 const core = require('../lib/search-index-core');
 const { reapplyAllEdits } = require('../lib/apply-directory-edits');
 
 const prisma = new PrismaClient();
-const YELLOW_JSON = 'C:/chao-vn-app/chao-vn-app/.tmp/yellowpage/out/yellowpage_master.json';
+// 영구 위치(레포에 커밋·GitHub 백업·서버 배포 포함). 서버 크론도 같은 파일을 import 로 사용.
+const YELLOW_JSON = path.join(__dirname, '..', 'data', 'yellowpage_master.json');
 
-// 옐로페이지 = 이웃업소(프리미엄) + 매거진/라이프플라자 마스터 JSON 병합 (로컬 전용 — JSON 이 로컬 파일)
+// 옐로페이지 = 이웃업소(프리미엄) + 매거진/라이프플라자(JSON) 병합 — 로직은 core 공용
 async function buildYellow() {
-  let neighbor = [];
-  try { neighbor = await core.fetchNeighbor(); } catch (e) { console.log('  ⚠️ 이웃업소 읽기 실패:', e.message); }
-  console.log(`📍 이웃업소(프리미엄): ${neighbor.length}곳`);
-  const nKeys = new Set();
-  const neighborRecords = neighbor.map(n => {
-    const pk = core.phoneKey((n.contacts && n.contacts.phone) || ''); if (pk) nKeys.add('p:' + pk);
-    const nk = core.nameKey(n.name); if (nk) nKeys.add('n:' + nk);
-    return core.neighborToRecord(n);
-  });
-
-  const yellowRecords = [];
-  if (!fs.existsSync(YELLOW_JSON)) {
-    console.log('  ⚠️ 마스터 JSON 없음:', YELLOW_JSON);
-  } else {
-    const list = JSON.parse(fs.readFileSync(YELLOW_JSON, 'utf8'));
-    const seen = new Set();
-    let skipped = 0;
-    for (const y of list) {
-      if (!y.name || !String(y.name).trim()) continue;
-      const phones = Array.isArray(y.phones) ? y.phones : (y.phones ? [y.phones] : []);
-      const dup = phones.some(p => nKeys.has('p:' + core.phoneKey(p))) || nKeys.has('n:' + core.nameKey(y.name));
-      if (dup) { skipped++; continue; }
-      const id = `yellow:${core.md5(`${y.name || ''}|${phones[0] || ''}|${y.address || ''}`)}`;
-      if (seen.has(id)) continue;
-      seen.add(id);
-      const parts = [y.name, y.name_en, y.contact_person, ...phones, y.address, y.category, y.city, y.district, y.extra].filter(Boolean).join(' ');
-      yellowRecords.push({
-        id, type: 'yellow', title: y.name || '(이름없음)',
-        summary: [y.category, [y.city, y.district].filter(Boolean).join(' '), y.address].filter(Boolean).join(' · ') || null,
-        url: null, phone: phones.join(' / ') || null, address: y.address || null, imageUrl: null,
-        searchText: core.lc(parts), city: core.normalizeCity(y.city), district: core.cleanDistrict(y.district),
-        category: y.appCategory || y.category || null,
-        lat: typeof y.lat === 'number' ? y.lat : null, lng: typeof y.lng === 'number' ? y.lng : null,
-        priority: y.source === 'own' ? 10 : 0, publishedAt: null,
-      });
-    }
-    if (skipped) console.log(`  ↳ 이웃업소와 중복 ${skipped}건 제외`);
-  }
-  const n = await core.replaceType(prisma, 'yellow', [...neighborRecords, ...yellowRecords]);
-  console.log(`  ✅ yellow: ${n}건 적재`);
-  return n;
+  let list = [];
+  if (fs.existsSync(YELLOW_JSON)) list = JSON.parse(fs.readFileSync(YELLOW_JSON, 'utf8'));
+  else console.log('  ⚠️ 마스터 JSON 없음:', YELLOW_JSON);
+  const r = await core.buildYellow(prisma, list);
+  console.log(`  ✅ yellow: ${r.total}건 (이웃업소 ${r.neighbor} / 중복제외 ${r.dedupSkipped})`);
+  return r.total;
 }
 
 async function main() {
