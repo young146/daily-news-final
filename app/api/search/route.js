@@ -11,6 +11,42 @@ import prisma from "../../../lib/prisma.js";
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 20;
+
+// ============================================================
+// 동의어 사전 — "사람이 쓰는 말" → "데이터에 실제로 적힌 말"
+// 옐로페이지·기사 데이터엔 "교민단체" 같은 단어가 없고, 대신 카테고리가
+// "동문·동호회", "호치민 주요기관" 등으로 적혀 있다. 사용자가 기대하는
+// 단어로 검색해도 해당 항목이 나오도록, 검색 시 아래 대체어들을 OR 로 함께 매칭.
+// (정렬은 sort=category 가 옐로/진출기업을 기사보다 위에 두므로, 매칭만 되면 단체가 먼저 나온다.)
+const SYNONYMS = {
+  // 교민 커뮤니티/단체
+  "교민단체": ["동호회", "동문", "주요기관", "한인회", "여성회", "협회", "향우회", "동창회", "교민회", "상조회", "종교"],
+  "교민회": ["한인회", "동호회", "주요기관", "협회"],
+  "단체": ["동호회", "동문", "주요기관", "한인회", "협회", "향우회", "동창회"],
+  "커뮤니티": ["동호회", "동문", "한인회", "협회", "주요기관"],
+  "모임": ["동호회", "동문", "동창회", "향우회"],
+  "한인회": ["한인회", "주요기관"],
+  // 흔한 생활 검색어 ↔ 카테고리 표기
+  "맛집": ["음식점", "식당", "식품"],
+  "식당": ["음식점", "식품"],
+  "병원": ["의료", "종합병원"],
+  "약국": ["의료", "약국"],
+  "학원": ["교육", "학원"],
+  "학교": ["교육", "국제학교", "학교"],
+  "숙소": ["호텔", "숙박"],
+  "미용실": ["미용", "마사지"],
+  "변호사": ["법무", "회계"],
+  "은행": ["금융"],
+};
+
+// q 안에 사전 키가 들어 있으면 그 대체어들을 모아 반환(중복 제거, q 자체는 제외).
+function expandQuery(q) {
+  const out = new Set();
+  for (const [key, terms] of Object.entries(SYNONYMS)) {
+    if (q.includes(key)) for (const t of terms) if (t !== q) out.add(t);
+  }
+  return [...out];
+}
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
@@ -45,7 +81,13 @@ export async function GET(request) {
     // q 외 공통 필터 (패싯 계산용 — type 제외)
     const base = [];
     if (!browse) {
-      base.push(Prisma.sql`("searchText" ILIKE ${"%" + q + "%"} OR similarity("searchText", ${q}) > 0.1)`);
+      // 기본: 입력어 부분일치 + 오타보정(유사도). 추가: 동의어 대체어들도 부분일치로 OR.
+      const ors = [
+        Prisma.sql`"searchText" ILIKE ${"%" + q + "%"}`,
+        Prisma.sql`similarity("searchText", ${q}) > 0.1`,
+      ];
+      for (const t of expandQuery(q)) ors.push(Prisma.sql`"searchText" ILIKE ${"%" + t + "%"}`);
+      base.push(Prisma.sql`(${Prisma.join(ors, " OR ")})`);
     }
     if (city) base.push(Prisma.sql`city = ${city}`);
     if (district) base.push(Prisma.sql`district = ${district}`);
