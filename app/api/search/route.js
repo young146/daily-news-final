@@ -60,16 +60,18 @@ export async function GET(request) {
     const fullWhere = whereOf(full);
 
     // 정렬:
-    //  - sort=category: 카테고리 순(옐로→진출기업→매거진→뉴스) + 그룹 내 우선순위(프리미엄)→가나다.
-    //    앱 통합검색 결과 화면이 이 값을 보냄. (웹은 안 보내므로 기존 동작 유지)
-    //  - browse: 우선순위→이름순
+    //  - sort=category: 카테고리 순(옐로→진출기업→매거진→뉴스) + 그룹 내 우선순위(프리미엄)→최신순→가나다.
+    //    앱·웹 통합검색 결과 화면이 이 값을 보냄.
+    //    ⚠️ 그룹 내 정렬에 "publishedAt DESC" 추가: 매거진·뉴스가 가나다가 아니라 최신글 먼저 나오게.
+    //       (옐로·진출기업은 publishedAt=null → NULLS LAST로 영향 없이 기존처럼 priority→title 유지)
+    //  - browse: 우선순위→최신순→이름순
     //  - 그 외(검색): 관련도순
     const sort = (sp.get("sort") || "").trim();
     const orderBy =
       sort === "category"
-        ? Prisma.sql`CASE type WHEN 'yellow' THEN 1 WHEN 'company' THEN 2 WHEN 'magazine' THEN 3 WHEN 'news' THEN 4 ELSE 5 END ASC, priority DESC, title ASC`
+        ? Prisma.sql`CASE type WHEN 'yellow' THEN 1 WHEN 'company' THEN 2 WHEN 'magazine' THEN 3 WHEN 'news' THEN 4 ELSE 5 END ASC, priority DESC, "publishedAt" DESC NULLS LAST, title ASC`
         : browse
-        ? Prisma.sql`priority DESC, title ASC`
+        ? Prisma.sql`priority DESC, "publishedAt" DESC NULLS LAST, title ASC`
         : Prisma.sql`priority DESC, similarity("searchText", ${q}) DESC, "publishedAt" DESC NULLS LAST`;
     const simSelect = browse ? Prisma.sql`0 AS sim` : Prisma.sql`similarity("searchText", ${q}) AS sim`;
 
