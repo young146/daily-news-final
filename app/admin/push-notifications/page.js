@@ -238,8 +238,8 @@ export default function PushNotificationsPage() {
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-sm font-medium text-gray-700">내용 <span className="text-gray-400 font-normal">({body.length}/150)</span></label>
-                        <textarea value={body} onChange={e => setBody(e.target.value.slice(0, 150))} placeholder="예: 오늘 하루 앱에서 특별 혜택을 확인하세요!" rows={3} className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
+                        <label className="text-sm font-medium text-gray-700">내용 <span className="text-gray-400 font-normal">({body.length}/500)</span></label>
+                        <textarea value={body} onChange={e => setBody(e.target.value.slice(0, 500))} placeholder="예: 오늘의 명상 — 아침에 눈을 뜨면 가장 먼저 떠오르는 한 가지에 감사해보세요…" rows={6} className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
                     </div>
 
                     <div className="space-y-1">
