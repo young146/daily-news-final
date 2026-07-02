@@ -1,0 +1,51 @@
+name: Weekly Popular Keywords
+
+# 주간 인기검색어 자동 수집 (네이버 검색광고 API)
+#  - 매주 월요일 09:00 KST 자동 실행 + 언제든 수동 실행 가능
+#  - lib/popular-keywords.generated.js 를 실측 데이터로 갱신하고, 변경 시 커밋·푸시
+#  - 키 3개는 GitHub 저장소 Secrets 에 등록해야 함(아래 README 주석 참고)
+
+on:
+  schedule:
+    # cron 은 UTC 기준. 월요일 00:00 UTC = 월요일 09:00 KST
+    - cron: "0 0 * * 1"
+  workflow_dispatch: {} # Actions 탭에서 "Run workflow" 수동 실행 버튼
+
+permissions:
+  contents: write # 갱신된 파일을 저장소에 커밋·푸시하기 위해 필요
+
+jobs:
+  fetch-keywords:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node 설치
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 의존성 설치 (postinstall 스크립트는 불필요하므로 생략)
+        run: npm ci --ignore-scripts
+
+      - name: 인기검색어 수집
+        env:
+          NAVER_SEARCHAD_API_KEY: ${{ secrets.NAVER_SEARCHAD_API_KEY }}
+          NAVER_SEARCHAD_SECRET: ${{ secrets.NAVER_SEARCHAD_SECRET }}
+          NAVER_SEARCHAD_CUSTOMER_ID: ${{ secrets.NAVER_SEARCHAD_CUSTOMER_ID }}
+        run: npm run keywords
+
+      - name: 변경분 커밋·푸시 (변경 없으면 건너뜀)
+        run: |
+          if git diff --quiet -- lib/popular-keywords.generated.js; then
+            echo "인기검색어 변경 없음 — 커밋 생략"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add lib/popular-keywords.generated.js
+            git commit -m "chore(keywords): 주간 실측 인기검색어 자동 갱신"
+            git push
+            echo "갱신 커밋·푸시 완료 → Vercel 자동배포 진행"
+          fi
