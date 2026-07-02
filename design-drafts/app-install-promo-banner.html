@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>씬짜오 앱 설치 배너 — 디자인 목업 (광고 슬롯형)</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Pretendard", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    background: #eef1f4;
+    padding: 40px 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* 본문 폭(광고 슬롯 = 본문 100%)을 가정한 컨테이너 */
+  .slot { max-width: 900px; margin: 0 auto; }
+
+  /* ===== 배너 카드 (화이트 기반 · 당근 오렌지 포인트) ===== */
+  .promo {
+    position: relative;
+    background: #ffffff;
+    border: 1px solid #ffe2d1;
+    border-radius: 20px;
+    box-shadow: 0 14px 38px -18px rgba(255,91,46,.35), 0 4px 14px -8px rgba(0,0,0,.08);
+    overflow: hidden;
+    display: flex;
+  }
+  /* 왼쪽 오렌지 액센트 레일 */
+  .promo::before {
+    content: "";
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 6px;
+    background: linear-gradient(180deg, #ff7a2f, #ff5b2e);
+  }
+
+  /* 왼쪽: 본문 */
+  .promo-body { flex: 1; padding: 26px 28px 24px 32px; min-width: 0; }
+
+  .promo-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #fff1e9; color: #ff5b2e;
+    font-size: 12.5px; font-weight: 800; letter-spacing: .01em;
+    padding: 6px 12px; border-radius: 999px; margin-bottom: 12px;
+  }
+  .promo-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: #ff5b2e; }
+
+  .promo-title {
+    font-size: 23px; font-weight: 800; line-height: 1.35;
+    color: #1f2430; letter-spacing: -0.01em; margin-bottom: 6px;
+  }
+  .promo-title .hl { color: #ff5b2e; }
+  .promo-lead {
+    font-size: 14.5px; font-weight: 600; color: #ff8a3d; margin-bottom: 18px;
+  }
+
+  /* 기능 그리드 */
+  .feats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 11px 22px;
+    margin-bottom: 18px;
+  }
+  .feat { display: flex; align-items: flex-start; gap: 11px; }
+  .feat .ic {
+    width: 38px; height: 38px; flex-shrink: 0;
+    border-radius: 11px; background: #fff3ea;
+    display: grid; place-items: center; font-size: 19px;
+  }
+  .feat.carrot .ic { background: #ffe6d2; }
+  .feat .t { min-width: 0; }
+  .feat .t h4 {
+    font-size: 14px; font-weight: 800; color: #2a2f3a;
+    margin-bottom: 1px; line-height: 1.3;
+  }
+  .feat .t p {
+    font-size: 12.5px; font-weight: 500; color: #8b919c;
+    line-height: 1.35;
+  }
+
+  .promo-close {
+    font-size: 15px; font-weight: 800; color: #1f2430;
+  }
+  .promo-close .hl { color: #ff5b2e; }
+
+  /* 오른쪽: QR */
+  .promo-qr {
+    flex-shrink: 0;
+    width: 218px;
+    background: linear-gradient(160deg, #fff7f2 0%, #fff1e9 100%);
+    border-left: 1px solid #ffe2d1;
+    padding: 26px 22px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+  }
+  .promo-qr .frame {
+    background: #fff; padding: 12px; border-radius: 16px;
+    box-shadow: 0 8px 22px -10px rgba(255,91,46,.5);
+    margin-bottom: 12px;
+  }
+  .promo-qr img { width: 138px; height: 138px; display: block; border-radius: 6px; }
+  .promo-qr .lbl { font-size: 14px; font-weight: 800; color: #1f2430; line-height: 1.4; }
+  .promo-qr .lbl .s { display: block; font-size: 12px; font-weight: 600; color: #ff8a3d; margin-top: 3px; }
+  .promo-qr .stores { display: flex; gap: 6px; margin-top: 14px; width: 100%; }
+  .promo-qr .stores a {
+    flex: 1; height: 34px; border-radius: 9px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    font-size: 11px; font-weight: 800; text-decoration: none;
+    background: #fff; border: 1.5px solid #ffd8c4; color: #444;
+  }
+  .promo-qr .stores svg { width: 13px; height: 13px; }
+
+  /* ===== 모바일: 세로 스택 ===== */
+  @media (max-width: 640px) {
+    .promo { flex-direction: column; }
+    .promo::before { width: 100%; height: 6px; bottom: auto; }
+    .promo-body { padding: 24px 22px 8px; }
+    .feats { grid-template-columns: 1fr; gap: 10px; }
+    .promo-qr {
+      width: 100%; border-left: none; border-top: 1px solid #ffe2d1;
+      flex-direction: column;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="slot">
+    <div class="promo">
+      <!-- 본문 -->
+      <div class="promo-body">
+        <span class="promo-badge"><span class="dot"></span>베트남 교민생활의 필수품</span>
+        <h2 class="promo-title">
+          <span class="hl">씬짜오베트남 앱</span>, 아직 이용하지 않으시나요?
+        </h2>
+        <p class="promo-lead">이국 생활의 모든 것을 제공하는 만능 도구.</p>
+
+        <div class="feats">
+          <div class="feat">
+            <div class="ic">📰</div>
+            <div class="t"><h4>데일리 뉴스</h4><p>베트남의 흐름을 매일 감지합니다.</p></div>
+          </div>
+          <div class="feat carrot">
+            <div class="ic">🥕</div>
+            <div class="t"><h4>당근 / 나눔</h4><p>베트남 전역을 커버하는 당근.</p></div>
+          </div>
+          <div class="feat">
+            <div class="ic">💼</div>
+            <div class="t"><h4>구인구직</h4><p>직장이 필요한 분, 직원이 필요한 분의 광장.</p></div>
+          </div>
+          <div class="feat">
+            <div class="ic">🏠</div>
+            <div class="t"><h4>부동산</h4><p>베트남에서 보금자리 찾기.</p></div>
+          </div>
+          <div class="feat">
+            <div class="ic">🤝</div>
+            <div class="t"><h4>이웃사업 / 진출기업</h4><p>내 동네 서비스 업체와 진출기업을 찾아보세요.</p></div>
+          </div>
+          <div class="feat">
+            <div class="ic">📖</div>
+            <div class="t"><h4>씬짜오베트남 잡지</h4><p>격주마다 그대를 방문하는 씬짜오를 앱에서.</p></div>
+          </div>
+        </div>
+
+        <p class="promo-close">이 모든 기능이 하나로, <span class="hl">씬짜오베트남 앱.</span></p>
+      </div>
+
+      <!-- QR -->
+      <div class="promo-qr">
+        <div class="frame">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=https://play.google.com/store/apps/details?id=com.yourname.chaovnapp" alt="앱 설치 QR">
+        </div>
+        <div class="lbl">카메라로 스캔<span class="s">3초면 설치 · 무료</span></div>
+        <div class="stores">
+          <a href="#"><svg viewBox="0 0 24 24" fill="#3DDC84"><path d="M3 20.5V3.5c0-.4.2-.7.5-.9l11 9-11 9c-.3-.2-.5-.5-.5-.9zM16 12l3.6 2.1c.6.4.6 1.4 0 1.8L16 18l-2.5-3 2.5-3z"/></svg>Play</a>
+          <a href="#"><svg viewBox="0 0 24 24" fill="#111"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>App Store</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
