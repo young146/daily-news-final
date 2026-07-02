@@ -1,0 +1,28 @@
+name: Sitemap Freshness Monitor
+
+# 사이트맵 최신성 매일 감시 (읽기 전용 — 보안에 안 걸림)
+#  - 매일 03:00 UTC(≈베트남 10시 / 한국 12시) 자동 실행 + 수동 실행 가능
+#  - WP 최신 발행글 vs 사이트맵 최신 글 비교
+#  - freeze/발행중단 감지 시 job 실패 → GitHub이 저장소 소유자에게 자동 이메일
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node 설치
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 사이트맵 최신성 점검
+        env:
+          WORDPRESS_URL: https://chaovietnam.co.kr
+        run: node scripts/check-sitemap-freshness.js
