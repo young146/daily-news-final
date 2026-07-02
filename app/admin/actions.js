@@ -19,7 +19,8 @@ export async function translateItemAction(id) {
       await translateNewsItem(
         item.title,
         item.summary,
-        item.content || item.summary
+        item.content || item.summary,
+        item.category
       );
 
     await prisma.newsItem.update({
@@ -443,7 +444,8 @@ export async function createDraftAndRedirectAction(formData) {
           await translateNewsItem(
             item.title,
             item.summary,
-            item.content || item.summary
+            item.content || item.summary,
+            item.category
           );
 
         await prisma.newsItem.update({
@@ -521,7 +523,8 @@ export async function batchTranslateAction(ids) {
                 await translateNewsItem(
                   item.title,
                   item.summary,
-                  item.content || item.summary
+                  item.content || item.summary,
+                  item.category
                 );
 
               await prisma.newsItem.update({

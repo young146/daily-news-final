@@ -49,7 +49,8 @@ export async function POST(request) {
                 await translateNewsItem(
                   item.title,
                   item.summary,
-                  item.content || item.summary
+                  item.content || item.summary,
+                  item.category
                 );
 
               await prisma.newsItem.update({

@@ -61,7 +61,8 @@ export async function generateTranslationAction(id) {
         const { translatedTitle, translatedSummary, translatedContent } = await translateNewsItem(
             item.title,
             item.summary,
-            item.content || item.summary
+            item.content || item.summary,
+            item.category
         );
 
         await prisma.newsItem.update({
