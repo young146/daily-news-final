@@ -79,7 +79,8 @@ async function fetchRelatedKeywords(hintKeywords) {
   const timestamp = Date.now().toString();
   const signature = makeSignature(timestamp, 'GET', KEYWORD_URI);
   const resp = await axios.get(`${BASE_URL}${KEYWORD_URI}`, {
-    params: { hintKeywords: hintKeywords.join(','), showDetail: 1 },
+    // 네이버 keywordstool 은 hintKeywords 에 공백이 있으면 400(code 11001) 을 냄 → 공백 제거
+    params: { hintKeywords: hintKeywords.map((k) => k.replace(/\s+/g, '')).join(','), showDetail: 1 },
     headers: {
       'X-Timestamp': timestamp,
       'X-API-KEY': API_KEY,
