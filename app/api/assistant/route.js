@@ -14,7 +14,7 @@ import prisma from "../../../lib/prisma.js";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const MODEL = process.env.ANTHROPIC_ASSISTANT_MODEL || "claude-sonnet-4-6";
+const MODEL = process.env.ANTHROPIC_ASSISTANT_MODEL || "claude-haiku-4-5";
 const MAX_ROUNDS = 4;          // 도구호출 ↔ 응답 왕복 상한(무한루프 방지)
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // 구글 Places API (New) 서버 키 — 설정돼 있으면 평점·리뷰까지 합쳐서 추천.
