@@ -9,7 +9,8 @@
     "lint": "next lint",
     "postinstall": "prisma generate",
     "crawl": "node scripts/crawler.js",
-    "keywords": "node scripts/fetch-popular-keywords.js"
+    "keywords": "node scripts/fetch-popular-keywords.js",
+    "retry-failed": "node scripts/retry-failed-translations.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",
