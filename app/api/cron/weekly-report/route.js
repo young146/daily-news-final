@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fetchWeeklyKpis, buildReportHtml } from '@/lib/ga4-report';
+import { fetchSearchConsoleKpis, buildSearchConsoleHtml } from '@/lib/search-console-report';
 import { sendNewsletterWithFallback } from '@/lib/email-service';
 
 export const dynamic = 'force-dynamic';
@@ -13,7 +14,16 @@ export async function GET(request) {
 
     try {
         const kpis = await fetchWeeklyKpis();
-        const html = buildReportHtml(kpis);
+        let html = buildReportHtml(kpis);
+
+        // 🔍 검색 노출(서치콘솔) 섹션 덧붙이기. 실패해도(연결 전 등) 전체 리포트는 계속 나가게 감쌈.
+        try {
+            const sc = await fetchSearchConsoleKpis();
+            const scHtml = buildSearchConsoleHtml(sc);
+            html = html.includes('</body>') ? html.replace('</body>', scHtml + '</body>') : html + scHtml;
+        } catch (e) {
+            console.warn('[Cron] 서치콘솔 섹션 생성 실패(무시하고 진행):', e.message);
+        }
 
         if (preview) {
             return new NextResponse(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
