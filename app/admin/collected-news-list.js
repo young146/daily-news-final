@@ -99,6 +99,21 @@ export default function CollectedNewsList({ items, addToTopAction, deleteNewsIte
                                     className="w-6 h-6 text-red-600 rounded cursor-pointer"
                                 />
                                 <span className="text-lg font-bold text-blue-700 uppercase">{item.source}</span>
+                                {/* 인기 검색어 관련도 배지 — 점수 높을수록 한국인 검색 수요에 부합(가점). 0점은 배지 없음. */}
+                                {item.keywordScore > 0 && (
+                                    <span
+                                        className={`inline-flex items-center gap-1 text-base font-bold px-3 py-1 rounded-md border-2 ${
+                                            item.keywordScore >= 3
+                                                ? 'bg-orange-100 text-orange-800 border-orange-300'
+                                                : item.keywordScore === 2
+                                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                                : 'bg-gray-100 text-gray-600 border-gray-200'
+                                        }`}
+                                        title="인기 검색어 관련도 (한국인의 베트남 검색 수요 기준). 높을수록 위로 정렬됨."
+                                    >
+                                        🔥 {item.keywordScore}{item.matchedKeyword ? ` · ${item.matchedKeyword}` : ''}
+                                    </span>
+                                )}
                             </div>
                             <span className="text-lg text-gray-700 font-bold">{item.publishedAt ? new Date(item.publishedAt).toISOString().split('T')[0] : ''}</span>
                         </div>

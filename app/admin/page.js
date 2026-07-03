@@ -23,7 +23,12 @@ async function getNews() {
     },
   });
 
-  const selectionPark = allNews.filter((item) => !item.isSelected);
+  // 후보(선정 전) 목록은 인기 검색어 관련도(keywordScore) 높은 순으로 위에 올린다.
+  //   → 편집자가 "명당 자리(카드뉴스/탑뉴스)"를 고를 때 한국인 검색 수요에 맞는 기사가 먼저 보임.
+  //   정렬은 가점일 뿐 — 점수 0도 그대로 목록에 남는다(필터 아님). 동점은 최신순(createdAt desc) 유지.
+  const selectionPark = allNews
+    .filter((item) => !item.isSelected)
+    .sort((a, b) => (b.keywordScore || 0) - (a.keywordScore || 0));
   const topNews = allNews.filter((item) => item.isSelected);
 
   // Get today's published count - 베트남 시간대(UTC+7) 기준으로 '오늘'의 시작을 정확하게 계산

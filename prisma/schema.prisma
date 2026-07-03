@@ -11,107 +11,114 @@ datasource db {
 }
 
 model NewsItem {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   title       String
   summary     String?
-  content     String?  // HTML or Markdown
+  content     String? // HTML or Markdown
   originalUrl String?
   imageUrl    String?
-  category    String   // Society, Economy, Culture, Politics, International, Korea-Vietnam, Community
-  source      String?  // VnExpress, Yonhap, etc.
-  viewCount   Int?     // 조회수 또는 메인 페이지 순서 (낮을수록 높은 우선순위)
-  
+  category    String // Society, Economy, Culture, Politics, International, Korea-Vietnam, Community
+  source      String? // VnExpress, Yonhap, etc.
+  viewCount   Int? // 조회수 또는 메인 페이지 순서 (낮을수록 높은 우선순위)
+
   // Translation Fields
   translatedTitle   String?
   translatedSummary String?
   translatedContent String?
-  translationStatus String   @default("PENDING") // PENDING, DRAFT, COMPLETED
+  translationStatus String  @default("PENDING") // PENDING, DRAFT, COMPLETED
+
+  // 인기 검색어(한국인의 베트남 검색 수요) 관련도 — 크롤/번역 단계에서 산출.
+  //   keywordScore: 0(무관)~3(정확히 그 검색어 주제). 편집자 후보정렬·명당자리 우선순위에 사용.
+  //   matchedKeyword: 가장 잘 맞는 인기 검색어 1개(없으면 null). 배지 표시·성과분석용.
+  // 필터가 아니라 "가점"이다 — 점수 0도 전부 발행되며 순서만 앞당긴다.
+  keywordScore   Int?    @default(0)
+  matchedKeyword String?
 
   // Publishing Status
-  isSelected        Boolean  @default(false) // For "Top News" list
-  isTopNews         Boolean  @default(false) // The ONE top news
-  isPublishedMain   Boolean  @default(false) // chaovietnam.co.kr
-  isPublishedDaily  Boolean  @default(false) // daily.chaovietnam.co.kr
-  isCardNews        Boolean  @default(false) // Selected for Card News (Top 1 + 4 others)
-  isSentSNS         Boolean  @default(false) // Facebook, Kakao 게시 완료
+  isSelected        Boolean @default(false) // For "Top News" list
+  isTopNews         Boolean @default(false) // The ONE top news
+  isPublishedMain   Boolean @default(false) // chaovietnam.co.kr
+  isPublishedDaily  Boolean @default(false) // daily.chaovietnam.co.kr
+  isCardNews        Boolean @default(false) // Selected for Card News (Top 1 + 4 others)
+  isSentSNS         Boolean @default(false) // Facebook, Kakao 게시 완료
   // 페북 게시 준비/결과 — "페북 카드 준비" 단계와 "페북 게시" 단계 분리 흐름 지원
-  cardImageUrl      String?  // 카드뉴스 이미지 URL — 페북 발송 시 메인 사진. publish-card-news fbCardOnly 모드에서 저장
-  facebookPermalink String?  // 페북 게시 성공 후 첫 페이지 permalink (4페이지 중 대표 URL)
-  wordpressUrl      String?  // URL of the published post on WordPress
-  wordpressImageUrl String?  // URL of uploaded image in WordPress media library
-  wordpressMediaId  Int?     // Media ID of uploaded image for featured_media
-  localImagePath    String?  // Local file path in public/images/news/ folder
-  
-  htmlContent       String?  // Generated HTML for email
-  publishedAt       DateTime?
-  status            String   @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  cardImageUrl      String? // 카드뉴스 이미지 URL — 페북 발송 시 메인 사진. publish-card-news fbCardOnly 모드에서 저장
+  facebookPermalink String? // 페북 게시 성공 후 첫 페이지 permalink (4페이지 중 대표 URL)
+  wordpressUrl      String? // URL of the published post on WordPress
+  wordpressImageUrl String? // URL of uploaded image in WordPress media library
+  wordpressMediaId  Int? // Media ID of uploaded image for featured_media
+  localImagePath    String? // Local file path in public/images/news/ folder
+
+  htmlContent String? // Generated HTML for email
+  publishedAt DateTime?
+  status      String    @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model CrawlerLog {
   id           Int      @id @default(autoincrement())
   runAt        DateTime @default(now())
-  status       String   // SUCCESS, PARTIAL, FAILED
+  status       String // SUCCESS, PARTIAL, FAILED
   itemsFound   Int      @default(0)
   message      String?
-  errorDetails String?  // JSON string with detailed error info per source
+  errorDetails String? // JSON string with detailed error info per source
 }
 
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
   name      String?
-  password  String?  // Hashed
+  password  String? // Hashed
   role      String   @default("USER") // ADMIN, USER
   createdAt DateTime @default(now())
 }
 
 model Subscriber {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  company   String?
-  name      String?
-  phone     String?
-  isActive  Boolean  @default(true)
+  id         String   @id @default(uuid())
+  email      String   @unique
+  company    String?
+  name       String?
+  phone      String?
+  isActive   Boolean  @default(true)
   // CRM 거래 고객(광고주) 여부. 데일리 뉴스는 전체 발송, 홍보 카드는 isCustomer=true 만 발송.
-  isCustomer Boolean @default(false)
+  isCustomer Boolean  @default(false)
   // 분류: customer(고객=CRM시트∪광고주) / directory(기업디렉토리, WP) / general(일반).
   // 우선순위 customer > directory > general. isCustomer=true 면 category=customer 로 동기화.
-  category  String   @default("general")
-  createdAt DateTime @default(now())
+  category   String   @default("general")
+  createdAt  DateTime @default(now())
 
   @@index([isCustomer])
   @@index([category])
 }
 
 model PromoCard {
-  id          Int      @id @default(autoincrement())
-  title       String                    // 카드 제목
-  description String?  @db.Text         // 홍보 문구/설명
-  imageUrl    String?                   // 기본 이미지 — 이메일/앱/웹/카드뉴스용 (광고주 원본 디자인)
+  id               Int      @id @default(autoincrement())
+  title            String // 카드 제목
+  description      String?  @db.Text // 홍보 문구/설명
+  imageUrl         String? // 기본 이미지 — 이메일/앱/웹/카드뉴스용 (광고주 원본 디자인)
   // 페이스북 전용 이미지 (선택) — 비워두면 imageUrl 사용
   // 광고주 원본은 보통 앱/웹 배너 비율이라 페북 그리드에 안 어울림. 페북용 디자인 별도 업로드 슬롯.
   imageUrlFacebook String?
-  videoUrl    String?                   // YouTube 등 동영상 URL (선택)
-  linkUrl     String                    // 클릭 시 이동 링크
-  isActive    Boolean  @default(true)   // ON/OFF
-  sortOrder   Int      @default(0)      // 정렬 순서 (낮을수록 먼저)
+  videoUrl         String? // YouTube 등 동영상 URL (선택)
+  linkUrl          String // 클릭 시 이동 링크
+  isActive         Boolean  @default(true) // ON/OFF
+  sortOrder        Int      @default(0) // 정렬 순서 (낮을수록 먼저)
   // 분류 — "ad" = 광고주 카드 (수익원) / "self" = 자체 홍보 라이브러리 (앱 설치 등)
-  kind        String   @default("ad")
+  kind             String   @default("ad")
   // 자체 홍보 카드의 용도 — "app" | "magazine" | "event" | "other"
-  category    String?
+  category         String?
   // 발송 요일 (ISO 1=월, 2=화, ..., 7=일). CSV 형식 예: "1,3,5"
   //   - null 또는 빈 문자열 = 모든 요일 발송 (default, 옛 카드 호환)
   //   - 광고주 약속에 따라 "주 1회" = 특정 요일 1개만 설정
-  weekdays    String?
+  weekdays         String?
   // 발송 채널 (CSV 형식 예: "email,facebook,cardnews")
   //   - null 또는 빈 문자열 = 모든 채널 노출 (default, 옛 카드 호환)
   //   - 이메일/페북/카드뉴스 팝업 채널별로 카드 별도 관리
   //   - 페북은 4장 게시 그리드 제약(뉴스 풀폭 보장)으로 보통 2개 안쪽으로 운영
-  channels    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  channels         String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@index([kind, isActive, sortOrder])
 }
@@ -119,31 +126,31 @@ model PromoCard {
 model TestEmail {
   id        Int      @id @default(autoincrement())
   email     String   @unique
-  name      String?                      // 이름 (선택)
+  name      String? // 이름 (선택)
   createdAt DateTime @default(now())
 }
 
 model EmailSendLog {
-  id         Int               @id @default(autoincrement())
-  sentAt     DateTime          @default(now())   // 발송 일시
-  subject    String                              // 이메일 제목
-  method     String                              // 'resend' | 'smtp'
-  total      Int                                 // 총 발송 시도
-  succeeded  Int               @default(0)       // 성공
-  failed     Int               @default(0)       // 실패
-  batches    Int               @default(0)       // 배치 수
-  note       String?                             // 비고 (오류 메시지 등)
-  details    EmailSendDetail[]                   // 개별 발송 결과
+  id        Int               @id @default(autoincrement())
+  sentAt    DateTime          @default(now()) // 발송 일시
+  subject   String // 이메일 제목
+  method    String // 'resend' | 'smtp'
+  total     Int // 총 발송 시도
+  succeeded Int               @default(0) // 성공
+  failed    Int               @default(0) // 실패
+  batches   Int               @default(0) // 배치 수
+  note      String? // 비고 (오류 메시지 등)
+  details   EmailSendDetail[] // 개별 발송 결과
 }
 
 model EmailSendDetail {
-  id        Int          @id @default(autoincrement())
-  logId     Int                                  // FK → EmailSendLog
-  log       EmailSendLog @relation(fields: [logId], references: [id], onDelete: Cascade)
-  email     String                               // 수신자 이메일
-  status    String                               // 'success' | 'failed'
-  errorMsg  String?                              // 실패 시 오류 메시지
-  sentAt    DateTime     @default(now())
+  id       Int          @id @default(autoincrement())
+  logId    Int // FK → EmailSendLog
+  log      EmailSendLog @relation(fields: [logId], references: [id], onDelete: Cascade)
+  email    String // 수신자 이메일
+  status   String // 'success' | 'failed'
+  errorMsg String? // 실패 시 오류 메시지
+  sentAt   DateTime     @default(now())
 
   @@index([logId])
   @@index([status])
@@ -152,10 +159,10 @@ model EmailSendDetail {
 
 model ClickLog {
   id        Int      @id @default(autoincrement())
-  url       String   // The destination URL that was clicked
-  type      String   // Category of the link: 'NEWS', 'PROMO', 'TERMINAL'
-  userIp    String?  // Optional IP address for analytics
-  userAgent String?  // Optional device/browser info
+  url       String // The destination URL that was clicked
+  type      String // Category of the link: 'NEWS', 'PROMO', 'TERMINAL'
+  userIp    String? // Optional IP address for analytics
+  userAgent String? // Optional device/browser info
   clickedAt DateTime @default(now())
 
   @@index([url])
@@ -166,8 +173,8 @@ model ClickLog {
 // 범용 키-값 설정 저장소 (관리 메뉴에서 변경하는 런타임 설정)
 // 현재 용도: key='sponsorConfig' → 명명권(스폰서) 이름/로고/활성여부 JSON
 model Setting {
-  key       String   @id            // 설정 키
-  value     String                  // 설정 값 (JSON 문자열 등)
+  key       String   @id // 설정 키
+  value     String // 설정 값 (JSON 문자열 등)
   updatedAt DateTime @updatedAt
 }
 
@@ -175,22 +182,22 @@ model Setting {
 // 교민 통합 허브 검색의 단일 질의 대상. scripts/build-search-index.js 가 야간 동기화로 채움.
 // 한글 부분일치·오타 보정은 searchText 에 pg_trgm GIN 인덱스(raw SQL로 생성)로 처리.
 model SearchIndex {
-  id          String    @id          // "type:nativeId" 예: news:<uuid>, company:123, yellow:<hash>, magazine:<postId>
-  type        String                 // news | magazine | company | yellow
+  id          String    @id // "type:nativeId" 예: news:<uuid>, company:123, yellow:<hash>, magazine:<postId>
+  type        String // news | magazine | company | yellow
   title       String
   summary     String?   @db.Text
-  url         String?                // 외부 링크(뉴스·매거진=우리 WP). 디렉토리는 null → 내부 상세페이지로
-  phone       String?                // 디렉토리(옐로·진출기업) 연락처
-  address     String?                // 디렉토리 주소
-  imageUrl    String?                // 이웃업소(프리미엄) 대표 사진 — 검색·목록 썸네일
-  searchText  String    @db.Text     // 검색 대상(제목+요약+상호+주소 등 소문자 결합)
-  city        String?                // 호치민/다낭… (지역 필터·정렬)
+  url         String? // 외부 링크(뉴스·매거진=우리 WP). 디렉토리는 null → 내부 상세페이지로
+  phone       String? // 디렉토리(옐로·진출기업) 연락처
+  address     String? // 디렉토리 주소
+  imageUrl    String? // 이웃업소(프리미엄) 대표 사진 — 검색·목록 썸네일
+  searchText  String    @db.Text // 검색 대상(제목+요약+상호+주소 등 소문자 결합)
+  city        String? // 호치민/다낭… (지역 필터·정렬)
   district    String?
-  category    String?                // 카테고리 패싯
+  category    String? // 카테고리 패싯
   lat         Float?
   lng         Float?
-  priority    Int       @default(0)  // 정렬 가중치(스폰서/검증 우선)
-  publishedAt DateTime?              // 최신순 정렬
+  priority    Int       @default(0) // 정렬 가중치(스폰서/검증 우선)
+  publishedAt DateTime? // 최신순 정렬
   updatedAt   DateTime  @updatedAt
 
   @@index([type, city])
@@ -201,9 +208,9 @@ model SearchIndex {
 // 야간 재색인(replaceType)이 SearchIndex 를 지워도 이 테이블은 그대로 → 수정 보존.
 // 저장 시 overrides 의 핵심 항목을 SearchIndex 행에도 즉시 반영(검색 결과에도 적용).
 model DirectoryEdit {
-  id        String   @id          // = SearchIndex.id (예: company:123, yellow:<hash>)
-  overrides Json?                  // 관리자가 수정한 항목 맵 {title, phone, address, director, ...}
-  extra     String?  @db.Text      // 기타 자유 입력 박스
-  updatedBy String?                // 수정한 관리자 이메일
+  id        String   @id // = SearchIndex.id (예: company:123, yellow:<hash>)
+  overrides Json? // 관리자가 수정한 항목 맵 {title, phone, address, director, ...}
+  extra     String?  @db.Text // 기타 자유 입력 박스
+  updatedBy String? // 수정한 관리자 이메일
   updatedAt DateTime @updatedAt
 }
