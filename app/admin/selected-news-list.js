@@ -80,6 +80,11 @@ export default function SelectedNewsList({
         }
     };
 
+    // 오늘 탑뉴스 후보 추천: 선정된 것 중 인기검색어 점수가 가장 높은 기사.
+    //   하루 1건 탑뉴스가 카드·SNS·이메일로 통일 발행되므로, 그 "한 번의 선택"을 점수로 돕는다.
+    //   maxScore가 2 이상일 때만 추천(1점짜리를 굳이 밀지 않음). 동점이면 모두 추천 표시.
+    const maxScore = Math.max(0, ...topNews.map(n => n.keywordScore || 0));
+
     return (
         <div className="border-2 border-gray-300 rounded-xl p-6 bg-white shadow-sm">
             <h2 className="text-2xl font-bold mb-6 flex justify-between items-center text-blue-800 flex-wrap gap-3">
@@ -98,6 +103,21 @@ export default function SelectedNewsList({
                             <div className="flex items-center gap-2.5 flex-wrap">
                                 <span className="text-lg font-bold text-blue-700 uppercase">{item.source}</span>
                                 {item.isTopNews && <span className="text-base bg-yellow-400 text-yellow-900 px-3 py-1 rounded-lg font-bold border-2 border-yellow-500">★ TOP NEWS</span>}
+                                {/* 인기 검색어 관련도 — 탑뉴스 결정을 돕는 신호 */}
+                                {item.keywordScore > 0 && (
+                                    <span
+                                        className={`inline-flex items-center gap-1 text-base font-bold px-3 py-1 rounded-lg border-2 ${item.keywordScore >= 3 ? 'bg-orange-100 text-orange-800 border-orange-300' : item.keywordScore === 2 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}
+                                        title="인기 검색어 관련도 (한국인의 베트남 검색 수요 기준)"
+                                    >
+                                        🔥 {item.keywordScore}{item.matchedKeyword ? ` · ${item.matchedKeyword}` : ''}
+                                    </span>
+                                )}
+                                {/* 오늘 탑뉴스 추천: 최고점(2점 이상)이면서 아직 탑뉴스가 아닌 기사 */}
+                                {maxScore >= 2 && item.keywordScore === maxScore && !item.isTopNews && (
+                                    <span className="text-base bg-orange-500 text-white px-3 py-1 rounded-lg font-bold border-2 border-orange-600">
+                                        👍 추천 탑뉴스
+                                    </span>
+                                )}
                             </div>
                             <div className="flex gap-2">
                                 <span className={`text-base font-bold px-3 py-1 rounded-lg border-2 ${item.translationStatus === 'COMPLETED' ? 'bg-green-100 text-green-800 border-green-300' :
