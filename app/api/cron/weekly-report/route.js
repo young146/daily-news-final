@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { fetchWeeklyKpis, buildReportHtml } from '@/lib/ga4-report';
 import { fetchSearchConsoleKpis, buildSearchConsoleHtml } from '@/lib/search-console-report';
+import { fetchChannelBreakdown, buildChannelHtml } from '@/lib/ga4-channels-report';
 import { sendNewsletterWithFallback } from '@/lib/email-service';
 
 export const dynamic = 'force-dynamic';
@@ -16,13 +17,15 @@ export async function GET(request) {
         const kpis = await fetchWeeklyKpis();
         let html = buildReportHtml(kpis);
 
-        // 🔍 검색 노출(서치콘솔) 섹션 덧붙이기. 실패해도(연결 전 등) 전체 리포트는 계속 나가게 감쌈.
-        try {
-            const sc = await fetchSearchConsoleKpis();
-            const scHtml = buildSearchConsoleHtml(sc);
-            html = html.includes('</body>') ? html.replace('</body>', scHtml + '</body>') : html + scHtml;
-        } catch (e) {
-            console.warn('[Cron] 서치콘솔 섹션 생성 실패(무시하고 진행):', e.message);
+        // 🌐 유입 채널별(구글/네이버/직접/SNS) 섹션 + 🔍 검색 노출(서치콘솔) 섹션 덧붙이기.
+        // 각각 실패해도 전체 리포트는 계속 나가게 개별 try/catch.
+        let extra = '';
+        try { extra += buildChannelHtml(await fetchChannelBreakdown()); }
+        catch (e) { console.warn('[Cron] 채널 섹션 실패(무시):', e.message); }
+        try { extra += buildSearchConsoleHtml(await fetchSearchConsoleKpis()); }
+        catch (e) { console.warn('[Cron] 서치콘솔 섹션 실패(무시):', e.message); }
+        if (extra) {
+            html = html.includes('</body>') ? html.replace('</body>', extra + '</body>') : html + extra;
         }
 
         if (preview) {
