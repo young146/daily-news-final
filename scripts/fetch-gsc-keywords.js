@@ -50,6 +50,19 @@ function categorize(query) {
   return null; // 미분류 → 풀에 넣지 않음(제목이 엉뚱해지는 것 방지)
 }
 
+// 베트남 관련 여부 필터 — 20년 된 사이트라 GSC엔 "프랑스축구·월드컵미국" 같은
+// 베트남 무관 검색어도 잔뜩 잡힌다. 이런 걸 제목 생성에 넣으면 오히려 해로우므로,
+// 명시적 베트남 신호가 있는 검색어만 통과시킨다(네이버 수집 스크립트와 동일 정책).
+const VN_TOKENS = [
+  '베트남', '다낭', '하노이', '호치민', '호찌민', '나트랑', '나짱', '푸꾸옥', '달랏',
+  '호이안', '하롱', '사파', '붕따우', '껀터', '후에', '베트남동', '베트남어', '월남',
+  '비엣', '한베', '메콩', 'vietnam', '베트남동환율',
+];
+function isVietnamRelated(kw) {
+  const q = kw.toLowerCase().replace(/\s+/g, '');
+  return VN_TOKENS.some((t) => q.includes(t.toLowerCase()));
+}
+
 // 브랜드/자사명·잡음 검색어 제외 (우리 사이트를 이미 아는 사람이 친 것 → SEO 확장 가치 낮음)
 const BRAND_RE = /(씬짜오|xinchao|chaovietnam|차오베트남|씬차오)/i;
 const hasHangul = (s) => /[가-힣]/.test(s);
@@ -118,6 +131,7 @@ async function main() {
   for (const r of rows) {
     const kw = (r.keys?.[0] || '').trim();
     if (!kw || !hasHangul(kw) || BRAND_RE.test(kw) || kw.length > 25) continue;
+    if (!isVietnamRelated(kw)) continue; // 베트남 무관 검색어(일반 스포츠·월드뉴스 등) 제거
     const impressions = Math.round(r.impressions || 0);
     const clicks = Math.round(r.clicks || 0);
     if (impressions < 5) continue; // 노출 거의 없는 잡음 제거
