@@ -30,22 +30,29 @@ jobs:
       - name: 의존성 설치 (postinstall 스크립트는 불필요하므로 생략)
         run: npm ci --ignore-scripts
 
-      - name: 인기검색어 수집
+      - name: 네이버 인기검색어 수집
         env:
           NAVER_SEARCHAD_API_KEY: ${{ secrets.NAVER_SEARCHAD_API_KEY }}
           NAVER_SEARCHAD_SECRET: ${{ secrets.NAVER_SEARCHAD_SECRET }}
           NAVER_SEARCHAD_CUSTOMER_ID: ${{ secrets.NAVER_SEARCHAD_CUSTOMER_ID }}
         run: npm run keywords
 
+      - name: GSC 실유입 검색어 수집 (자격증명 없으면 자동 skip)
+        env:
+          # 서치콘솔 읽기용 서비스계정 JSON. 없으면 스크립트가 우아하게 skip(exit 0).
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          SEARCH_CONSOLE_SITE: ${{ secrets.SEARCH_CONSOLE_SITE }}
+        run: npm run keywords:gsc
+
       - name: 변경분 커밋·푸시 (변경 없으면 건너뜀)
         run: |
-          if git diff --quiet -- lib/popular-keywords.generated.js; then
-            echo "인기검색어 변경 없음 — 커밋 생략"
+          if git diff --quiet -- lib/popular-keywords.generated.js lib/gsc-keywords.generated.js; then
+            echo "검색어 변경 없음 — 커밋 생략"
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add lib/popular-keywords.generated.js
-            git commit -m "chore(keywords): 주간 실측 인기검색어 자동 갱신"
+            git add lib/popular-keywords.generated.js lib/gsc-keywords.generated.js
+            git commit -m "chore(keywords): 주간 실측 인기검색어(네이버+GSC) 자동 갱신"
             git push
             echo "갱신 커밋·푸시 완료 → Vercel 자동배포 진행"
           fi

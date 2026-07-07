@@ -10,6 +10,7 @@
     "postinstall": "prisma generate",
     "crawl": "node scripts/crawler.js",
     "keywords": "node scripts/fetch-popular-keywords.js",
+    "keywords:gsc": "node scripts/fetch-gsc-keywords.js",
     "retry-failed": "node scripts/retry-failed-translations.js",
     "backfill-seo": "node scripts/backfill-seo-meta.js"
   },
