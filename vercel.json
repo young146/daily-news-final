@@ -9,10 +9,6 @@
             "schedule": "0 21 * * *"
         },
         {
-            "path": "/api/cron/weekly-report",
-            "schedule": "0 2 * * 1"
-        },
-        {
             "path": "/api/cron/rebuild-directory",
             "schedule": "30 0 * * *"
         },

@@ -1,0 +1,35 @@
+name: Weekly Analytics Report
+
+# 주간 측정 리포트 자동 발송 (GA4 + 서치콘솔 + 유입채널)
+#  - 매주 월요일 09:00(베트남, = 02:00 UTC) 자동 실행 + 언제든 수동 실행 가능
+#  - /api/cron/weekly-report 엔드포인트를 호출하면 route.js 가 리포트를 만들어
+#    운영자 이메일(younghan146@gmail.com, info@chaovietnam.co.kr)로 발송
+#  - Vercel Cron 이 요금제 제약으로 주간 스케줄을 안 뛰는 문제를 우회하기 위해
+#    확실히 도는 GitHub Actions 로 이관함 (weekly-keywords.yml 과 동일 방식)
+
+on:
+  schedule:
+    # cron 은 UTC 기준. 월요일 02:00 UTC = 월요일 09:00 베트남(UTC+7)
+    - cron: "0 2 * * 1"
+  workflow_dispatch: {} # Actions 탭에서 "Run workflow" 수동 실행 버튼
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 주간 리포트 발송 트리거
+        run: |
+          echo "주간 리포트 발송 요청..."
+          # -sS: 조용하되 에러는 표시, -w: HTTP 코드/본문 확인
+          RESPONSE=$(curl -sS -m 110 -w "\n%{http_code}" \
+            "https://daily-news-final.vercel.app/api/cron/weekly-report")
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          CODE=$(echo "$RESPONSE" | tail -n 1)
+          echo "HTTP $CODE"
+          echo "응답: $BODY"
+          # HTTP 200 이고 success:true 여야 성공으로 간주 (아니면 워크플로우 실패 처리 → 알림)
+          if [ "$CODE" != "200" ] || ! echo "$BODY" | grep -q '"success":true'; then
+            echo "::error::주간 리포트 발송 실패 (HTTP $CODE)"
+            exit 1
+          fi
+          echo "주간 리포트 발송 완료"
