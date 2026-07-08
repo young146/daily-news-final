@@ -12,7 +12,8 @@
     "keywords": "node scripts/fetch-popular-keywords.js",
     "keywords:gsc": "node scripts/fetch-gsc-keywords.js",
     "retry-failed": "node scripts/retry-failed-translations.js",
-    "backfill-seo": "node scripts/backfill-seo-meta.js"
+    "backfill-seo": "node scripts/backfill-seo-meta.js",
+    "backfill-affiliate": "node scripts/backfill-affiliate-block.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",
