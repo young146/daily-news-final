@@ -11,6 +11,10 @@ function getWPAuth() {
 function sanitizeForWordPress(str) {
   if (!str) return "";
   str = str.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "");
+  // \uC9DD\uC774 \uB9DE\uC9C0 \uC54A\uB294(\uD640\uB85C \uB0A8\uC740) \uC11C\uB85C\uAC8C\uC774\uD2B8 \uC81C\uAC70 \u2014 \uBD99\uC5EC\uB123\uAE30\uB85C \uC798\uB824 \uB4E4\uC5B4\uC628 \uAE68\uC9C4 \uC774\uBAA8\uC9C0/\uD2B9\uC218\uBB38\uC790\uAC00
+  // \uB0A8\uC544 \uC788\uC73C\uBA74 WordPress REST\uAC00 rest_invalid_json(400)\uC73C\uB85C \uBC1C\uD589\uC744 \uAC70\uBD80\uD55C\uB2E4.
+  str = str.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, "");
+  str = str.replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "");
   str = str.replace(/[\u200B-\u200D\uFEFF]/g, "");
   return str.trim();
 }
