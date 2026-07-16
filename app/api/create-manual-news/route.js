@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { demoteOlderTopNews } from "@/lib/top-news";
 
 const prisma = new PrismaClient();
 const WP_URL = process.env.WORDPRESS_URL || "https://chaovietnam.co.kr";
@@ -213,7 +214,7 @@ export async function POST(request) {
     const wpPost = await wpResponse.json();
 
     // 데이터베이스에 저장 (선택사항)
-    await prisma.newsItem.create({
+    const createdItem = await prisma.newsItem.create({
       data: {
         title: title,
         content: finalContent,
@@ -233,6 +234,11 @@ export async function POST(request) {
         publishedAt: new Date(),
       },
     });
+
+    // 탑뉴스로 지정했다면 이전 탑뉴스를 자동 해제 (발행목록 토글과 동일한 규칙)
+    if (isTopNews === "1") {
+      await demoteOlderTopNews(createdItem.id, createdItem.publishedAt);
+    }
 
     return NextResponse.json({
       success: true,

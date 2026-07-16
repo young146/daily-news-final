@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import { demoteOlderTopNews } from "@/lib/top-news";
 
 const prisma = new PrismaClient();
 const WP_URL = process.env.WORDPRESS_URL || "https://chaovietnam.co.kr";
@@ -231,6 +232,17 @@ export async function PUT(request) {
       console.warn(
         `[Update Manual News] DB에서 일치하는 항목을 찾지 못함 (wordpressUrl=${wpPost.link})`
       );
+    }
+
+    // 탑뉴스로 지정했다면 이전 탑뉴스를 자동 해제 (발행목록 토글과 동일한 규칙)
+    if (isTopNews === "1") {
+      const synced = await prisma.newsItem.findFirst({
+        where: { wordpressUrl: wpPost.link },
+        select: { id: true, publishedAt: true },
+      });
+      if (synced?.publishedAt) {
+        await demoteOlderTopNews(synced.id, synced.publishedAt);
+      }
     }
 
     return NextResponse.json({
