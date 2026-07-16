@@ -3,7 +3,44 @@
 import { useState, useEffect, useTransition, useMemo } from 'react';
 import Link from 'next/link';
 import { Trash2, ExternalLink, CheckCircle, XCircle, AlertCircle, Send } from 'lucide-react';
-import { deletePublishedNewsAction, batchDeletePublishedNewsAction } from '../actions';
+import { deletePublishedNewsAction, batchDeletePublishedNewsAction, toggleTopNewsForPublishedAction, toggleCardNewsAction } from '../actions';
+
+// 발행된 뉴스(자체 취재 기사 포함)를 탑뉴스/카드뉴스로 지정·해제하는 토글.
+// 카드뉴스 화면은 DB의 isTopNews/isCardNews 로 대상을 고르므로 여기서 켜야 후보에 잡힌다.
+function NewsFlagToggles({ item }) {
+  const [isPending, startTransition] = useTransition();
+
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        title="탑뉴스로 지정/해제"
+        disabled={isPending}
+        onClick={() => startTransition(() => toggleTopNewsForPublishedAction(item.id))}
+        className={`px-2 py-1 rounded text-xs font-bold border transition-colors disabled:opacity-50 ${
+          item.isTopNews
+            ? 'bg-yellow-400 border-yellow-500 text-yellow-900'
+            : 'bg-white border-gray-300 text-gray-500 hover:border-yellow-400 hover:text-yellow-700'
+        }`}
+      >
+        ★ TOP
+      </button>
+      <button
+        type="button"
+        title="카드뉴스로 지정/해제"
+        disabled={isPending}
+        onClick={() => startTransition(() => toggleCardNewsAction(item.id))}
+        className={`px-2 py-1 rounded text-xs font-bold border transition-colors disabled:opacity-50 ${
+          item.isCardNews
+            ? 'bg-pink-100 border-pink-400 text-pink-800'
+            : 'bg-white border-gray-300 text-gray-500 hover:border-pink-400 hover:text-pink-700'
+        }`}
+      >
+        {item.isCardNews ? '♥ 카드' : '♡ 카드'}
+      </button>
+    </div>
+  );
+}
 
 const categoryLabels = {
   'Economy': '경제',
@@ -841,8 +878,9 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
                               </div>
                             </div>
 
-                            {/* 삭제 버튼 */}
+                            {/* 탑뉴스 / 카드뉴스 지정 + 삭제 버튼 */}
                             <div className="flex items-center gap-2">
+                              <NewsFlagToggles item={item} />
                               <button
                                 onClick={() => handleDelete(item.id)}
                                 disabled={isPending}

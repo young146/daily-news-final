@@ -86,6 +86,7 @@ export async function POST(request) {
     const source = formData.get("source") || "자체 취재";
     const featuredImageIndex = parseInt(formData.get("featuredImageIndex") || "0");
     const isTopNews = formData.get("isTopNews") || "0";
+    const isCardNews = formData.get("isCardNews") || "0";
 
     if (!title || !content || !category) {
       return NextResponse.json(
@@ -211,13 +212,6 @@ export async function POST(request) {
 
     const wpPost = await wpResponse.json();
 
-    // 새로운 뉴스가 발행되면 이전 카드 뉴스 초기화
-    await prisma.newsItem.updateMany({
-      where: { isCardNews: true },
-      data: { isCardNews: false },
-    });
-    console.log(`[Manual News] ✅ Cleared isCardNews flags - new news published`);
-
     // 데이터베이스에 저장 (선택사항)
     await prisma.newsItem.create({
       data: {
@@ -228,6 +222,10 @@ export async function POST(request) {
         translatedTitle: title,
         translatedContent: wpContent,
         isPublishedMain: true,
+        // 폼에서 지정한 탑뉴스/카드뉴스 여부를 DB에도 반영해야
+        // 카드뉴스 화면(isTopNews/isCardNews로 조회)에서 자체뉴스를 고를 수 있다.
+        isTopNews: isTopNews === "1",
+        isCardNews: isCardNews === "1",
         wordpressUrl: wpPost.link,
         wordpressImageUrl: featuredImage?.url || null,
         wordpressMediaId: featuredImage?.mediaId || null,

@@ -66,7 +66,8 @@ async function getPublishedNews() {
       wordpressUrl: true,
       translationStatus: true,
       translatedContent: true,
-      isTopNews: true
+      isTopNews: true,
+      isCardNews: true
     }
   });
 

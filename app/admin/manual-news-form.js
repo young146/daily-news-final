@@ -13,6 +13,7 @@ export default function ManualNewsForm({ onClose, onSuccess, editData = null }) 
   const [error, setError] = useState("");
   const [postId, setPostId] = useState(null);
   const [isTopNews, setIsTopNews] = useState(false);
+  const [isCardNews, setIsCardNews] = useState(false);
 
   // 수정 모드일 때 기존 데이터 로드
   useEffect(() => {
@@ -23,6 +24,7 @@ export default function ManualNewsForm({ onClose, onSuccess, editData = null }) 
       setSource(editData.source || "자체 취재");
       setPostId(editData.postId || null);
       setIsTopNews(editData.isTopNews === true || editData.isTopNews === "1");
+      setIsCardNews(editData.isCardNews === true || editData.isCardNews === "1");
       // 이미지는 수정 시 새로 업로드해야 하므로 빈 배열로 시작
     }
   }, [editData]);
@@ -96,6 +98,7 @@ export default function ManualNewsForm({ onClose, onSuccess, editData = null }) 
       formData.append("source", source);
       formData.append("featuredImageIndex", featuredImageIndex.toString());
       formData.append("isTopNews", isTopNews ? "1" : "0");
+      formData.append("isCardNews", isCardNews ? "1" : "0");
 
       // 이미지 파일 추가
       images.forEach((img) => {
@@ -210,7 +213,7 @@ export default function ManualNewsForm({ onClose, onSuccess, editData = null }) 
                 placeholder="자체 취재"
               />
             </div>
-            <div className="flex items-center mt-7">
+            <div className="flex flex-col justify-center gap-2 mt-7">
               <label className="flex items-center text-sm font-medium text-gray-700 cursor-pointer">
                 <input
                   type="checkbox"
@@ -220,6 +223,17 @@ export default function ManualNewsForm({ onClose, onSuccess, editData = null }) 
                 />
                 <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs ml-1 shadow-sm border border-yellow-200">
                   🔥 탑뉴스로 지정
+                </span>
+              </label>
+              <label className="flex items-center text-sm font-medium text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isCardNews}
+                  onChange={(e) => setIsCardNews(e.target.checked)}
+                  className="mr-2 h-4 w-4 text-pink-600 focus:ring-pink-500 border-gray-300 rounded"
+                />
+                <span className="bg-pink-100 text-pink-800 px-2 py-0.5 rounded text-xs ml-1 shadow-sm border border-pink-200">
+                  ♥ 카드뉴스로 지정
                 </span>
               </label>
             </div>

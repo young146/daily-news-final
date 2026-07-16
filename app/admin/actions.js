@@ -425,6 +425,8 @@ export async function toggleTopNewsForPublishedAction(id) {
 
     revalidatePath("/admin");
     revalidatePath("/admin/settings");
+    revalidatePath("/admin/published-news");
+    revalidatePath("/admin/card-news");
     return { success: true };
   } catch (error) {
     console.error("Toggle top news failed:", error);
@@ -474,6 +476,8 @@ export async function toggleCardNewsAction(id) {
       data: { isCardNews: !item.isCardNews },
     });
     revalidatePath("/admin");
+    revalidatePath("/admin/published-news");
+    revalidatePath("/admin/card-news");
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };

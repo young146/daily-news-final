@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { PrismaClient } from "@prisma/client";
 
+const prisma = new PrismaClient();
 const WP_URL = process.env.WORDPRESS_URL || "https://chaovietnam.co.kr";
 const WP_USER = process.env.WORDPRESS_USERNAME || "chaovietnam";
 const WP_PASSWORD = process.env.WORDPRESS_APP_PASSWORD;
@@ -79,6 +81,7 @@ export async function PUT(request) {
     const source = formData.get("source") || "자체 취재";
     const featuredImageIndex = parseInt(formData.get("featuredImageIndex") || "0");
     const isTopNews = formData.get("isTopNews") || "0";
+    const isCardNews = formData.get("isCardNews") || "0";
 
     if (!postId || !title || !content || !category) {
       return NextResponse.json(
@@ -206,6 +209,29 @@ export async function PUT(request) {
     }
 
     const wpPost = await wpResponse.json();
+
+    // DB 동기화 — 카드뉴스 화면은 WordPress가 아니라 DB(NewsItem)를 읽어 렌더링하므로,
+    // 여기서 갱신하지 않으면 수정 내용과 탑뉴스/카드뉴스 지정이 반영되지 않는다.
+    const syncResult = await prisma.newsItem.updateMany({
+      where: { wordpressUrl: wpPost.link },
+      data: {
+        title: title,
+        translatedTitle: title,
+        content: finalContent,
+        translatedContent: wpContent,
+        category: category,
+        source: source,
+        isTopNews: isTopNews === "1",
+        isCardNews: isCardNews === "1",
+        wordpressImageUrl: featuredImage?.url || undefined,
+        wordpressMediaId: featuredImage?.mediaId || undefined,
+      },
+    });
+    if (syncResult.count === 0) {
+      console.warn(
+        `[Update Manual News] DB에서 일치하는 항목을 찾지 못함 (wordpressUrl=${wpPost.link})`
+      );
+    }
 
     return NextResponse.json({
       success: true,
