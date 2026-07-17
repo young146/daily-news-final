@@ -2863,17 +2863,16 @@ function jenny_get_styles()
             align-items: stretch;
             margin-bottom: 8px;
         }
-        .jenny-lead { flex: 0 0 360px; min-width: 0; }
+        /* 대표카드 = top 기사급 크기. 화면의 44%(top뉴스가 2열=절반이던 그 크기)를 차지해
+           오른쪽 제목 10줄과 높이가 맞아떨어진다. 360px 로 두니 제목 리스트보다 짧아
+           아귀가 안 맞았다(사장님 피드백 2026-07-18). */
+        .jenny-lead { flex: 0 0 44%; min-width: 0; }
         .jenny-lead .jenny-news-card { height: 100%; }
-        /* 대표카드는 예전 4열 그리드에 있던 "일반 뉴스 카드"다. 그 크기 규칙들이
-           `.jenny-news-grid .xxx` 로 스코프돼 있어, 그리드를 걷어내면 탑뉴스 크기(18~20px)로
-           커져버린다. 360px 폭에는 과하므로 같은 값을 대표카드에도 이어준다.
-           (원래 규칙은 아래 .jenny-news-grid 블록에 그대로 둔다 — 되돌리기 쉽게) */
         .jenny-lead .jenny-news-card { width: 100% !important; max-width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; }
-        .jenny-lead .jenny-card-image { padding-top: 60% !important; margin-bottom: 10px !important; }
-        .jenny-lead .jenny-title { font-size: 16px !important; }
-        .jenny-lead .jenny-excerpt { font-size: 13px !important; -webkit-line-clamp: 5 !important; }
-        .jenny-lead .jenny-meta-line { font-size: 11px !important; }
+        .jenny-lead .jenny-card-image { padding-top: 56.25% !important; margin-bottom: 12px !important; } /* 16:9 — top뉴스와 같은 비율 */
+        .jenny-lead .jenny-title { font-size: 20px !important; }
+        .jenny-lead .jenny-excerpt { font-size: 14px !important; -webkit-line-clamp: 5 !important; }
+        .jenny-lead .jenny-meta-line { font-size: 12px !important; }
 
         .jenny-headlines {
             flex: 1 1 auto;
@@ -2886,19 +2885,20 @@ function jenny_get_styles()
             justify-content: space-between; /* 대표카드 높이에 맞춰 균등히 퍼짐 */
         }
         .jenny-hl-row { margin: 0 !important; padding: 0 !important; list-style: none !important; }
-        /* 한 줄 건너 흐린 바탕 — 줄 구분선을 대신한다. 선까지 같이 두면 가로줄이 겹쳐 지저분하다. */
-        .jenny-hl-row:nth-child(even) .jenny-hl-link { background: #f5f6f8; }
+        /* 한 줄 건너 바탕색 — 줄 구분선을 대신한다. 선까지 같이 두면 가로줄이 겹쳐 지저분하다.
+           #f5f6f8 은 너무 옅어 안 보였다(사장님 피드백) → #e4e7ec 로 진하게. */
+        .jenny-hl-row:nth-child(even) .jenny-hl-link { background: #e4e7ec; }
         .jenny-hl-link {
             display: flex;
             align-items: baseline;
             gap: 8px;
-            padding: 7px 10px;
+            padding: 9px 10px;
             border-radius: 4px;
             text-decoration: none !important;
             color: #1f2937 !important;
             transition: background 0.15s;
         }
-        .jenny-hl-link:hover { background: #fff3ee; }
+        .jenny-hl-link:hover { background: #ffede4; }
         .jenny-hl-dot { flex: none; color: #c9cdd3; font-size: 11px; line-height: 1.6; }
         .jenny-hl-title {
             flex: 1 1 auto;
