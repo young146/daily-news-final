@@ -15,6 +15,18 @@ if (!defined('ABSPATH')) {
 // ============================================================================
 
 /**
+ * 섹션 하나에 채울 기사 수 = 대표카드 1 + 제목 리스트 10.
+ *
+ * 10 인 이유: 대표카드(사진+제목+요약문) 높이가 대략 제목 10줄과 같아서, PC 2단 배치에서
+ * 왼쪽(대표)·오른쪽(제목) 높이가 맞아떨어진다 → 빈 공간이 안 생긴다.
+ * 폰에서는 세로로 쌓이므로 CSS 가 6번째 이후를 숨겨 5개만 보여준다(섹션이 두 배로
+ * 길어지는 것을 막기 위함). 서버는 양쪽 모두에 11건을 보낸다 — HTML 은 하나다.
+ */
+if (!defined('JENNY_SECTION_TARGET')) {
+    define('JENNY_SECTION_TARGET', 11);
+}
+
+/**
  * 카테고리 순서 정의
  */
 function jenny_get_category_order()
@@ -322,6 +334,43 @@ function jenny_render_news_card($post_data, $category_map)
     $html .= '<a href="' . esc_url($permalink) . '" class="jenny-link"><span class="jenny-link-text">자세히 보기</span></a>';
     $html .= '</div>';
     $html .= '</div>';
+
+    return $html;
+}
+
+/**
+ * 섹션 제목에서 앞 이모지와 뒤 영문 괄호를 떼어 순한글 이름만 남긴다.
+ * '📈 경제 (Economy)' → '경제'.  "○○ 뉴스 더보기" 문구용.
+ */
+function jenny_strip_section_emoji($title)
+{
+    $t = preg_replace('/\s*\([^)]*\)\s*$/u', '', $title);      // 뒤 " (Economy)"
+    $t = preg_replace('/^[^\p{L}\p{N}]+/u', '', $t);           // 앞 이모지·공백
+    return trim($t) !== '' ? trim($t) : trim($title);
+}
+
+/**
+ * 제목 리스트 한 줄 — 대표카드 옆(PC)/아래(폰)에 쌓이는 헤드라인.
+ *
+ * 카드와 달리 사진·요약문 없이 제목만 쓴다. 카드 하나가 세로 400px 을 먹는 탓에
+ * 뒤쪽 섹션(여행·음식 등)까지 도달하려면 화면 20장 넘게 스크롤해야 했다.
+ * 과거 뉴스로 채운 항목(is_past)에는 날짜를 붙인다 — 오늘 것처럼 보이면 안 된다.
+ */
+function jenny_render_headline_row($post_data)
+{
+    $pid       = $post_data['post_id'];
+    $permalink = get_permalink($pid);
+    $is_past   = !empty($post_data['is_past']);
+
+    $html  = '<li class="jenny-hl-row">';
+    $html .= '<a class="jenny-hl-link" href="' . esc_url($permalink) . '">';
+    $html .= '<span class="jenny-hl-dot" aria-hidden="true">▸</span>';
+    $html .= '<span class="jenny-hl-title">' . get_the_title($pid) . '</span>';
+    if ($is_past) {
+        $html .= '<time class="jenny-hl-date" datetime="' . esc_attr(get_the_date('c', $pid)) . '">'
+              .  esc_html(get_the_date('n/j', $pid)) . '</time>';
+    }
+    $html .= '</a></li>';
 
     return $html;
 }
@@ -1131,6 +1180,106 @@ function jenny_get_posts_by_date($date, $category_id, $category_order)
 }
 
 /**
+ * 섹션별로 "과거 며칠까지 거슬러 채울지" — 시사성에 따라 다르다.
+ *
+ * 왜 필요한가: 하루치만 쓰면 섹션 대부분이 비어 보인다.
+ *   (2026-07-17 실측 — 오늘치: 한-베 2건, 여행 2건, 음식 2건, 건강 3건, 정치 3건)
+ * 왜 일괄이 아닌가: 뉴스라고 다 같은 뉴스가 아니다. 여행·음식 기사는 며칠 전 것도
+ *   그대로 읽을 만하지만, 경제·정치를 6일 전 것으로 채우면 "오늘의 뉴스"가 아니게 된다.
+ *
+ * 0 = 오늘치만 사용(채우지 않음).
+ */
+function jenny_get_section_lookback_days($sec_key)
+{
+    $map = array(
+        // 시사성 높음 — 오늘/어제까지만. 어차피 물량이 충분하다(경제 15, 사회 12).
+        'economy'       => 2,
+        'society'       => 2,
+        'international' => 2,
+        'korea_hot'     => 2,
+        // 중간 — 정치는 3일이면 대표1+제목4 를 채운다. 그 이상 거슬러 올리면 어색해진다.
+        'real_estate'   => 3,
+        'politics'      => 3,
+        'culture'       => 3,
+        'other'         => 3,
+        // evergreen — 며칠 지나도 유효한 주제. 넉넉히 채운다.
+        'travel'        => 14,
+        'health'        => 14,
+        'food'          => 14,
+        'korea_vietnam' => 14,
+        'community'     => 14,
+    );
+    return isset($map[$sec_key]) ? $map[$sec_key] : 3;
+}
+
+/**
+ * 섹션이 목표 개수에 못 미치면 과거 뉴스로 채운다.
+ *
+ * @param string $sec_key       섹션 키 (economy, travel …)
+ * @param array  $category_names news_category 메타에 들어있는 이름들 (jenny_get_sections_keys)
+ * @param int    $category_id   WP 카테고리 ID (기본 31 = 데일리 뉴스)
+ * @param array  $exclude_ids   이미 화면에 있는 post_id (오늘치 + 탑뉴스) — 중복 방지
+ * @param int    $need          더 필요한 개수
+ * @param string $base_date     기준일 Y-m-d (이 날짜 *이전* 것만 가져온다)
+ * @return array jenny_get_posts_by_date 와 같은 형태의 item 배열
+ */
+function jenny_backfill_section($sec_key, $category_names, $category_id, $exclude_ids, $need, $base_date)
+{
+    $days = jenny_get_section_lookback_days($sec_key);
+    if ($need <= 0 || $days <= 1 || empty($category_names)) {
+        return array();
+    }
+
+    // base_date 의 하루 전부터 (days-1)일 전까지
+    $before = date('Y-m-d', strtotime($base_date . ' -1 day'));
+    $after  = date('Y-m-d', strtotime($base_date . ' -' . ($days - 1) . ' day'));
+
+    $args = array(
+        'post_type'      => 'post',
+        'posts_per_page' => $need,
+        'cat'            => intval($category_id),
+        'post_status'    => 'publish',
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+        'post__not_in'   => array_map('intval', $exclude_ids),
+        'no_found_rows'  => true,
+        'date_query'     => array(
+            array(
+                'after'     => $after . ' 00:00:00',
+                'before'    => $before . ' 23:59:59',
+                'inclusive' => true,
+            ),
+        ),
+        'meta_query'     => array(
+            array(
+                'key'     => 'news_category',
+                'value'   => $category_names,
+                'compare' => 'IN',
+            ),
+        ),
+    );
+
+    $q = new WP_Query($args);
+    $out = array();
+    if ($q->have_posts()) {
+        while ($q->have_posts()) {
+            $q->the_post();
+            $pid = get_the_ID();
+            $out[] = array(
+                'post_id'  => $pid,
+                'order'    => 99,
+                'date'     => get_the_date('Y-m-d H:i:s'),
+                'category' => jenny_get_post_category($pid),
+                'is_top'   => false,
+                'is_past'  => true, // 렌더링에서 날짜 배지를 붙이는 근거 — 오늘 것처럼 보이면 안 된다
+            );
+        }
+        wp_reset_postdata();
+    }
+    return $out;
+}
+
+/**
  * 오늘 날짜 또는 최근 발행일 가져오기
  */
 function jenny_get_target_date($now, $category_id)
@@ -1474,6 +1623,39 @@ function jenny_daily_news_shortcode($atts)
         $grouped_post_ids[] = $post_id; // 추가된 포스트 ID 기록
     }
 
+    // ── 부족한 섹션을 과거 뉴스로 채운다 ─────────────────────────────────
+    // 각 섹션은 대표카드 1 + 제목 10 = 11건이 있어야 빈 공간 없이 채워진다.
+    // 오늘치만으로는 대부분의 섹션이 2~5건이라 허전하다(실측). 시사성이 낮은 섹션일수록
+    // 더 멀리 거슬러 올라간다 — jenny_get_section_lookback_days() 참고.
+    // "지난 뉴스 보기"(날짜 필터)일 때는 그 날짜의 지면을 그대로 보여줘야 하므로 채우지 않는다.
+    if (!$is_filtered) {
+        $fill_base_date = isset($target_date) ? $target_date : $now->format('Y-m-d');
+        $fill_exclude   = array_merge($grouped_post_ids, $top_news_ids);
+
+        foreach ($sections as $sec_key => $sec_info) {
+            $have = isset($grouped_posts[$sec_key]) ? count($grouped_posts[$sec_key]) : 0;
+            $need = JENNY_SECTION_TARGET - $have;
+            if ($need <= 0) continue;
+
+            $filled = jenny_backfill_section(
+                $sec_key,
+                isset($sections_keys[$sec_key]) ? $sections_keys[$sec_key] : array(),
+                $atts['category'],
+                $fill_exclude,
+                $need,
+                $fill_base_date
+            );
+            if (empty($filled)) continue;
+
+            if (!isset($grouped_posts[$sec_key])) $grouped_posts[$sec_key] = array();
+            foreach ($filled as $f) {
+                $grouped_posts[$sec_key][] = $f;
+                $grouped_post_ids[] = $f['post_id'];
+                $fill_exclude[]     = $f['post_id']; // 다음 섹션에서 같은 글이 또 뽑히지 않게
+            }
+        }
+    }
+
     // sort function reused
     $sort_func = function ($a, $b) {
         return strcmp($b['date'], $a['date']); // Sort by date DESC within section
@@ -1511,40 +1693,50 @@ function jenny_daily_news_shortcode($atts)
     }
 
     // --- 2. Render Sections ---
+    // 대표카드 1개(사진+제목+요약문) + 제목 리스트.
+    // 이전에는 섹션의 모든 기사를 카드로 뿌려서, 카드 하나가 세로 400px 을 먹는 탓에
+    // 뒤쪽 섹션(여행·음식 등)까지 화면 20장 넘게 스크롤해야 했다. 그 결과 뒷 섹션은
+    // 사실상 아무도 보지 못했고 거기 붙은 광고도 노출되지 않았다.
     foreach ($sections as $sec_key => $sec_info) {
-        if (!empty($grouped_posts[$sec_key])) {
-            // Sort
-            usort($grouped_posts[$sec_key], $sort_func);
+        if (empty($grouped_posts[$sec_key])) continue;
 
-            $output .= '<h2 id="jenny-section-' . esc_attr($sec_key) . '" class="jenny-section-title">' . esc_html($sec_info['title']) . '</h2>';
-            $output .= '<div class="jenny-news-grid">'; // 4-column grid
+        usort($grouped_posts[$sec_key], $sort_func);
 
-            $card_count = 0;
-            $ad_index = 1; // 섹션 내 광고 번호
-            foreach ($grouped_posts[$sec_key] as $post) {
-                // 4개마다 광고 삽입 (첫 4개 이후부터)
-                if ($card_count > 0 && $card_count % 4 === 0) {
-                    $ad_id = 'jenny-ad-' . esc_attr($sec_key) . '-' . $ad_index;
-                    $output .= '</div>'; // 기존 그리드 닫기
-                    $output .= '<div id="' . $ad_id . '" class="jenny-ad-section jenny-ad-inline">';
-                    $output .= '<div class="jenny-ad-placeholder">';
-                    $output .= '<!-- Ad Inserter: #' . $ad_id . ' -->';
-                    $output .= '</div></div>';
-                    $output .= '<div class="jenny-news-grid">'; // 새 그리드 시작
-                    $ad_index++;
-                }
-                $output .= jenny_render_news_card($post, $category_map);
-                $card_count++;
+        // 재고가 거의 없는 섹션은 아예 띄우지 않는다 (예: 교민소식 = 14일에 1건).
+        // 대표카드만 덩그러니 있는 섹션은 지면만 먹고 읽을 게 없다.
+        if (count($grouped_posts[$sec_key]) < 2) continue;
+
+        $lead      = $grouped_posts[$sec_key][0];
+        $headlines = array_slice($grouped_posts[$sec_key], 1, JENNY_SECTION_TARGET - 1);
+
+        $output .= '<h2 id="jenny-section-' . esc_attr($sec_key) . '" class="jenny-section-title">';
+        $output .= esc_html($sec_info['title']);
+        // 섹션 전체 보기 — 이미 있는 팝업(jenny_get_section_news AJAX)을 연다. 새로 만들지 않는다.
+        $output .= '<a href="#" class="jenny-section-more jenny-section-open" data-section="' . esc_attr($sec_key) . '">전체 보기 ›</a>';
+        $output .= '</h2>';
+
+        $output .= '<div class="jenny-section-body">';
+        $output .= '<div class="jenny-lead">' . jenny_render_news_card($lead, $category_map) . '</div>';
+
+        if (!empty($headlines)) {
+            $output .= '<ul class="jenny-headlines">';
+            foreach ($headlines as $post) {
+                $output .= jenny_render_headline_row($post);
             }
-
-            $output .= '</div>';
-
-            // AD SLOT after each section
-            $ad_end_id = 'jenny-ad-' . esc_attr($sec_key) . '-end';
-            $output .= '<div id="' . $ad_end_id . '" class="jenny-ad-section"><div class="jenny-ad-placeholder">';
-            $output .= '<!-- Ad Inserter: #' . $ad_end_id . ' -->';
-            $output .= '</div></div>';
+            $output .= '</ul>';
         }
+        $output .= '</div>'; // .jenny-section-body
+
+        // 폰에서는 제목 5개만 보이므로(CSS), 나머지로 가는 문을 남긴다. PC 에서는 숨김.
+        $output .= '<a href="#" class="jenny-more-mobile jenny-section-open" data-section="' . esc_attr($sec_key) . '">';
+        $output .= esc_html(jenny_strip_section_emoji($sec_info['title'])) . ' 뉴스 더보기 ›</a>';
+
+        // AD SLOT after each section — 지면은 그대로 유지한다.
+        // 오히려 뒤쪽 섹션까지 사람이 도달하게 되므로 실제 노출은 늘어난다.
+        $ad_end_id = 'jenny-ad-' . esc_attr($sec_key) . '-end';
+        $output .= '<div id="' . $ad_end_id . '" class="jenny-ad-section"><div class="jenny-ad-placeholder">';
+        $output .= '<!-- Ad Inserter: #' . $ad_end_id . ' -->';
+        $output .= '</div></div>';
     }
 
     wp_reset_postdata();
@@ -2005,7 +2197,10 @@ function jenny_get_scripts($category_id = 31)
             });
 
             // 섹션 네비게이션 클릭 - AJAX로 섹션 뉴스 로드
-            var sectionNavItems = document.querySelectorAll(".jenny-section-nav-item");
+            // .jenny-section-open 도 함께 잡는다 — 섹션 제목 옆 "전체 보기"와 폰의 "더보기".
+            // 같은 팝업을 열지만 네비바의 알약 버튼 스타일(.jenny-section-nav-item)은 입으면 안 되므로
+            // 클래스를 분리했다.
+            var sectionNavItems = document.querySelectorAll(".jenny-section-nav-item, .jenny-section-open");
             var sectionModal = document.getElementById("jennySectionModal");
             var sectionModalClose = document.getElementById("jennySectionModalClose");
             var sectionModalTitle = document.getElementById("jennySectionModalTitle");
@@ -2643,6 +2838,107 @@ function jenny_get_styles()
             margin: 32px 0 16px 0;
             padding-left: 12px;
             border-left: 4px solid #ea580c;
+        }
+
+        /* ==========================================================================
+           섹션 본문 = 대표카드 + 제목 리스트
+           PC: 가로 2단(대표 왼쪽 · 제목 오른쪽) — 대표카드 높이만큼 제목이 채워져 빈 공간이 없다.
+           폰: 세로로 쌓임 + 제목 5개만(아래 미디어쿼리) — 10개면 섹션이 두 배로 길어진다.
+           HTML 은 하나다. 화면 크기가 배열을 결정한다.
+           ========================================================================== */
+        .jenny-section-title { display: flex; align-items: center; gap: 10px; }
+        .jenny-section-more {
+            margin-left: auto;
+            font-size: 13px;
+            font-weight: 700;
+            color: #ea580c;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .jenny-section-more:hover { text-decoration: underline; }
+
+        .jenny-section-body {
+            display: flex;
+            gap: 24px;
+            align-items: stretch;
+            margin-bottom: 8px;
+        }
+        .jenny-lead { flex: 0 0 360px; min-width: 0; }
+        .jenny-lead .jenny-news-card { height: 100%; }
+        /* 대표카드는 예전 4열 그리드에 있던 "일반 뉴스 카드"다. 그 크기 규칙들이
+           `.jenny-news-grid .xxx` 로 스코프돼 있어, 그리드를 걷어내면 탑뉴스 크기(18~20px)로
+           커져버린다. 360px 폭에는 과하므로 같은 값을 대표카드에도 이어준다.
+           (원래 규칙은 아래 .jenny-news-grid 블록에 그대로 둔다 — 되돌리기 쉽게) */
+        .jenny-lead .jenny-news-card { width: 100% !important; max-width: 100% !important; min-width: 0 !important; box-sizing: border-box !important; }
+        .jenny-lead .jenny-card-image { padding-top: 60% !important; margin-bottom: 10px !important; }
+        .jenny-lead .jenny-title { font-size: 16px !important; }
+        .jenny-lead .jenny-excerpt { font-size: 13px !important; -webkit-line-clamp: 5 !important; }
+        .jenny-lead .jenny-meta-line { font-size: 11px !important; }
+
+        .jenny-headlines {
+            flex: 1 1 auto;
+            min-width: 0;
+            list-style: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; /* 대표카드 높이에 맞춰 균등히 퍼짐 */
+        }
+        .jenny-hl-row { margin: 0 !important; padding: 0 !important; list-style: none !important; }
+        /* 한 줄 건너 흐린 바탕 — 줄 구분선을 대신한다. 선까지 같이 두면 가로줄이 겹쳐 지저분하다. */
+        .jenny-hl-row:nth-child(even) .jenny-hl-link { background: #f5f6f8; }
+        .jenny-hl-link {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            padding: 7px 10px;
+            border-radius: 4px;
+            text-decoration: none !important;
+            color: #1f2937 !important;
+            transition: background 0.15s;
+        }
+        .jenny-hl-link:hover { background: #fff3ee; }
+        .jenny-hl-dot { flex: none; color: #c9cdd3; font-size: 11px; line-height: 1.6; }
+        .jenny-hl-title {
+            flex: 1 1 auto;
+            min-width: 0;
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1.45;
+            letter-spacing: -0.02em;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        /* 과거 뉴스로 채운 항목의 날짜 — 오늘 것처럼 보이면 안 된다 */
+        .jenny-hl-date { flex: none; font-size: 12px; color: #9aa0a6; font-variant-numeric: tabular-nums; }
+
+        /* 폰에서만 보이는 "더보기" — 숨겨진 뒷줄 대신 기존 섹션 팝업으로 보낸다 */
+        .jenny-more-mobile { display: none; }
+
+        @media (max-width: 768px) {
+            .jenny-section-body { flex-direction: column; gap: 12px; }
+            .jenny-lead { flex: none; width: 100%; }
+            .jenny-hl-title { -webkit-line-clamp: 2; font-size: 14px; }
+            .jenny-hl-link { padding: 9px 10px; }
+            /* 제목 5개만. 서버는 10개를 그대로 보내고 화면 크기가 결정한다. */
+            .jenny-hl-row:nth-child(n+6) { display: none; }
+            .jenny-more-mobile {
+                display: block;
+                margin: 4px 0 8px;
+                padding: 10px;
+                text-align: center;
+                font-size: 14px;
+                font-weight: 700;
+                color: #ea580c;
+                text-decoration: none !important;
+                border: 1px solid #ffd9c7;
+                border-radius: 6px;
+                background: #fff8f5;
+            }
+            .jenny-section-more { font-size: 12px; }
         }
 
         /* GRID LAYOUTS */
