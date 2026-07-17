@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { SHARE_TARGETS, withShareUtm } from '@/lib/share-utm';
 
 export default function CardNewsPreviewMars({ data, mode = 'preview' }) {
     const { topNews, cardNewsItems, weather, rates } = data;
@@ -392,32 +393,47 @@ export default function CardNewsPreviewMars({ data, mode = 'preview' }) {
                                     </div>
                                     
                                     <div className="bg-blue-50 p-5 rounded-xl border-2 border-blue-300">
-                                        <p className="text-center text-gray-800 font-bold mb-4 text-lg">
-                                            📮 최종적으로 이 URL을 복사하여 보내시면 됩니다
+                                        <p className="text-center text-gray-800 font-bold mb-1 text-lg">
+                                            📮 붙여넣을 곳을 골라 복사하세요
                                         </p>
-                                        
-                                        <div 
-                                            onClick={() => {
-                                                const dateParam = `${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}`;
-                                                const shareUrl = `https://chaovietnam.co.kr/daily-news-terminal/?v=${dateParam}`;
-                                                navigator.clipboard.writeText(shareUrl);
-                                                const btn = document.getElementById('copy-success-msg');
-                                                if (btn) {
-                                                    btn.textContent = '✅ 복사됨!';
-                                                    setTimeout(() => { btn.textContent = '📋 클릭하여 복사'; }, 2000);
-                                                }
-                                            }}
-                                            className="flex items-center gap-3 p-4 bg-white rounded-lg cursor-pointer hover:bg-gray-50 transition-colors border-2 border-blue-400"
-                                        >
-                                            <span className="text-blue-700 font-mono text-sm flex-1 break-all font-bold">
-                                                https://chaovietnam.co.kr/daily-news-terminal/?v={`${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}`}
-                                            </span>
-                                            <span id="copy-success-msg" className="text-sm bg-blue-600 text-white px-3 py-2 rounded-lg font-bold whitespace-nowrap">
-                                                📋 클릭하여 복사
-                                            </span>
+                                        <p className="text-center text-gray-500 text-sm mb-4">
+                                            어디서 들어온 방문인지 자동으로 표시됩니다 → 주간 리포트에 채널별로 잡힘
+                                        </p>
+
+                                        {/* 목적지별 복사 — 같은 URL 이라도 붙여넣는 곳에 따라 이름표가 달라야
+                                            카톡/페북/Zalo 기여도를 가를 수 있다. 하나로 뭉치면 '직접 방문'에 묻힌다. */}
+                                        <div className="flex flex-col gap-3">
+                                            {Object.values(SHARE_TARGETS).map((t) => {
+                                                const shareUrl = withShareUtm(
+                                                    `https://chaovietnam.co.kr/daily-news-terminal/?v=${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}`,
+                                                    t.key
+                                                );
+                                                return (
+                                                    <div
+                                                        key={t.key}
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(shareUrl);
+                                                            const btn = document.getElementById(`copy-msg-${t.key}`);
+                                                            if (btn) {
+                                                                btn.textContent = '✅ 복사됨!';
+                                                                setTimeout(() => { btn.textContent = `📋 ${t.label} 복사`; }, 2000);
+                                                            }
+                                                        }}
+                                                        className="flex items-center gap-3 p-4 bg-white rounded-lg cursor-pointer hover:bg-gray-50 transition-colors border-2 border-blue-400"
+                                                    >
+                                                        <span className="text-2xl flex-none">{t.emoji}</span>
+                                                        <span className="text-blue-700 font-mono text-xs flex-1 break-all font-bold">
+                                                            {shareUrl}
+                                                        </span>
+                                                        <span id={`copy-msg-${t.key}`} className="text-sm bg-blue-600 text-white px-3 py-2 rounded-lg font-bold whitespace-nowrap">
+                                                            📋 {t.label} 복사
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
-                                        
-                                        <p className="text-xs text-gray-500 mt-3 text-center">Facebook, 카카오톡, Zalo 모두 이 URL 사용</p>
+
+                                        <p className="text-xs text-gray-500 mt-3 text-center">붙여넣는 곳에 맞는 버튼을 눌러야 유입 통계가 정확해집니다</p>
                                     </div>
                                     
                                     <div className="flex gap-3">

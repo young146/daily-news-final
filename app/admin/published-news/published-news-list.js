@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition, useMemo } from 'react';
 import Link from 'next/link';
 import { Trash2, ExternalLink, CheckCircle, XCircle, AlertCircle, Send } from 'lucide-react';
 import { deletePublishedNewsAction, batchDeletePublishedNewsAction, toggleTopNewsForPublishedAction, toggleCardNewsAction } from '../actions';
+import { SHARE_TARGETS, withShareUtm } from '@/lib/share-utm';
 
 // 발행된 뉴스(자체 취재 기사 포함)를 탑뉴스/카드뉴스로 지정·해제하는 토글.
 // 카드뉴스 화면은 DB의 isTopNews/isCardNews 로 대상을 고르므로 여기서 켜야 후보에 잡힌다.
@@ -920,17 +921,22 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
                   >
                     🖨️ 인쇄 / PDF저장
                   </button>
-                  {/* 뉴스 URL 복사 (SNS용) */}
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText('https://chaovietnam.co.kr/daily-news-terminal/');
-                      showToast('✅ 뉴스 URL 복사 완료! SNS에 붙여넣기 하세요.');
-                      setPreviewHtml(null);
-                    }}
-                    className="px-3 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 font-bold text-sm cursor-pointer"
-                  >
-                    📤 SNS용 URL 복사
-                  </button>
+                  {/* 뉴스 URL 복사 (SNS용) — 붙여넣을 곳별로 이름표를 붙여야 유입 출처가 갈린다.
+                      하나로 뭉치면 GA4 가 전부 '직접 방문'으로 쓸어담아 기여도를 못 본다. */}
+                  {Object.values(SHARE_TARGETS).map((t) => (
+                    <button
+                      key={t.key}
+                      onClick={() => {
+                        const url = withShareUtm('https://chaovietnam.co.kr/daily-news-terminal/', t.key);
+                        navigator.clipboard.writeText(url);
+                        showToast(`✅ ${t.label} URL 복사 완료! 붙여넣기 하세요.`);
+                        setPreviewHtml(null);
+                      }}
+                      className="px-3 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 font-bold text-sm cursor-pointer"
+                    >
+                      {t.emoji} {t.label} 복사
+                    </button>
+                  ))}
                   {/* e-service 전체 발송 */}
                   <button
                     onClick={() => {

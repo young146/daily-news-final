@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { SHARE_TARGETS, withShareUtm } from "@/lib/share-utm";
 
 // URL을 클릭 가능한 링크로 변환
 const linkify = (text) => {
@@ -562,25 +563,34 @@ export default function CardNewsSimple({ data, mode = "preview" }) {
                     </span>
                   </div>
 
-                  {/* 뉴스 URL 복사 */}
-                  <button
-                    type="button"
-                    id="news-copy-btn"
-                    onClick={() => {
-                      const dateParam = `${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}`;
-                      const newsUrl = `https://chaovietnam.co.kr/daily-news-terminal/?v=${dateParam}`;
-                      navigator.clipboard.writeText(newsUrl).then(() => {
-                        const btn = document.getElementById('news-copy-btn');
-                        if (btn) {
-                          btn.textContent = '✅ 복사됨!';
-                          setTimeout(() => { btn.textContent = '📋 뉴스 URL 복사'; }, 2000);
-                        }
-                      });
-                    }}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold text-base transition-colors shadow-sm"
-                  >
-                    📋 뉴스 URL 복사
-                  </button>
+                  {/* 뉴스 URL 복사 — 붙여넣을 곳에 맞는 이름표가 자동으로 붙는다.
+                      하나로 뭉치면 어느 채널이 유입을 만드는지 못 가른다(→ '직접 방문'에 묻힘). */}
+                  <p className="text-xs text-gray-500 mb-2 text-center">붙여넣을 곳을 골라 복사 — 유입 출처가 자동 표시됩니다</p>
+                  <div className="flex gap-2">
+                    {Object.values(SHARE_TARGETS).map((t) => (
+                      <button
+                        key={t.key}
+                        type="button"
+                        id={`news-copy-btn-${t.key}`}
+                        onClick={() => {
+                          const newsUrl = withShareUtm(
+                            `https://chaovietnam.co.kr/daily-news-terminal/?v=${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}`,
+                            t.key
+                          );
+                          navigator.clipboard.writeText(newsUrl).then(() => {
+                            const btn = document.getElementById(`news-copy-btn-${t.key}`);
+                            if (btn) {
+                              btn.textContent = '✅ 복사됨!';
+                              setTimeout(() => { btn.textContent = `${t.emoji} ${t.label}`; }, 2000);
+                            }
+                          });
+                        }}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold text-sm transition-colors shadow-sm"
+                      >
+                        {t.emoji} {t.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Facebook 게시 안내 — 카드 준비 완료, 실제 게시는 발행된 뉴스 페이지에서 */}
