@@ -1718,6 +1718,10 @@ function jenny_daily_news_shortcode($atts)
         $output .= '<div class="jenny-section-body">';
         $output .= '<div class="jenny-lead">' . jenny_render_news_card($lead, $category_map) . '</div>';
 
+        // 오른쪽 = 이름표 + 제목 리스트. 리스트만 덩그러니 있으면 "이게 뭔 목록인지" 안 보여
+        // 허전하다(사장님 피드백 2026-07-18) → 리스트 위에 이름표를 얹는다.
+        $output .= '<div class="jenny-hcol">';
+        $output .= '<div class="jenny-hl-label">📰 이 시각 주요 뉴스</div>';
         if (!empty($headlines)) {
             $output .= '<ul class="jenny-headlines">';
             foreach ($headlines as $post) {
@@ -1725,6 +1729,7 @@ function jenny_daily_news_shortcode($atts)
             }
             $output .= '</ul>';
         }
+        $output .= '</div>'; // .jenny-hcol
         $output .= '</div>'; // .jenny-section-body
 
         // 폰에서는 제목 5개만 보이므로(CSS), 나머지로 가는 문을 남긴다. PC 에서는 숨김.
@@ -2874,6 +2879,26 @@ function jenny_get_styles()
         .jenny-lead .jenny-excerpt { font-size: 14px !important; -webkit-line-clamp: 5 !important; }
         .jenny-lead .jenny-meta-line { font-size: 12px !important; }
 
+        /* 오른쪽 열 = 이름표 + 리스트. hcol 이 대표카드 높이를 받고, 이름표는 위에 고정,
+           리스트가 남은 높이에 균등히 퍼진다. */
+        .jenny-hcol {
+            flex: 1 1 auto;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .jenny-hl-label {
+            font-size: 13px;
+            font-weight: 800;
+            color: #e85a24;
+            letter-spacing: 0.01em;
+            padding: 0 10px 7px;
+            margin-bottom: 4px;
+            border-bottom: 2px solid #ffe0d2;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
         .jenny-headlines {
             flex: 1 1 auto;
             min-width: 0;
