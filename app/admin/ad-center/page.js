@@ -64,11 +64,14 @@ const PLACEMENTS = {
     { value: "sidebar", label: "사이드바" },
   ],
   chaovietnam: [
-    { value: "default", label: "기본 슬롯 (Ad Inserter가 위치 지정)" },
+    { value: "top", label: "본문 상단" },
+    { value: "in-content", label: "본문 중간 (매 2단락마다 자동)" },
+    { value: "bottom", label: "본문 하단/끝" },
+    { value: "sidebar", label: "사이드바" },
   ],
 };
 
-const DEFAULT_PLACEMENT = { app: "head", vnkorlife: "top", chaovietnam: "default" };
+const DEFAULT_PLACEMENT = { app: "head", vnkorlife: "top", chaovietnam: "in-content" };
 const SURFACE_LABEL = Object.fromEntries(SURFACES.map((s) => [s.key, s.label]));
 
 // 지면·위치별 권장 이미지 크기(px). 안 맞아도 표시 시 자동으로 슬롯에 맞춰짐(잘림 없이 축소/여백).
@@ -82,7 +85,10 @@ const SIZE_GUIDE = {
   "vnkorlife:in-content": "1456 × 400 (가로 배너)",
   "vnkorlife:bottom": "1456 × 400 (가로 배너)",
   "vnkorlife:sidebar": "600 × 500 (정사각형에 가까움)",
-  "chaovietnam:default": "970 × 250 또는 728 × 90 (가로 배너)",
+  "chaovietnam:top": "970 × 250 또는 728 × 90 (가로 배너)",
+  "chaovietnam:in-content": "970 × 250 또는 728 × 90 (가로 배너)",
+  "chaovietnam:bottom": "970 × 250 또는 728 × 90 (가로 배너)",
+  "chaovietnam:sidebar": "300 × 600 또는 300 × 250 (세로 배너)",
 };
 const sizeGuide = (surface, placement) => SIZE_GUIDE[`${surface}:${placement}`] || "자유 크기";
 
@@ -137,7 +143,7 @@ const emptyForm = () => ({
   placements: {
     app: { position: "head", targetPages: [] },
     vnkorlife: { position: "top", targetPages: [] },
-    chaovietnam: { slot: "default", targetPages: [] },
+    chaovietnam: { position: "in-content", targetPages: [] },
   },
   startDate: todayStr(),
   endDate: todayStr(),
@@ -392,7 +398,7 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
     placements: {
       app: { position: initial.placements?.app?.position || "head", targetPages: initial.placements?.app?.targetPages || [] },
       vnkorlife: { position: initial.placements?.vnkorlife?.position || "top", targetPages: initial.placements?.vnkorlife?.targetPages || [] },
-      chaovietnam: { slot: initial.placements?.chaovietnam?.slot || "default", targetPages: initial.placements?.chaovietnam?.targetPages || [] },
+      chaovietnam: { position: initial.placements?.chaovietnam?.position || "in-content", targetPages: initial.placements?.chaovietnam?.targetPages || [] },
     },
     startDate: initial.startDate,
     endDate: initial.endDate,
@@ -442,10 +448,7 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
       ...prev,
       placements: {
         ...prev.placements,
-        [surface]: {
-          ...prev.placements[surface],
-          ...(surface === "chaovietnam" ? { slot: value } : { position: value }),
-        },
+        [surface]: { ...prev.placements[surface], position: value },
       },
     }));
   };
@@ -557,11 +560,7 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
       const cleanPlacements = {};
       for (const s of form.surfaces) {
         const targetPages = form.placements[s]?.targetPages || [];
-        if (s === "chaovietnam") {
-          cleanPlacements[s] = { slot: form.placements[s]?.slot || "default", targetPages };
-        } else {
-          cleanPlacements[s] = { position: form.placements[s]?.position || DEFAULT_PLACEMENT[s], targetPages };
-        }
+        cleanPlacements[s] = { position: form.placements[s]?.position || DEFAULT_PLACEMENT[s], targetPages };
       }
 
       const advertiserId = form.advertiserId?.trim() || slugify(form.advertiserName);
@@ -650,13 +649,13 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
                       <div>
                         <label className="block text-[11px] font-semibold text-slate-500 mb-1">노출 위치</label>
                         <select
-                          value={s.key === "chaovietnam" ? (form.placements[s.key]?.slot || "default") : (form.placements[s.key]?.position || DEFAULT_PLACEMENT[s.key])}
+                          value={form.placements[s.key]?.position || DEFAULT_PLACEMENT[s.key]}
                           onChange={(e) => setPlacement(s.key, e.target.value)}
                           className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-xs outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
                           {PLACEMENTS[s.key].map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                         </select>
                         <p className="mt-1 text-[11px] font-bold text-indigo-600">
-                          📐 권장 {sizeGuide(s.key, s.key === "chaovietnam" ? (form.placements[s.key]?.slot || "default") : (form.placements[s.key]?.position || DEFAULT_PLACEMENT[s.key]))} px
+                          📐 권장 {sizeGuide(s.key, form.placements[s.key]?.position || DEFAULT_PLACEMENT[s.key])} px
                         </p>
                       </div>
                       <div>

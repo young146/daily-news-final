@@ -47,16 +47,21 @@ export async function GET(request) {
         return true;
       })
       .sort((a, b) => (a.priority ?? 99) - (b.priority ?? 99))
-      .map((a) => ({
-        id: a.id,
-        title: a.title || "",
-        advertiserId: a.advertiserId || "",
-        type: a.type || "image",
-        imageUrl: (a.images || [])[0] || "",
-        images: a.images || [],
-        linkUrl: a.linkUrl || "",
-        priority: a.priority ?? 99,
-      }));
+      .map((a) => {
+        const cvn = a.placements?.chaovietnam || {};
+        return {
+          id: a.id,
+          title: a.title || "",
+          advertiserId: a.advertiserId || "",
+          type: a.type || "image",
+          imageUrl: (a.images || [])[0] || "",
+          images: a.images || [],
+          linkUrl: a.linkUrl || "",
+          priority: a.priority ?? 99,
+          // chaovietnam 위치: 상단/중간(in-content)/하단/사이드바. 구 문서 호환(slot) + 기본 in-content.
+          slot: cvn.position || cvn.slot || "in-content",
+        };
+      });
 
     return NextResponse.json({ ads, count: ads.length }, { headers: CORS });
   } catch (e) {
