@@ -71,6 +71,21 @@ const PLACEMENTS = {
 const DEFAULT_PLACEMENT = { app: "head", vnkorlife: "top", chaovietnam: "default" };
 const SURFACE_LABEL = Object.fromEntries(SURFACES.map((s) => [s.key, s.label]));
 
+// 지면·위치별 권장 이미지 크기(px). 안 맞아도 표시 시 자동으로 슬롯에 맞춰짐(잘림 없이 축소/여백).
+// 웹과 앱 규격이 다르므로 분리. key = `${surface}:${position|slot}`.
+const SIZE_GUIDE = {
+  "app:head": "1080 × 300",
+  "app:inner": "1080 × 450",
+  "app:bottom": "1080 × 150",
+  "app:popup": "1080 × 1920",
+  "vnkorlife:top": "1456 × 400 (가로 배너)",
+  "vnkorlife:in-content": "1456 × 400 (가로 배너)",
+  "vnkorlife:bottom": "1456 × 400 (가로 배너)",
+  "vnkorlife:sidebar": "600 × 500 (정사각형에 가까움)",
+  "chaovietnam:default": "970 × 250 또는 728 × 90 (가로 배너)",
+};
+const sizeGuide = (surface, placement) => SIZE_GUIDE[`${surface}:${placement}`] || "자유 크기";
+
 // 지면별 노출 페이지(타겟팅). 아무것도 선택 안 하면 그 지면의 '모든 페이지'에 노출.
 // 앱 = 기존 앱광고 폼과 동일. 웹(vnkorlife+chaovietnam) = 3분류(홈/뉴스터미날/상세) 공통.
 const APP_PAGES = [
@@ -640,6 +655,9 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
                           className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-xs outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
                           {PLACEMENTS[s.key].map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                         </select>
+                        <p className="mt-1 text-[11px] font-bold text-indigo-600">
+                          📐 권장 {sizeGuide(s.key, s.key === "chaovietnam" ? (form.placements[s.key]?.slot || "default") : (form.placements[s.key]?.position || DEFAULT_PLACEMENT[s.key]))} px
+                        </p>
                       </div>
                       <div>
                         <label className="block text-[11px] font-semibold text-slate-500 mb-1">
@@ -704,7 +722,10 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
         {/* 업로드 영역 */}
         <div className="sm:col-span-2 mt-2">
           <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-bold text-slate-700">배너/영상 업로드 <span className="text-red-500">*</span></label>
+            <div>
+              <label className="block text-sm font-bold text-slate-700">배너/영상 업로드 <span className="text-red-500">*</span></label>
+              <p className="text-[11px] text-slate-500 mt-0.5">위 지면별 권장 크기(📐)에 맞추면 가장 선명합니다. 크기가 달라도 <b>잘리지 않고 자동으로 슬롯에 맞춰 표시</b>됩니다.</p>
+            </div>
             <div className="flex bg-slate-100 p-1 rounded-lg">
               {(["image", "video"]).map((t) => (
                 <button key={t} type="button" onClick={() => changeType(t)}
