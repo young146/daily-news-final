@@ -70,3 +70,7 @@ function xinchao_unified_ads_shortcode($atts) {
     return ob_get_clean();
 }
 add_shortcode('xinchao_ad', 'xinchao_unified_ads_shortcode');
+
+// 텍스트 위젯에서도 [xinchao_ad] 숏코드가 실행되게 한다(기본 WP 는 텍스트 위젯에서 숏코드 미실행).
+// → 사이드바 등에 '텍스트' 위젯을 넣고 [xinchao_ad] 만 적으면 바로 광고가 뜬다.
+add_filter('widget_text_content', 'do_shortcode', 11);
