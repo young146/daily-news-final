@@ -71,6 +71,29 @@ const PLACEMENTS = {
 const DEFAULT_PLACEMENT = { app: "head", vnkorlife: "top", chaovietnam: "default" };
 const SURFACE_LABEL = Object.fromEntries(SURFACES.map((s) => [s.key, s.label]));
 
+// 지면별 노출 페이지(타겟팅). 아무것도 선택 안 하면 그 지면의 '모든 페이지'에 노출.
+// 앱 = 기존 앱광고 폼과 동일. 웹(vnkorlife+chaovietnam) = 3분류(홈/뉴스터미날/상세) 공통.
+const APP_PAGES = [
+  { value: "home", label: "🏠 메인 화면" },
+  { value: "danggn", label: "🥕 당근 목록" },
+  { value: "danggn-detail", label: "🥕 당근 상세" },
+  { value: "realestate", label: "🏢 부동산 목록" },
+  { value: "realestate-detail", label: "🏢 부동산 상세" },
+  { value: "jobs", label: "💼 구인구직 목록" },
+  { value: "jobs-detail", label: "💼 구인구직 상세" },
+  { value: "magazine", label: "📰 매거진 목록" },
+  { value: "magazine-detail", label: "📰 매거진 상세" },
+  { value: "neighbor", label: "🏪 이웃사업" },
+];
+const WEB_PAGES = [
+  { value: "home", label: "🏠 홈페이지" },
+  { value: "news-terminal", label: "📰 뉴스 터미날" },
+  { value: "detail", label: "📄 상세페이지 (컨텐츠·뉴스 상세)" },
+];
+const SURFACE_PAGES = { app: APP_PAGES, vnkorlife: WEB_PAGES, chaovietnam: WEB_PAGES };
+const pageLabel = (surface, value) =>
+  (SURFACE_PAGES[surface]?.find((p) => p.value === value)?.label || value).replace(/^[^\s]+\s/, "");
+
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
 function isActiveNow(ad) {
@@ -96,7 +119,11 @@ const emptyForm = () => ({
   images: [],
   linkUrl: "",
   surfaces: ["app", "vnkorlife", "chaovietnam"], // 기본: 묶어 노출
-  placements: { ...DEFAULT_PLACEMENT },
+  placements: {
+    app: { position: "head", targetPages: [] },
+    vnkorlife: { position: "top", targetPages: [] },
+    chaovietnam: { slot: "default", targetPages: [] },
+  },
   startDate: todayStr(),
   endDate: todayStr(),
   isActive: true,
@@ -277,12 +304,17 @@ function AdRow({ ad, onToggle, onEdit, onDelete }) {
         {/* 노출 지면 뱃지 */}
         <div className="flex flex-wrap items-center gap-1.5 mb-2">
           <span className="text-sm font-bold text-slate-900">📢 노출:</span>
-          {surfaces.length > 0 ? surfaces.map((s) => (
-            <span key={s} className="rounded-lg bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-800 border border-blue-300">
-              {SURFACE_LABEL[s] || s}
-              {ad.placements?.[s]?.position ? ` · ${ad.placements[s].position}` : ""}
-            </span>
-          )) : <span className="text-xs text-slate-500">선택된 지면 없음</span>}
+          {surfaces.length > 0 ? surfaces.map((s) => {
+            const pl = ad.placements?.[s] || {};
+            const pos = pl.position || pl.slot;
+            const pages = (pl.targetPages || []);
+            const pagesText = pages.length > 0 ? pages.map((p) => pageLabel(s, p)).join("·") : "전체";
+            return (
+              <span key={s} className="rounded-lg bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-800 border border-blue-300">
+                {SURFACE_LABEL[s] || s}{pos ? ` · ${pos}` : ""} · 📄{pagesText}
+              </span>
+            );
+          }) : <span className="text-xs text-slate-500">선택된 지면 없음</span>}
         </div>
 
         <div className="text-base text-slate-800 space-y-1 font-medium">
@@ -342,7 +374,11 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
     images: initial.images || [],
     linkUrl: initial.linkUrl || "",
     surfaces: initial.surfaces || [],
-    placements: { ...DEFAULT_PLACEMENT, ...(initial.placements || {}) },
+    placements: {
+      app: { position: initial.placements?.app?.position || "head", targetPages: initial.placements?.app?.targetPages || [] },
+      vnkorlife: { position: initial.placements?.vnkorlife?.position || "top", targetPages: initial.placements?.vnkorlife?.targetPages || [] },
+      chaovietnam: { slot: initial.placements?.chaovietnam?.slot || "default", targetPages: initial.placements?.chaovietnam?.targetPages || [] },
+    },
     startDate: initial.startDate,
     endDate: initial.endDate,
     isActive: initial.isActive,
@@ -389,8 +425,22 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
   const setPlacement = (surface, value) => {
     setForm((prev) => ({
       ...prev,
-      placements: { ...prev.placements, [surface]: { ...(prev.placements[surface] || {}), position: surface === "chaovietnam" ? undefined : value, slot: surface === "chaovietnam" ? value : undefined } },
+      placements: {
+        ...prev.placements,
+        [surface]: {
+          ...prev.placements[surface],
+          ...(surface === "chaovietnam" ? { slot: value } : { position: value }),
+        },
+      },
     }));
+  };
+
+  const toggleTargetPage = (surface, page) => {
+    setForm((prev) => {
+      const cur = prev.placements[surface]?.targetPages || [];
+      const nextPages = cur.includes(page) ? cur.filter((p) => p !== page) : [...cur, page];
+      return { ...prev, placements: { ...prev.placements, [surface]: { ...prev.placements[surface], targetPages: nextPages } } };
+    });
   };
 
   const onFileChange = (e) => {
@@ -491,10 +541,11 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
       // 선택된 지면만 placements에 남긴다 (깔끔한 저장)
       const cleanPlacements = {};
       for (const s of form.surfaces) {
+        const targetPages = form.placements[s]?.targetPages || [];
         if (s === "chaovietnam") {
-          cleanPlacements[s] = { slot: form.placements[s]?.slot || "default" };
+          cleanPlacements[s] = { slot: form.placements[s]?.slot || "default", targetPages };
         } else {
-          cleanPlacements[s] = { position: form.placements[s]?.position || DEFAULT_PLACEMENT[s] };
+          cleanPlacements[s] = { position: form.placements[s]?.position || DEFAULT_PLACEMENT[s], targetPages };
         }
       }
 
@@ -580,14 +631,34 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
                     <span className="text-sm font-bold text-slate-800">{s.label}</span>
                   </button>
                   {on && (
-                    <div className="mt-2.5">
-                      <label className="block text-[11px] font-semibold text-slate-500 mb-1">노출 위치</label>
-                      <select
-                        value={s.key === "chaovietnam" ? (form.placements[s.key]?.slot || "default") : (form.placements[s.key]?.position || DEFAULT_PLACEMENT[s.key])}
-                        onChange={(e) => setPlacement(s.key, e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-xs outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
-                        {PLACEMENTS[s.key].map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-                      </select>
+                    <div className="mt-2.5 space-y-2.5">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-500 mb-1">노출 위치</label>
+                        <select
+                          value={s.key === "chaovietnam" ? (form.placements[s.key]?.slot || "default") : (form.placements[s.key]?.position || DEFAULT_PLACEMENT[s.key])}
+                          onChange={(e) => setPlacement(s.key, e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-xs outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+                          {PLACEMENTS[s.key].map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-500 mb-1">
+                          노출 페이지 <span className="font-normal text-slate-400">(안 고르면 전체)</span>
+                        </label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {SURFACE_PAGES[s.key].map((p) => {
+                            const sel = (form.placements[s.key]?.targetPages || []).includes(p.value);
+                            return (
+                              <button key={p.value} type="button" onClick={() => toggleTargetPage(s.key, p.value)}
+                                className={`rounded-md border px-2 py-1 text-[11px] font-semibold transition-all ${
+                                  sel ? "border-indigo-600 bg-indigo-600 text-white shadow-sm" : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
+                                }`}>
+                                {p.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>

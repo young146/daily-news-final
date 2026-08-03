@@ -61,13 +61,20 @@
   images:  string[],        // Storage URL (경로: ads_unified/...)
   linkUrl: string,
 
-  // 노출 지면 + 지면별 위치
+  // 노출 지면 + 지면별 위치 + 지면별 노출 페이지
   surfaces: string[],       // ["app","vnkorlife","chaovietnam"] 중 부분집합
   placements: {
-    app?:         { position: "head"|"inner"|"bottom"|"popup" },
-    vnkorlife?:   { position: "top"|"in-content"|"bottom"|"sidebar" },
-    chaovietnam?: { slot: "default" }   // 위치는 Ad Inserter가 담당
+    app?:         { position: "head"|"inner"|"bottom"|"popup", targetPages: string[] },
+    vnkorlife?:   { position: "top"|"in-content"|"bottom"|"sidebar", targetPages: string[] },
+    chaovietnam?: { slot: "default", targetPages: string[] }   // 위치는 Ad Inserter가 담당
   },
+  // targetPages 값:
+  //   app  = home|danggn|danggn-detail|realestate|realestate-detail|jobs|jobs-detail|magazine|magazine-detail|neighbor
+  //   web(vnkorlife·chaovietnam 공통) = home | news-terminal | detail
+  //   빈 배열 = 그 지면의 '모든 페이지'에 노출
+  //   ⚠️ Phase 2·3 읽기 규칙(웹): 실제 페이지를 3분류로 매핑 —
+  //      컨텐츠 상세·뉴스 상세 → "detail" / 뉴스 터미날(허브) → "news-terminal" /
+  //      그 외 지정 안 된 페이지(목록·메인 등) → "home"
 
   // 일정/상태
   startDate: "YYYY-MM-DD",
