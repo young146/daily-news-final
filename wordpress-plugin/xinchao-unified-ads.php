@@ -2,7 +2,7 @@
 /**
  * Plugin Name: XinChao 통합 광고 (Unified Ads)
  * Description: 통합 광고센터(ads_unified)의 chaovietnam 지면 광고를 공개 API로 불러와 표시한다. 기사 본문에 위치별 자동 삽입 — 상단(1) + 중간(매 N단락마다) + 하단(1). 사이드바는 [xinchao_ad slot="sidebar"] 숏코드. Advanced Ads/Ad Inserter 불필요. 직원은 통합센터에서 등록만 하면 되고, 위치는 우선순위로 자동 결정.
- * Version: 3.0.0
+ * Version: 3.1.0
  * Author: XinChao
  *
  * ── 위치(통합센터에서 지정) ──
@@ -117,3 +117,95 @@ function xinchao_inject_body_ads($content) {
     return $top . $body . $bottom;
 }
 add_filter('the_content', 'xinchao_inject_body_ads', 20);
+
+// ─────────────────────────────────────────────────────────
+// 📋 광고 재고 조회 (관리자 전용) — 관리자 메뉴: 도구 → "광고 재고"
+// 워드프레스에 흩어진 기존 광고(Advanced Ads + 사이드바 위젯)를 한 목록으로 보여준다.
+// 담당자가 이 목록을 보고 통합 광고센터로 하나씩 옮기며 새 시스템을 익힌다. (읽기 전용)
+// ─────────────────────────────────────────────────────────
+add_action('admin_menu', function () {
+    add_management_page('광고 재고', '📋 광고 재고', 'manage_options', 'xinchao-ad-inventory', 'xinchao_ad_inventory_page');
+});
+
+function xinchao_ad_extract_media($html) {
+    $img = '';
+    $link = '';
+    if (preg_match('/<img[^>]+src=["\']([^"\']+)["\']/i', $html, $m)) $img = $m[1];
+    if (preg_match('/<a[^>]+href=["\']([^"\']+)["\']/i', $html, $m)) $link = $m[1];
+    return array($img, $link);
+}
+
+function xinchao_ad_inventory_page() {
+    if (!current_user_can('manage_options')) return;
+    echo '<div class="wrap"><h1>📋 광고 재고 (통합센터 이관용)</h1>';
+    echo '<p>워드프레스에 등록돼 있는 <b>기존 광고 목록</b>입니다. 이 목록을 보고 <b>통합 광고센터</b>(daily-news 관리자 → 통합 광고센터)에 하나씩 옮기세요. 옮긴 뒤 여기(위젯/Advanced Ads)에서 제거하면 됩니다.</p>';
+
+    // 1) Advanced Ads
+    echo '<h2 style="margin-top:24px">① Advanced Ads 광고</h2>';
+    if (post_type_exists('advanced_ads')) {
+        $ads = get_posts(array('post_type' => 'advanced_ads', 'numberposts' => -1, 'post_status' => 'any'));
+        if ($ads) {
+            echo '<table class="widefat striped"><thead><tr><th>제목</th><th>상태</th><th>미리보기</th><th>링크</th></tr></thead><tbody>';
+            foreach ($ads as $ad) {
+                list($img, $link) = xinchao_ad_extract_media($ad->post_content);
+                if (!$img && has_post_thumbnail($ad->ID)) $img = get_the_post_thumbnail_url($ad->ID, 'medium');
+                $opt = get_post_meta($ad->ID, 'advanced_ads_ad_options', true);
+                if (is_array($opt)) {
+                    if (!$img && !empty($opt['output']['image_id'])) $img = wp_get_attachment_url($opt['output']['image_id']);
+                    if (!$link && !empty($opt['url'])) $link = $opt['url'];
+                }
+                echo '<tr><td><b>' . esc_html($ad->post_title) . '</b></td><td>' . esc_html($ad->post_status) . '</td>';
+                echo '<td>' . ($img ? '<img src="' . esc_url($img) . '" style="max-width:140px;height:auto;border:1px solid #ddd">' : '—') . '</td>';
+                echo '<td>' . ($link ? '<a href="' . esc_url($link) . '" target="_blank">' . esc_html($link) . '</a>' : '—') . '</td></tr>';
+            }
+            echo '</tbody></table>';
+        } else {
+            echo '<p>Advanced Ads 광고가 없습니다.</p>';
+        }
+    } else {
+        echo '<p>Advanced Ads 플러그인이 없거나 광고가 없습니다.</p>';
+    }
+
+    // 2) 위젯 광고 (사이드바 등)
+    echo '<h2 style="margin-top:24px">② 위젯 광고 (사이드바 · 푸터 등)</h2>';
+    $sidebars = wp_get_sidebars_widgets();
+    $registered = isset($GLOBALS['wp_registered_sidebars']) ? $GLOBALS['wp_registered_sidebars'] : array();
+    echo '<table class="widefat striped"><thead><tr><th>위젯 영역</th><th>종류</th><th>미리보기</th><th>링크</th></tr></thead><tbody>';
+    $rows = 0;
+    foreach ($sidebars as $sidebar_id => $widget_ids) {
+        if ($sidebar_id === 'wp_inactive_widgets' || !is_array($widget_ids)) continue;
+        $area = isset($registered[$sidebar_id]['name']) ? $registered[$sidebar_id]['name'] : $sidebar_id;
+        foreach ($widget_ids as $wid) {
+            if (!preg_match('/^(.+)-(\d+)$/', $wid, $m)) continue;
+            $base = $m[1];
+            $idx = (int) $m[2];
+            $instances = get_option('widget_' . $base);
+            if (!is_array($instances) || !isset($instances[$idx])) continue;
+            $inst = $instances[$idx];
+            $img = '';
+            $link = '';
+            if ($base === 'media_image') {
+                if (!empty($inst['attachment_id'])) $img = wp_get_attachment_url($inst['attachment_id']);
+                if (!$img && !empty($inst['url'])) $img = $inst['url'];
+                if (!empty($inst['link_url'])) $link = $inst['link_url'];
+            } elseif ($base === 'text' || $base === 'custom_html') {
+                $html = isset($inst['text']) ? $inst['text'] : (isset($inst['content']) ? $inst['content'] : '');
+                list($img, $link) = xinchao_ad_extract_media($html);
+            } else {
+                // Sahifa/기타 광고 위젯: 인스턴스에서 이미지 URL 흔적을 최대한 추출(참고용)
+                $blob = is_array($inst) ? wp_json_encode($inst, JSON_UNESCAPED_SLASHES) : (string) $inst;
+                list($img, $link) = xinchao_ad_extract_media($blob);
+                if (!$img && preg_match('/(https?:[^"\\\\ ]+\.(?:png|jpe?g|gif|webp))/i', $blob, $mm)) $img = $mm[1];
+            }
+            if (!$img && !$link) continue; // 광고성 아닌 위젯(검색·최근글 등) 제외
+            $rows++;
+            echo '<tr><td>' . esc_html($area) . '</td><td>' . esc_html($base) . '</td>';
+            echo '<td>' . ($img ? '<img src="' . esc_url($img) . '" style="max-width:140px;height:auto;border:1px solid #ddd">' : '—') . '</td>';
+            echo '<td>' . ($link ? '<a href="' . esc_url($link) . '" target="_blank">' . esc_html($link) . '</a>' : '—') . '</td></tr>';
+        }
+    }
+    if (!$rows) echo '<tr><td colspan="4">광고성 위젯을 찾지 못했습니다.</td></tr>';
+    echo '</tbody></table>';
+    echo '<p style="margin-top:16px;color:#666">※ Sahifa 테마의 특수 광고칸(헤더 등)은 여기 안 잡힐 수 있습니다. 테마 옵션도 함께 확인하세요.</p>';
+    echo '</div>';
+}
