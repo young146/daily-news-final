@@ -2,7 +2,7 @@
 /**
  * Plugin Name: XinChao 통합 광고 (Unified Ads)
  * Description: 통합 광고센터(ads_unified)의 chaovietnam 지면 광고를 공개 API로 불러와 표시한다. 기사 본문에 위치별 자동 삽입 — 상단(1) + 중간(매 N단락마다) + 하단(1). 사이드바는 [xinchao_ad slot="sidebar"] 숏코드. Advanced Ads/Ad Inserter 불필요. 직원은 통합센터에서 등록만 하면 되고, 위치는 우선순위로 자동 결정.
- * Version: 3.1.0
+ * Version: 3.2.0
  * Author: XinChao
  *
  * ── 위치(통합센터에서 지정) ──
@@ -28,15 +28,19 @@ define('XINCHAO_BODY_MAX', 728);      // 본문 광고 최대 폭(px)
 define('XINCHAO_BODY_ENABLED', true); // 본문 자동삽입 on/off
 
 /**
- * 광고 슬롯 1개의 HTML(컨테이너 + 로드 스크립트).
- * 같은 page URL 은 한 번만 fetch, 모든 슬롯이 공유(window.__xcAd). 클라이언트에서 위치(slot)로 거르고 n(우선순위 순번)으로 1개 선택.
+ * 광고 슬롯 HTML(컨테이너 + 로드 스크립트).
+ * 같은 page URL 은 한 번만 fetch, 모든 슬롯이 공유(window.__xcAd). 클라이언트에서 위치(slot)로 거른다.
+ *   - $n = '' (빈값)  → 해당 위치의 광고 '전체'를 우선순위 순으로 세로로 쌓아 표시 (사이드바에 적합).
+ *   - $n = 정수       → 해당 위치의 n번째(0=1등) 광고 1개만 (본문 슬롯 배분용).
  *
- * @param string $page  '' | home | news-terminal | detail  (API page 필터)
- * @param string $slot  '' | top | in-content | bottom | sidebar  (위치 필터. ''=전체)
- * @param int    $n     우선순위 순번(0=1등)
- * @param int    $max   최대 폭(px)
+ * @param string     $page  '' | home | news-terminal | detail
+ * @param string     $slot  '' | top | in-content | bottom | sidebar
+ * @param int|string $n     '' = 전체 쌓기 / 정수 = 그 순번 1개
+ * @param int        $max   최대 폭(px)
  */
 function xinchao_render_ad($page = '', $slot = '', $n = 0, $max = 728) {
+    $stack = ($n === '' || $n === null);   // 빈값이면 전체 쌓기
+    $ni = $stack ? 0 : (int) $n;
     $uid = 'xcad_' . wp_generate_password(8, false, false);
     $url = XINCHAO_UNIFIED_ADS_API . ($page ? ('?page=' . rawurlencode($page)) : '');
 
@@ -49,21 +53,30 @@ function xinchao_render_ad($page = '', $slot = '', $n = 0, $max = 728) {
       if (!el) return;
       var url = <?php echo json_encode($url); ?>;
       var slot = <?php echo json_encode($slot); ?>;
-      var n = <?php echo (int)$n; ?>;
+      var n = <?php echo (int)$ni; ?>;
+      var stack = <?php echo $stack ? 'true' : 'false'; ?>;
       window.__xcAd = window.__xcAd || {};
       var p = window.__xcAd[url] || (window.__xcAd[url] = fetch(url, { credentials: 'omit' }).then(function(r){ return r.json(); }));
-      p.then(function(d){
-        var ads = (d && d.ads) || [];
-        if (slot) ads = ads.filter(function(a){ return a.slot === slot; });
-        var ad = ads[n];
-        if (!ad || !ad.imageUrl) { el.style.display = 'none'; return; }
+      function make(ad){
+        if (!ad || !ad.imageUrl) return null;
         var a = document.createElement('a');
         a.href = ad.linkUrl || '#'; a.target = '_blank'; a.rel = 'noopener sponsored';
-        a.setAttribute('aria-label', ad.title || '광고'); a.style.display = 'block';
+        a.setAttribute('aria-label', ad.title || '광고'); a.style.display = 'block'; a.style.marginBottom = '14px';
         var img = document.createElement('img');
         img.src = ad.imageUrl; img.alt = ad.title || ''; img.loading = 'lazy';
         img.style.cssText = 'display:block;width:100%;height:auto;border-radius:8px;';
-        a.appendChild(img); el.appendChild(a);
+        a.appendChild(img); return a;
+      }
+      p.then(function(d){
+        var ads = (d && d.ads) || [];
+        if (slot) ads = ads.filter(function(a){ return a.slot === slot; });
+        if (stack) {
+          ads.forEach(function(ad){ var node = make(ad); if (node) el.appendChild(node); });
+          if (!el.firstChild) el.style.display = 'none';
+        } else {
+          var node = make(ads[n]);
+          if (node) el.appendChild(node); else el.style.display = 'none';
+        }
       }).catch(function(){ el.style.display = 'none'; });
     })();
     </script>
@@ -71,10 +84,14 @@ function xinchao_render_ad($page = '', $slot = '', $n = 0, $max = 728) {
     return ob_get_clean();
 }
 
-/** [xinchao_ad slot="sidebar" page="" n="" max=""] — 특정 위치(위젯/페이지) 수동 삽입용 */
+/**
+ * [xinchao_ad slot="sidebar" max="300"] — 특정 위치(위젯/페이지) 삽입용.
+ *   n 미지정 → 그 위치 광고 '전체'를 세로로 쌓음(사이드바에 적합, 위젯 1개로 광고 여러 개).
+ *   n="0" 처럼 지정 → 그 순번 1개만.
+ */
 function xinchao_unified_ads_shortcode($atts) {
-    $a = shortcode_atts(array('page' => '', 'slot' => '', 'n' => '0', 'max' => '728'), $atts, 'xinchao_ad');
-    return xinchao_render_ad($a['page'], $a['slot'], intval($a['n']), intval($a['max']));
+    $a = shortcode_atts(array('page' => '', 'slot' => '', 'n' => '', 'max' => '728'), $atts, 'xinchao_ad');
+    return xinchao_render_ad($a['page'], $a['slot'], $a['n'], intval($a['max']));
 }
 add_shortcode('xinchao_ad', 'xinchao_unified_ads_shortcode');
 
