@@ -109,7 +109,10 @@
 - [x] **Firestore 규칙** ✅ 배포됨 (2026-08-03): `ads_unified`(read:true/write:true, app_ads 패턴), `ad_events`(create:true/read:isAdmin). chao-vn-app/firestore.rules. **이게 없으면 콘솔 저장이 권한거부로 실패했음.** 자체검증: 테스트문서 write→read(vnkorlife 쿼리)→delete 성공.
 - [~] **Phase 2a — vnkorlife 읽기 전환** ✅ 코드+빌드 완료: `vnkorlife-web/src/components/detail/AdBanner.tsx` 가 기존 `ads` 에 더해 `ads_unified`(surfaces array-contains vnkorlife) 를 병합해 읽음. 인덱스 불필요(단일 array-contains + 클라 필터). 웹 페이지 버킷 매핑(’*-detail’→detail, 그 외→home) 적용. 위치 ‘in-content’ 는 in-content-N 슬롯 커버. 프로덕션 빌드 통과. → Vercel 배포 후 실광고로 최종 확인.
 - [ ] **Phase 2b — 앱 읽기 전환**: 앱 FirebaseAdService 가 `ads_unified`(surface=app) 읽기. 앱은 OTA. 구버전 앱 보호: app_ads 미러링/병행.
-- [ ] **Phase 3 — 워드프레스 연결**: `GET /api/public/ads` 신설 + chaovietnam Ad Inserter 커스텀 코드 조각(사장님 FTP 업로드).
+- [~] **Phase 3 — 워드프레스 연결** ✅ 코드 완료(사장님 FTP·설치 대기):
+  - `app/api/public/ads/route.js` 공개 API ✅ 배포·실호출 검증(테스트광고 JSON 반환 확인).
+  - `wordpress-plugin/xinchao-unified-ads.php` 플러그인 신설 — `[xinchao_ad page="" n=""]` 숏코드. Ad Inserter 블록에 삽입. php -l 통과.
+  - **남은 것(사장님)**: 이 .php 를 chaovietnam WP `wp-content/plugins/` 에 FTP 업로드 → 플러그인 활성화 → Ad Inserter 블록에 `[xinchao_ad]` 넣기.
 - [ ] **Phase 4 — 집계·리포트**: 3지면 노출/클릭 이벤트 → `ad_events` → 광고주별·기간별 리포트. 미디어킷 "측정 가능한 광고" 약속 실현.
 
 ---
