@@ -111,8 +111,9 @@
 - [ ] **Phase 2b — 앱 읽기 전환**: 앱 FirebaseAdService 가 `ads_unified`(surface=app) 읽기. 앱은 OTA. 구버전 앱 보호: app_ads 미러링/병행.
 - [~] **Phase 3 — 워드프레스 연결** ✅ 코드 완료(사장님 FTP·설치 대기):
   - `app/api/public/ads/route.js` 공개 API ✅ 배포·실호출 검증(테스트광고 JSON 반환 확인).
-  - `wordpress-plugin/xinchao-unified-ads.php` 플러그인 신설 — `[xinchao_ad page="" n=""]` 숏코드. Ad Inserter 블록에 삽입. php -l 통과.
-  - **남은 것(사장님)**: 이 .php 를 chaovietnam WP `wp-content/plugins/` 에 FTP 업로드 → 플러그인 활성화 → Ad Inserter 블록에 `[xinchao_ad]` 넣기.
+  - `wordpress-plugin/xinchao-unified-ads.php` (v2.0.0) — **기사 본문 자동 삽입**(the_content, 매 2단락+끝, 우선순위 위→아래) + `[xinchao_ad]` 숏코드(사이드바 등 특정위치). **Advanced Ads/Ad Inserter 불필요** — 직원은 통합센터 등록만. php -l 통과.
+  - 사이드바 텍스트 위젯 테스트 성공(실물 확인). 본문 자동삽입은 v2 재업로드 후 동작.
+  - **남은 것(사장님)**: v2 .php 를 chaovietnam `wp-content/plugins/` 에 덮어쓰기 → 본문 광고 자동 노출. (사이드바는 텍스트 위젯 [xinchao_ad] 이미 됨)
 - [ ] **Phase 4 — 집계·리포트**: 3지면 노출/클릭 이벤트 → `ad_events` → 광고주별·기간별 리포트. 미디어킷 "측정 가능한 광고" 약속 실현.
 
 ---
