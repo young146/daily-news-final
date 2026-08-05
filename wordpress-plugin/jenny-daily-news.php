@@ -352,8 +352,10 @@ function jenny_strip_section_emoji($title)
 /**
  * 제목 리스트 한 줄 — 대표카드 옆(PC)/아래(폰)에 쌓이는 헤드라인.
  *
- * 카드와 달리 사진·요약문 없이 제목만 쓴다. 카드 하나가 세로 400px 을 먹는 탓에
+ * 카드와 달리 요약문 없이 제목만 쓴다. 카드 하나가 세로 400px 을 먹는 탓에
  * 뒤쪽 섹션(여행·음식 등)까지 도달하려면 화면 20장 넘게 스크롤해야 했다.
+ * 제목 앞에는 작은 썸네일(52x36)을 붙인다 — 글자만 늘어놓으면 눈이 걸리는 데가 없다
+ * (사장님 피드백 2026-08-05). 사진이 자리표(▸)를 대신하므로 점은 더 이상 찍지 않는다.
  * 과거 뉴스로 채운 항목(is_past)에는 날짜를 붙인다 — 오늘 것처럼 보이면 안 된다.
  */
 function jenny_render_headline_row($post_data)
@@ -361,10 +363,19 @@ function jenny_render_headline_row($post_data)
     $pid       = $post_data['post_id'];
     $permalink = get_permalink($pid);
     $is_past   = !empty($post_data['is_past']);
+    // 'thumbnail'(150px) 로 충분하다 — 52px 로 그리므로. 한 지면에 130줄이 깔리니
+    // 큰 이미지를 쓰면 그만큼 그대로 로딩 비용이 된다.
+    $thumb     = get_the_post_thumbnail_url($pid, 'thumbnail');
 
     $html  = '<li class="jenny-hl-row">';
     $html .= '<a class="jenny-hl-link" href="' . esc_url($permalink) . '">';
-    $html .= '<span class="jenny-hl-dot" aria-hidden="true">▸</span>';
+    if ($thumb) {
+        $html .= '<img class="jenny-hl-thumb" src="' . esc_url($thumb) . '" alt=""'
+              .  ' width="52" height="36" loading="lazy" decoding="async">';
+    } else {
+        // 사진 없는 기사도 같은 자리를 차지해야 제목 시작선이 들쭉날쭉해지지 않는다.
+        $html .= '<span class="jenny-hl-thumb jenny-hl-thumb-empty" aria-hidden="true"></span>';
+    }
     $html .= '<span class="jenny-hl-title">' . get_the_title($pid) . '</span>';
     if ($is_past) {
         $html .= '<time class="jenny-hl-date" datetime="' . esc_attr(get_the_date('c', $pid)) . '">'
@@ -2915,15 +2926,31 @@ function jenny_get_styles()
         .jenny-hl-row:nth-child(even) .jenny-hl-link { background: #e4e7ec; }
         .jenny-hl-link {
             display: flex;
-            align-items: baseline;
-            gap: 8px;
-            padding: 9px 10px;
+            align-items: center; /* 썸네일 기준 세로 가운데. baseline 이면 사진이 글자에 매달린다 */
+            gap: 10px;
+            padding: 5px 10px;
             border-radius: 4px;
             text-decoration: none !important;
             color: #1f2937 !important;
             transition: background 0.15s;
         }
         .jenny-hl-link:hover { background: #ffede4; }
+        /* 줄 앞 썸네일 — 크기는 마음대로 정한 값이 아니라 대표카드 높이에서 역산한 값이다.
+           줄 높이 = 사진 36 + 위아래 여백 10 = 46px → 10줄 + 이름표 ≈ 대표카드 높이.
+           사진을 더 키우면 오른쪽 리스트가 대표카드보다 길어져 아귀가 안 맞는다
+           (2026-07-18에 한 번 고쳤던 그 문제). 키우려면 padding 을 같이 줄일 것. */
+        .jenny-hl-thumb {
+            flex: none;
+            display: block;
+            width: 52px;
+            height: 36px;
+            border-radius: 4px;
+            object-fit: cover;
+            background: #e5e8eb;
+        }
+        /* 사진 없는 기사 — 깨진 이미지처럼 보이지 않게 옅은 테두리만 준 빈 칸 */
+        .jenny-hl-thumb-empty { box-shadow: inset 0 0 0 1px #dcdfe3; }
+        /* (죽은 규칙) ▸ 점은 썸네일이 대신하므로 더 이상 출력하지 않는다. 되돌리기 쉽게 남겨둠 */
         .jenny-hl-dot { flex: none; color: #c9cdd3; font-size: 11px; line-height: 1.6; }
         .jenny-hl-title {
             flex: 1 1 auto;
@@ -2947,7 +2974,10 @@ function jenny_get_styles()
             .jenny-section-body { flex-direction: column; gap: 12px; }
             .jenny-lead { flex: none; width: 100%; }
             .jenny-hl-title { -webkit-line-clamp: 2; font-size: 14px; }
-            .jenny-hl-link { padding: 9px 10px; }
+            /* 폰은 제목이 2줄이라 사진도 그만큼 키운다(56x42). 세로로 쌓이므로
+               대표카드 높이에 맞출 필요가 없다 — 줄이 너무 얇아 보이지 않는 게 우선. */
+            .jenny-hl-link { padding: 6px 10px; gap: 10px; }
+            .jenny-hl-thumb { width: 56px; height: 42px; }
             /* 제목 5개만. 서버는 10개를 그대로 보내고 화면 크기가 결정한다. */
             .jenny-hl-row:nth-child(n+6) { display: none; }
             .jenny-more-mobile {
