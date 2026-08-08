@@ -7,6 +7,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import prisma from "../../../lib/prisma.js";
+import { searchTerms } from "../../../lib/search-terms.js";
 
 export const dynamic = "force-dynamic";
 
@@ -131,31 +132,9 @@ export async function GET(request) {
     );
   }
 
-  // ── 검색어를 낱말로 쪼갠다 ────────────────────────────────────────────
-  // 왜 필요한가 (2026-08-08 실측):
-  //   예전에는 입력어를 **통째로 한 덩어리**로 훑었다. `searchText ILIKE '%입력어 전체%'`.
-  //   그래서 "베트남 구인구직 안내 정보" 처럼 문장으로 물으면 **그 문장이 통으로 적힌
-  //   데이터만** 걸렸다 — 실측 1건. 같은 뜻의 "구인" 은 219건이 나오는데도 그랬다.
-  //   24년치 매거진·뉴스와 수천 개 옐로페이지·진출기업이 멀쩡히 있는데 못 찾던 것이다.
-  //   새 홈이 "무엇이든 물어보세요"로 **문장 입력을 권하므로** 이 문제가 더 자주 터진다.
-  //
-  // 군말(정보·안내·추천…)은 버린다. 남겨두면 그 단어만 걸린 엉뚱한 데이터가 딸려온다.
-  // '베트남'도 버린다 — 이 데이터는 전부 베트남 것이라 구분에 아무 도움이 안 된다.
-  const STOP = new Set([
-    "정보", "안내", "추천", "관련", "대한", "대해", "소개", "목록", "리스트",
-    "알려줘", "알려주세요", "찾아줘", "찾아주세요", "가르쳐줘", "해줘", "주세요",
-    "어디", "어디야", "어디에", "어디서", "좋은", "괜찮은", "있나요", "있어", "뭐야", "뭐가",
-    "베트남", "베트남에", "베트남의", "한국", "우리", "저희", "그리고", "또는",
-  ]);
-  const tokenize = (s) =>
-    String(s || "")
-      .split(/[\s,./·|()[\]{}"'`~!?]+/)
-      // 끝에 붙은 조사를 뗀다. 3글자 이상일 때만 — "요가"의 '가'까지 떼면 검색어가 사라진다.
-      .map((t) => (t.length >= 3 ? t.replace(/(으로|에서|에게|은|는|이|가|을|를|의|에|와|과|로|도|만)$/, "") : t))
-      .map((t) => t.trim())
-      .filter((t) => t.length >= 2 && !STOP.has(t))
-      .slice(0, 5);   // 너무 많이 쪼개면 무관한 결과가 늘어난다
-  const toks = browse ? [] : tokenize(q);
+  // 검색어를 낱말로 쪼갠다. 규칙은 lib/search-terms.js 한 곳에만 있다
+  // (AI 도우미의 search_directory 도 같은 것을 쓴다 — 두 벌로 두면 한쪽만 고쳐진다).
+  const toks = browse ? [] : searchTerms(q);
 
   try {
     // q 외 공통 필터 (패싯 계산용 — type 제외)
@@ -198,20 +177,30 @@ export async function GET(request) {
     //  - 그 외(검색): 관련도순
     const sort = (sp.get("sort") || "").trim();
 
-    // hits = 입력한 낱말 중 **몇 개가 맞았는가**. 낱말별 OR 로 후보를 넓게 잡는 대신,
-    // 이 숫자로 순위를 매겨 많이 맞은 것이 위로 오게 한다. (넓게 찾고, 정확히 세운다)
-    // ⚠️ priority(프리미엄 노출)보다 **앞에** 둔다 — 낱말 하나만 스친 프리미엄 업소가
-    //    딱 맞는 업소보다 위에 오면 검색이 망가진다. 같은 관련도끼리는 여전히 priority 가 이긴다.
+    // 관련도 점수 = 입력한 낱말 중 몇 개가, 어디에 맞았는가.
+    //   제목에 맞으면 2점, 본문(searchText)에 맞으면 1점.
+    //   제목에 "한식당"이 있는 업소와, 본문 어딘가에 한 번 스친 기사는 관련도가 전혀 다르다.
+    // 넓게 찾고(낱말 OR), 정확히 세운다(이 점수).
     const hitsExpr = toks.length
       ? Prisma.sql`(${Prisma.join(
-          toks.map((t) => Prisma.sql`(CASE WHEN "searchText" ILIKE ${"%" + t + "%"} THEN 1 ELSE 0 END)`),
+          toks.map((t) => {
+            const p = "%" + t + "%";
+            return Prisma.sql`(CASE WHEN title ILIKE ${p} THEN 2 ELSE 0 END + CASE WHEN "searchText" ILIKE ${p} THEN 1 ELSE 0 END)`;
+          }),
           " + "
         )})`
       : Prisma.sql`0`;
 
+    // ⚠️ 정렬 순서를 바꿨다 (2026-08-08). 예전에는 **종류**(옐로→진출기업→매거진→뉴스)가
+    //    맨 앞이라, 딱 맞는 매거진 기사가 살짝 스친 옐로페이지 업소보다 **항상 아래**였다.
+    //    "한식당"을 찾는 사람은 업소를, "비자 연장"을 찾는 사람은 기사를 원한다 —
+    //    종류를 고정하면 둘 중 하나는 반드시 틀린다. 그래서 **관련도를 맨 앞**에 둔다.
+    //    관련도가 같을 때만 예전 순서(종류 → 프리미엄)가 적용된다.
+    // ⚠️ priority(프리미엄 노출)도 관련도 뒤다 — 낱말 하나 스친 프리미엄 업소가
+    //    딱 맞는 업소보다 위에 오면 검색이 망가지고, 결국 광고 지면의 신뢰도 떨어진다.
     const orderBy =
       sort === "category"
-        ? Prisma.sql`CASE type WHEN 'yellow' THEN 1 WHEN 'company' THEN 2 WHEN 'magazine' THEN 3 WHEN 'news' THEN 4 ELSE 5 END ASC, ${hitsExpr} DESC, priority DESC, "publishedAt" DESC NULLS LAST, title ASC`
+        ? Prisma.sql`${hitsExpr} DESC, CASE type WHEN 'yellow' THEN 1 WHEN 'company' THEN 2 WHEN 'magazine' THEN 3 WHEN 'news' THEN 4 ELSE 5 END ASC, priority DESC, "publishedAt" DESC NULLS LAST, title ASC`
         : browse
         ? Prisma.sql`priority DESC, "publishedAt" DESC NULLS LAST, title ASC`
         : Prisma.sql`${hitsExpr} DESC, priority DESC, similarity("searchText", ${q}) DESC, "publishedAt" DESC NULLS LAST`;

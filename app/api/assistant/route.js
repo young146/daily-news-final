@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { Prisma } from "@prisma/client";
 import prisma from "../../../lib/prisma.js";
+import { searchTerms } from "../../../lib/search-terms.js";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -234,15 +235,41 @@ async function runPlaces({ query }) {
 async function runSearch({ query, type, city }) {
   const q = String(query || "").trim();
   if (!q) return [];
-  const conds = [Prisma.sql`("searchText" ILIKE ${"%" + q + "%"} OR similarity("searchText", ${q}) > 0.1)`];
+
+  // 통합검색(/api/search)과 **똑같은 규칙**으로 낱말을 쪼갠다.
+  // 예전에는 여기만 입력어를 통째로 훑어서, 웹에서는 찾아지는 것을 AI 는 못 찾았다.
+  // 규칙은 lib/search-terms.js 한 곳에만 있다 — 두 벌로 두면 또 어긋난다.
+  const toks = searchTerms(q);
+
+  const ors = [
+    Prisma.sql`"searchText" ILIKE ${"%" + q + "%"}`,
+    Prisma.sql`similarity("searchText", ${q}) > 0.1`,
+  ];
+  for (const t of toks) ors.push(Prisma.sql`"searchText" ILIKE ${"%" + t + "%"}`);
+
+  const conds = [Prisma.sql`(${Prisma.join(ors, " OR ")})`];
   if (type) conds.push(Prisma.sql`type = ${type}`);
   if (city) conds.push(Prisma.sql`city = ${city}`);
   const where = Prisma.join(conds, " AND ");
+
+  // 관련도 = 제목에 맞으면 2점, 본문에 맞으면 1점. 통합검색과 같은 셈법.
+  // AI 에게는 8건만 주므로 **상위 8건이 정확한 것**이 무엇보다 중요하다.
+  const hitsExpr = toks.length
+    ? Prisma.sql`(${Prisma.join(
+        toks.map((t) => {
+          const p = "%" + t + "%";
+          return Prisma.sql`(CASE WHEN title ILIKE ${p} THEN 2 ELSE 0 END + CASE WHEN "searchText" ILIKE ${p} THEN 1 ELSE 0 END)`;
+        }),
+        " + "
+      )})`
+    : Prisma.sql`0`;
+
   const rows = await prisma.$queryRaw`
     SELECT id, type, title, summary, url, phone, city, district, category
     FROM "SearchIndex"
     WHERE ${where}
-    ORDER BY CASE type WHEN 'yellow' THEN 1 WHEN 'company' THEN 2 WHEN 'magazine' THEN 3 WHEN 'news' THEN 4 ELSE 5 END ASC,
+    ORDER BY ${hitsExpr} DESC,
+             CASE type WHEN 'yellow' THEN 1 WHEN 'company' THEN 2 WHEN 'magazine' THEN 3 WHEN 'news' THEN 4 ELSE 5 END ASC,
              priority DESC, similarity("searchText", ${q}) DESC, "publishedAt" DESC NULLS LAST
     LIMIT 8`;
   return rows;
