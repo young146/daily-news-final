@@ -7,7 +7,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import prisma from "../../../lib/prisma.js";
-import { searchTerms } from "../../../lib/search-terms.js";
+import { searchTerms, minTermHits } from "../../../lib/search-terms.js";
 
 export const dynamic = "force-dynamic";
 
@@ -146,9 +146,19 @@ export async function GET(request) {
         Prisma.sql`similarity("searchText", ${q}) > 0.1`,
       ];
       for (const t of expandQuery(q)) ors.push(Prisma.sql`"searchText" ILIKE ${"%" + t + "%"}`);
-      // 낱말별 부분일치 — 여러 낱말 중 **하나만 맞아도** 일단 후보에 넣는다(찾히는 게 우선).
-      // 대신 아래 hits(맞은 낱말 수)로 순위를 매겨, 많이 맞은 것이 위로 온다.
-      for (const t of toks) ors.push(Prisma.sql`"searchText" ILIKE ${"%" + t + "%"}`);
+      // 낱말 일치 — 낱말이 2개 이상이면 **최소 2개는 맞아야** 후보로 본다.
+      // 하나만 맞아도 넣던 때는 흔한 낱말 하나에 스친 기사가 수천 건 딸려왔다
+      // (실측: "진출을 위한 컨설팅업체" → 뉴스 2,048 · 매거진 2,521).
+      if (toks.length) {
+        const matched = Prisma.join(
+          toks.map((t) => {
+            const p = "%" + t + "%";
+            return Prisma.sql`(CASE WHEN title ILIKE ${p} OR "searchText" ILIKE ${p} THEN 1 ELSE 0 END)`;
+          }),
+          " + "
+        );
+        ors.push(Prisma.sql`(${matched}) >= ${minTermHits(toks)}`);
+      }
       // 카테고리 동의어: 흔한 검색어를 옐로 카테고리 슬러그에 연결해 category 도 함께 매칭.
       // 낱말 단위로도 돌린다 — "베트남 구인구직 안내" 통째로는 아무 카테고리에도 안 걸린다.
       const catSlugs = [...new Set([...expandCategories(q), ...toks.flatMap((t) => expandCategories(t))])];

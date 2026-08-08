@@ -10,7 +10,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { Prisma } from "@prisma/client";
 import prisma from "../../../lib/prisma.js";
-import { searchTerms } from "../../../lib/search-terms.js";
+import { searchTerms, minTermHits } from "../../../lib/search-terms.js";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -300,6 +300,9 @@ export async function POST(request) {
   const convo = [...messages];
   const collected = [];   // 화면 카드용으로 모은 검색 결과(중복 제거)
   const seen = new Set();
+  // AI 가 이해해서 실제로 검색에 쓴 말들. 응답에 담아 돌려주면
+  // 앱·웹이 이 말로 목록을 다시 불러 좁힐 수 있다. (AI 를 쓰는 이유가 이것이다)
+  const usedTerms = [];
 
   try {
     let reply = "";
@@ -366,6 +369,11 @@ export async function POST(request) {
               : "구글 결과 없음";
           }
         } else {
+          // AI 가 **문장의 뜻을 이해해서 정한** 검색어. 이걸 화면 목록에도 물려주려고 모은다.
+          // (군말 사전으로 낱말을 걸러내는 건 영원히 완성되지 않는 일이다 —
+          //  자연어를 이해하는 검색이 필요해서 AI 를 쓰는 것이니, 그 이해를 목록도 쓰게 한다)
+          const uq = String((block.input || {}).query || "").trim();
+          if (uq && !usedTerms.includes(uq)) usedTerms.push(uq);
           let rows = [];
           try { rows = await runSearch(block.input || {}); } catch (e) { console.error("[assistant] runSearch", e); }
           for (const r of rows) { if (!seen.has(r.id)) { seen.add(r.id); collected.push(r); } }
@@ -379,7 +387,12 @@ export async function POST(request) {
     }
 
     return NextResponse.json(
-      { reply: reply || "죄송해요, 잘 이해하지 못했어요. 무엇을 찾으시는지 한 번만 더 말씀해 주시겠어요?", results: collected },
+      {
+        reply: reply || "죄송해요, 잘 이해하지 못했어요. 무엇을 찾으시는지 한 번만 더 말씀해 주시겠어요?",
+        results: collected,
+        // AI 가 문장을 이해해 뽑아낸 검색어. 앱·웹이 이걸로 목록을 다시 좁힌다.
+        terms: usedTerms.slice(0, 3),
+      },
       { headers: CORS }
     );
   } catch (e) {
