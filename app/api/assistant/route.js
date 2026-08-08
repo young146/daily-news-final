@@ -14,7 +14,14 @@ import prisma from "../../../lib/prisma.js";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const MODEL = process.env.ANTHROPIC_ASSISTANT_MODEL || "claude-haiku-4-5";
+// 도우미 모델. Haiku 4.5(최하위 티어)에서 Sonnet 5 로 올렸다 (2026-08-08).
+// 이유: 이 도우미가 하는 일은 단순하지 않다 — 도구 2개 중 뭘 언제 쓸지 판단하고,
+//       '업소의 구체 사실(도구만)' 과 '베트남 일반 지식(알아서 답)' 을 구분하고,
+//       한국어로 자연스럽게 써야 한다. 작은 모델은 이런 미묘한 구분을 뭉갠다.
+// 덤: 프롬프트 캐싱 최소 길이가 Haiku 4.5 는 4,096 토큰이라 우리 시스템 프롬프트로는
+//     아예 캐시가 안 됐다. Sonnet 은 1,024 라 캐시가 가능해진다(아직 미적용).
+// ⛔ 되돌리려면 코드 말고 환경변수로: ANTHROPIC_ASSISTANT_MODEL=claude-haiku-4-5
+const MODEL = process.env.ANTHROPIC_ASSISTANT_MODEL || "claude-sonnet-5";
 const MAX_ROUNDS = 4;          // 도구호출 ↔ 응답 왕복 상한(무한루프 방지)
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // 구글 Places API (New) 서버 키 — 설정돼 있으면 평점·리뷰까지 합쳐서 추천.
@@ -80,6 +87,12 @@ const SYSTEM = `당신은 '씬짜오 도우미'입니다. 베트남 거주 한�
    → 다만 **수수료·기간·필요서류·법규는 자주 바뀝니다.** 숫자를 말할 땐 "제가 아는 기준으로는",
      "변경될 수 있으니 관할 기관(출입국·영사관 등)에서 확인하세요"처럼 **확인 권고를 함께** 붙이세요.
    → 확실하지 않으면 단정하지 말고 "대체로 ~인데, 최근 바뀌었을 수 있어요"라고 하세요.
+
+🔎 도구는 반드시 쓰세요 (중요):
+- **업소·기관·가게·기사를 찾는 질문이면 답하기 전에 search_directory 를 먼저 호출**하세요. 기억으로 답하지 마세요.
+- 음식점·카페·병원처럼 '좋은 곳'을 묻는 질문이면 **search_google_places 도 함께** 호출하세요.
+- 검색할지 말지 망설이지 말고 **일단 검색하세요.** 검색은 빠르고, 안 하면 틀린 답을 하게 됩니다.
+- 반대로 순수한 일반 지식 질문(비자 절차·명절·문화 등)은 도구 없이 바로 답하고, 관련 업소·기사가 있을 때만 덧붙이세요.
 
 말투: 한국어로, 따뜻하고 간결하게. 핵심 2~5개만.
 형식: 모바일 채팅이라 화면이 좁습니다. 표(table) 쓰지 말고 짧은 목록(• 상호 — 전화/도시)으로. 이모지는 한두 개만.
@@ -210,7 +223,16 @@ export async function POST(request) {
     for (let round = 0; round < MAX_ROUNDS; round++) {
       const res = await anthropic.messages.create({
         model: MODEL,
-        max_tokens: 1024,
+        // 생각(thinking) 끔 — 사장님 결정(2026-08-08).
+        // 검색 도우미는 속도가 생명이고, 깊이 생각해야 할 질문이면 독자가 직접 AI 를 쓰면 된다.
+        // ⚠️ Sonnet 5 는 thinking 이 **기본으로 켜져** 있어서 명시적으로 꺼야 한다.
+        //    안 끄면 max_tokens 를 생각과 답변이 나눠 쓰다가 답이 잘린다.
+        // ⚠️ 생각을 끄면 **도구를 덜 쓰는** 부작용이 있다(공식 문서 명시).
+        //    그래서 SYSTEM 프롬프트에 '도구를 반드시 먼저 써라'를 못박아 뒀다. 둘은 한 쌍이다.
+        thinking: { type: "disabled" },
+        // 1024 → 2048. 이제 베트남 일반 정보까지 답하므로 예전보다 답이 길다.
+        // (생각을 껐으므로 이 토큰은 전부 답변에 쓰인다)
+        max_tokens: 2048,
         system: SYSTEM,
         tools: TOOLS,
         messages: convo,
