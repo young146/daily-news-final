@@ -233,10 +233,32 @@ export async function POST(request) {
         // 1024 → 2048. 이제 베트남 일반 정보까지 답하므로 예전보다 답이 길다.
         // (생각을 껐으므로 이 토큰은 전부 답변에 쓰인다)
         max_tokens: 2048,
-        system: SYSTEM,
+        // 프롬프트 캐싱 — 응답이 느리던 가장 큰 원인을 없앤다.
+        //
+        // 한 번 검색에 모델을 최대 MAX_ROUNDS(4)번 부르는데, 그때마다 도구 정의 + 시스템
+        // 프롬프트(합계 약 3,900자)를 **처음부터 다시 읽고 있었다.** 캐싱하면 2번째 왕복부터는
+        // 그 부분을 다시 안 읽는다 → 응답 시작이 빨라지고 그 구간 비용도 1/10 로 떨어진다.
+        // 5분 안에 다른 사용자가 검색해도 같은 캐시를 읽는다.
+        //
+        // 표시는 tools → system → messages 순이라, **system 마지막 블록에 표시 하나만** 달면
+        // 도구 정의까지 함께 캐시된다.
+        // ⚠️ 캐시는 앞부분이 한 글자만 달라도 깨진다. SYSTEM 이나 TOOLS 에 날짜·랜덤값 같은
+        //    매번 바뀌는 값을 절대 넣지 말 것. (넣는 순간 캐시가 통째로 무효가 된다)
+        // ※ Haiku 4.5 는 캐시 최소 길이가 4,096 토큰이라 이 프롬프트로는 캐시가 안 됐다.
+        //   Sonnet 은 1,024 라 가능해진 것 — 모델을 올린 덕에 열린 문이다.
+        system: [
+          { type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } },
+        ],
         tools: TOOLS,
         messages: convo,
       });
+
+      // 캐시가 실제로 먹는지 로그로 확인(Vercel logs). read 가 계속 0 이면 앞부분이 매번 바뀌는 것.
+      if (res.usage) {
+        const cw = res.usage.cache_creation_input_tokens || 0;
+        const cr = res.usage.cache_read_input_tokens || 0;
+        if (cw > 0 || cr > 0) console.log(`[assistant] cache write=${cw}, read=${cr}`);
+      }
 
       // 이번 응답의 텍스트 모으기
       reply = res.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
