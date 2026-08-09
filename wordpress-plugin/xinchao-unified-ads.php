@@ -57,6 +57,42 @@ function xinchao_render_ad($page = '', $slot = '', $n = 0, $max = 728) {
       var stack = <?php echo $stack ? 'true' : 'false'; ?>;
       window.__xcAd = window.__xcAd || {};
       var p = window.__xcAd[url] || (window.__xcAd[url] = fetch(url, { credentials: 'omit' }).then(function(r){ return r.json(); }));
+
+      // ── 광고 성과 집계 (2026-08-09 신설) ───────────────────────────────
+      // 왜: 광고를 팔면서 광고주에게 "몇 명이 봤고 몇 명이 눌렀다"를 줄 수 없었다.
+      //     이 플러그인에는 클릭·노출 집계가 한 줄도 없었다.
+      // 어디로: GA4(gtag). 이 사이트에 이미 G-QTCWJ6GGH0 이 실려 있고,
+      //     앱도 같은 속성에 같은 이벤트명(promo_impression/promo_click)으로 보낸다.
+      //     → 웹·앱을 한 번의 질의로 합산해 광고주 월간 리포트를 만든다.
+      // 노출 기준: 화면에 절반 이상 들어왔을 때 1회. HTML 에 그려진 것만으로는
+      //     "봤다"고 할 수 없다(스크롤로 지나치지도 않은 하단 광고까지 세게 된다).
+      var seen = window.__xcAdSeen = window.__xcAdSeen || {};
+      function send(name, ad, slotName){
+        if (typeof gtag !== 'function') return;   // GA 미로드 시 조용히 통과
+        try {
+          gtag('event', name, {
+            promo_id:   String(ad.id || ''),
+            promo_name: ad.title || '',
+            promo_slot: slotName || ad.slot || 'unknown'
+          });
+        } catch (e) {}
+      }
+      function watchImpression(node, ad, slotName){
+        var key = (ad.id || '') + '|' + (slotName || '');
+        if (seen[key]) return;                    // 한 페이지에서 같은 광고는 1회만
+        if (!('IntersectionObserver' in window)) { seen[key] = 1; send('promo_impression', ad, slotName); return; }
+        var io = new IntersectionObserver(function(entries){
+          for (var i = 0; i < entries.length; i++) {
+            if (entries[i].isIntersecting) {
+              if (!seen[key]) { seen[key] = 1; send('promo_impression', ad, slotName); }
+              io.disconnect();
+            }
+          }
+        }, { threshold: 0.5 });
+        io.observe(node);
+      }
+      // ──────────────────────────────────────────────────────────────────
+
       function make(ad){
         if (!ad || !ad.imageUrl) return null;
         var a = document.createElement('a');
@@ -65,7 +101,11 @@ function xinchao_render_ad($page = '', $slot = '', $n = 0, $max = 728) {
         var img = document.createElement('img');
         img.src = ad.imageUrl; img.alt = ad.title || ''; img.loading = 'lazy';
         img.style.cssText = 'display:block;width:100%;height:auto;border-radius:8px;';
-        a.appendChild(img); return a;
+        a.appendChild(img);
+        // 클릭 집계. target=_blank 라 페이지가 안 닫히므로 전송이 끊기지 않는다.
+        a.addEventListener('click', function(){ send('promo_click', ad, slot); });
+        watchImpression(a, ad, slot);
+        return a;
       }
       p.then(function(d){
         var ads = (d && d.ads) || [];
