@@ -169,6 +169,10 @@ const SYSTEM = `당신은 '씬짜오 도우미'입니다. 베트남 거주 한�
   **search_directory 를 먼저 호출**하세요. 기억으로 답하지 마세요.
 - 음식점·카페·병원처럼 '좋은 곳'을 묻는 질문이면 **search_google_places 도 함께** 호출하세요.
 - ②라고 판단했으면 망설이지 말고 **일단 검색하세요.**
+- ⛔ **도구를 부를 때는 서두를 쓰지 마세요.** "네, 찾아볼게요!" 같은 말을 앞에 붙이지 말고 **곧바로 도구를 부르세요.**
+  이유: 답은 글자를 하나씩 만들어 화면으로 흘려보냅니다. 서두를 쓰는 동안 사용자는 그만큼 더 기다리고,
+  그 서두는 검색이 끝나면 **화면에서 지워집니다.** 아무도 못 읽는 문장을 위해 시간을 쓰는 셈입니다.
+  인사와 설명은 **검색 결과를 본 뒤 최종 답변에서** 하세요.
 - 순수한 일반 지식 질문(비자 절차·명절·문화 등)은 도구 없이 바로 답하고, 관련 업소·기사가 있을 때만 덧붙이세요.
 
 ⛔ **검색 결과가 질문과 안 맞으면 갖다 붙이지 마세요.**
@@ -303,6 +307,144 @@ async function runSearch({ query, type, city }) {
   return rows;
 }
 
+// ============================================================
+// 대화 한 판 — **이 함수 하나뿐이다.**
+//
+// 왜 하나인가: 예전에 검색 로직을 두 벌 뒀다가 한쪽만 고쳐져서 "웹은 찾는데 AI 는 못 찾는"
+//   상태가 됐었다(2026-08-08). 스트리밍을 붙이면서 루프를 또 복사하면 같은 일이 반복된다.
+//   그래서 **emit 유무로만 갈린다** — 있으면 한 글자씩 흘려보내고, 없으면 다 만들어 한 번에 준다.
+//
+// emit(ev) : 스트리밍용 콜백. 없으면(=구버전 클라이언트) 예전과 완전히 동일하게 동작한다.
+// ============================================================
+async function runConversation(messages, emit) {
+  const convo = [...messages];
+  const collected = [];   // 화면 카드용으로 모은 검색 결과(중복 제거)
+  const seen = new Set();
+  // AI 가 이해해서 실제로 검색에 쓴 말들. 응답에 담아 돌려주면
+  // 앱·웹이 이 말로 목록을 다시 불러 좁힐 수 있다. (AI 를 쓰는 이유가 이것이다)
+  const usedTerms = [];
+  let reply = "";
+
+  for (let round = 0; round < MAX_ROUNDS; round++) {
+    const params = {
+      model: MODEL,
+      // 생각(thinking) 끔 — 사장님 결정(2026-08-08).
+      // 검색 도우미는 속도가 생명이고, 깊이 생각해야 할 질문이면 독자가 직접 AI 를 쓰면 된다.
+      // ⚠️ Sonnet 5 는 thinking 이 **기본으로 켜져** 있어서 명시적으로 꺼야 한다.
+      //    안 끄면 max_tokens 를 생각과 답변이 나눠 쓰다가 답이 잘린다.
+      // ⚠️ 생각을 끄면 **도구를 덜 쓰는** 부작용이 있다(공식 문서 명시).
+      //    그래서 SYSTEM 프롬프트에 '도구를 반드시 먼저 써라'를 못박아 뒀다. 둘은 한 쌍이다.
+      thinking: { type: "disabled" },
+      // 1024 → 2048. 이제 베트남 일반 정보까지 답하므로 예전보다 답이 길다.
+      // (생각을 껐으므로 이 토큰은 전부 답변에 쓰인다)
+      max_tokens: 2048,
+      // 프롬프트 캐싱 — 한 번 검색에 모델을 최대 MAX_ROUNDS(4)번 부르는데, 그때마다 도구 정의 +
+      // 시스템 프롬프트(합계 약 6,200자)를 **처음부터 다시 읽고 있었다.** 캐싱하면 2번째
+      // 왕복부터 그 부분을 다시 안 읽는다 → 그 구간 비용이 1/10. 5분 안의 다른 사용자도 같은 캐시.
+      //
+      // 표시는 tools → system → messages 순이라, **system 마지막 블록에 표시 하나만** 달면
+      // 도구 정의까지 함께 캐시된다.
+      // ⚠️ 캐시는 앞부분이 한 글자만 달라도 깨진다. SYSTEM 이나 TOOLS 에 날짜·랜덤값 같은
+      //    매번 바뀌는 값을 절대 넣지 말 것. (넣는 순간 캐시가 통째로 무효가 된다)
+      system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
+      tools: TOOLS,
+      messages: convo,
+    };
+
+    let res;
+    if (emit) {
+      // 흘려보내기 — 모델이 글자를 만들어내는 즉시 화면으로 보낸다.
+      // 전체 걸리는 시간은 같지만 **첫 글자가 1~2초 만에 뜬다.** 사용자가 체감하는 건 이쪽이다.
+      const s = anthropic.messages.stream(params);
+      s.on("text", (t) => emit({ type: "delta", text: t }));
+      res = await s.finalMessage();
+    } else {
+      res = await anthropic.messages.create(params);
+    }
+
+    // 캐시가 실제로 먹는지 로그로 확인(Vercel logs). read 가 계속 0 이면 앞부분이 매번 바뀌는 것.
+    if (res.usage) {
+      const cw = res.usage.cache_creation_input_tokens || 0;
+      const cr = res.usage.cache_read_input_tokens || 0;
+      if (cw > 0 || cr > 0) console.log(`[assistant] cache write=${cw}, read=${cr}`);
+    }
+
+    // 이번 응답의 텍스트 모으기
+    reply = res.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
+
+    if (res.stop_reason !== "tool_use") break;   // 도구 안 쓰면 최종 답변
+
+    // ⚠️ 도구를 쓰는 판이면 방금 흘려보낸 글자는 **최종 답이 아니다**(“찾아볼게요” 같은 서두).
+    //    최종 답은 도구 결과를 본 다음 판에 나온다. 그래서 화면을 비우라고 알린다.
+    //    (예전 비스트리밍 코드도 reply 를 판마다 덮어써서 마지막 판만 남겼다 — 동작 동일)
+    if (emit) emit({ type: "reset" });
+
+    // 도구 호출 처리
+    convo.push({ role: "assistant", content: res.content });
+    const useBlocks = res.content.filter((b) => b.type === "tool_use");
+
+    // 무엇을 찾는지 **먼저** 알린다 — 빈 화면에서 기다리는 것과 체감이 완전히 다르다.
+    // AI 가 **문장의 뜻을 이해해서 정한** 검색어이기도 하다. 이걸 화면 목록에도 물려준다.
+    // (군말 사전으로 낱말을 걸러내는 건 영원히 완성되지 않는 일이다 —
+    //  자연어를 이해하는 검색이 필요해서 AI 를 쓰는 것이니, 그 이해를 목록도 쓰게 한다)
+    const shown = [];
+    for (const b of useBlocks) {
+      const uq = String((b.input || {}).query || "").trim();
+      if (b.name === "search_google_places") { if (!shown.includes("구글 지도")) shown.push("구글 지도"); continue; }
+      if (uq && !usedTerms.includes(uq)) usedTerms.push(uq);
+      if (uq && !shown.includes(uq)) shown.push(`'${uq}'`);
+    }
+    if (emit) emit({ type: "status", text: shown.length ? `${shown.join(', ')} 찾는 중` : "찾는 중" });
+
+    // ⚡ 여러 도구를 **동시에** 돌린다.
+    //   예전에는 한 번에 하나씩 기다렸다 — AI 가 '경영 컨설팅'과 '투자 컨설팅'을 함께 부르면
+    //   두 검색 시간이 그대로 더해졌다. 서로 아무 상관 없는 조회인데 줄을 세운 셈이다.
+    //   ⚠️ 결과를 **원래 순서대로** 다시 꿰어야 한다. 순서가 섞이면 화면 카드 순서가 매번 달라지고,
+    //      tool_result 는 tool_use_id 로 짝이 맞으므로 내용은 안 틀리지만 재현이 안 되는 코드가 된다.
+    const settled = await Promise.all(
+      useBlocks.map(async (block) => {
+        if (block.name === "search_google_places") {
+          let places = null;
+          try { places = await runPlaces(block.input || {}); } catch (e) { console.error("[assistant] runPlaces", e); }
+          return { block, places };
+        }
+        let rows = [];
+        try { rows = await runSearch(block.input || {}); } catch (e) { console.error("[assistant] runSearch", e); }
+        return { block, rows };
+      })
+    );
+
+    const toolResults = [];
+    for (const { block, places, rows } of settled) {
+      let compact;
+      if (block.name === "search_google_places") {
+        if (places === null || places === undefined) {
+          compact = "구글 지도 검색 사용 불가(키 미설정/미활성) — 우리 데이터로만 안내하세요.";
+        } else {
+          for (const p of places) { const k = "g:" + (p.url || p.title); if (!seen.has(k)) { seen.add(k); collected.push(p); } }
+          compact = places.length
+            ? places.map((p) => ({ title: p.title, rating: p.rating, ratingCount: p.ratingCount, address: p.address, phone: p.phone, source: "google" }))
+            : "구글 결과 없음";
+        }
+      } else {
+        for (const r of rows) { if (!seen.has(r.id)) { seen.add(r.id); collected.push(r); } }
+        compact = rows.length
+          ? rows.map((r) => ({ type: r.type, title: r.title, summary: r.summary, city: r.city, phone: r.phone, category: r.category }))
+          : "결과 없음";
+      }
+      toolResults.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify(compact) });
+    }
+    convo.push({ role: "user", content: toolResults });
+  }
+
+  return {
+    reply: reply || "죄송해요, 잘 이해하지 못했어요. 무엇을 찾으시는지 한 번만 더 말씀해 주시겠어요?",
+    results: collected,
+    // AI 가 문장을 이해해 뽑아낸 검색어. 앱·웹이 이걸로 목록을 다시 좁힌다.
+    terms: usedTerms.slice(0, 3),
+  };
+}
+
 export async function POST(request) {
   // 호출 제한 — 너무 잦으면 잠시 막음(비용·남용 방지)
   if (rateLimited(clientIp(request))) {
@@ -325,104 +467,60 @@ export async function POST(request) {
     return NextResponse.json({ error: "no_user_message" }, { status: 400, headers: CORS });
   }
 
-  const convo = [...messages];
-  const collected = [];   // 화면 카드용으로 모은 검색 결과(중복 제거)
-  const seen = new Set();
-  // AI 가 이해해서 실제로 검색에 쓴 말들. 응답에 담아 돌려주면
-  // 앱·웹이 이 말로 목록을 다시 불러 좁힐 수 있다. (AI 를 쓰는 이유가 이것이다)
-  const usedTerms = [];
-
-  try {
-    let reply = "";
-    for (let round = 0; round < MAX_ROUNDS; round++) {
-      const res = await anthropic.messages.create({
-        model: MODEL,
-        // 생각(thinking) 끔 — 사장님 결정(2026-08-08).
-        // 검색 도우미는 속도가 생명이고, 깊이 생각해야 할 질문이면 독자가 직접 AI 를 쓰면 된다.
-        // ⚠️ Sonnet 5 는 thinking 이 **기본으로 켜져** 있어서 명시적으로 꺼야 한다.
-        //    안 끄면 max_tokens 를 생각과 답변이 나눠 쓰다가 답이 잘린다.
-        // ⚠️ 생각을 끄면 **도구를 덜 쓰는** 부작용이 있다(공식 문서 명시).
-        //    그래서 SYSTEM 프롬프트에 '도구를 반드시 먼저 써라'를 못박아 뒀다. 둘은 한 쌍이다.
-        thinking: { type: "disabled" },
-        // 1024 → 2048. 이제 베트남 일반 정보까지 답하므로 예전보다 답이 길다.
-        // (생각을 껐으므로 이 토큰은 전부 답변에 쓰인다)
-        max_tokens: 2048,
-        // 프롬프트 캐싱 — 응답이 느리던 가장 큰 원인을 없앤다.
-        //
-        // 한 번 검색에 모델을 최대 MAX_ROUNDS(4)번 부르는데, 그때마다 도구 정의 + 시스템
-        // 프롬프트(합계 약 3,900자)를 **처음부터 다시 읽고 있었다.** 캐싱하면 2번째 왕복부터는
-        // 그 부분을 다시 안 읽는다 → 응답 시작이 빨라지고 그 구간 비용도 1/10 로 떨어진다.
-        // 5분 안에 다른 사용자가 검색해도 같은 캐시를 읽는다.
-        //
-        // 표시는 tools → system → messages 순이라, **system 마지막 블록에 표시 하나만** 달면
-        // 도구 정의까지 함께 캐시된다.
-        // ⚠️ 캐시는 앞부분이 한 글자만 달라도 깨진다. SYSTEM 이나 TOOLS 에 날짜·랜덤값 같은
-        //    매번 바뀌는 값을 절대 넣지 말 것. (넣는 순간 캐시가 통째로 무효가 된다)
-        // ※ Haiku 4.5 는 캐시 최소 길이가 4,096 토큰이라 이 프롬프트로는 캐시가 안 됐다.
-        //   Sonnet 은 1,024 라 가능해진 것 — 모델을 올린 덕에 열린 문이다.
-        system: [
-          { type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } },
-        ],
-        tools: TOOLS,
-        messages: convo,
-      });
-
-      // 캐시가 실제로 먹는지 로그로 확인(Vercel logs). read 가 계속 0 이면 앞부분이 매번 바뀌는 것.
-      if (res.usage) {
-        const cw = res.usage.cache_creation_input_tokens || 0;
-        const cr = res.usage.cache_read_input_tokens || 0;
-        if (cw > 0 || cr > 0) console.log(`[assistant] cache write=${cw}, read=${cr}`);
-      }
-
-      // 이번 응답의 텍스트 모으기
-      reply = res.content.filter((b) => b.type === "text").map((b) => b.text).join("\n").trim();
-
-      if (res.stop_reason !== "tool_use") break;   // 도구 안 쓰면 최종 답변
-
-      // 도구 호출 처리
-      convo.push({ role: "assistant", content: res.content });
-      const toolResults = [];
-      for (const block of res.content) {
-        if (block.type !== "tool_use") continue;
-        let compact;
-        if (block.name === "search_google_places") {
-          let places = null;
-          try { places = await runPlaces(block.input || {}); } catch (e) { console.error("[assistant] runPlaces", e); }
-          if (places === null) {
-            compact = "구글 지도 검색 사용 불가(키 미설정/미활성) — 우리 데이터로만 안내하세요.";
-          } else {
-            for (const p of places) { const k = "g:" + (p.url || p.title); if (!seen.has(k)) { seen.add(k); collected.push(p); } }
-            compact = places.length
-              ? places.map((p) => ({ title: p.title, rating: p.rating, ratingCount: p.ratingCount, address: p.address, phone: p.phone, source: "google" }))
-              : "구글 결과 없음";
-          }
-        } else {
-          // AI 가 **문장의 뜻을 이해해서 정한** 검색어. 이걸 화면 목록에도 물려주려고 모은다.
-          // (군말 사전으로 낱말을 걸러내는 건 영원히 완성되지 않는 일이다 —
-          //  자연어를 이해하는 검색이 필요해서 AI 를 쓰는 것이니, 그 이해를 목록도 쓰게 한다)
-          const uq = String((block.input || {}).query || "").trim();
-          if (uq && !usedTerms.includes(uq)) usedTerms.push(uq);
-          let rows = [];
-          try { rows = await runSearch(block.input || {}); } catch (e) { console.error("[assistant] runSearch", e); }
-          for (const r of rows) { if (!seen.has(r.id)) { seen.add(r.id); collected.push(r); } }
-          compact = rows.length
-            ? rows.map((r) => ({ type: r.type, title: r.title, summary: r.summary, city: r.city, phone: r.phone, category: r.category }))
-            : "결과 없음";
+  // ── ① 흘려보내기(스트리밍) — 신버전 앱·웹 ───────────────────────────
+  //
+  // 왜 `stream:true` 로 **골라서** 켜는가:
+  //   앱에는 아직 옛 OTA 를 쓰는 사용자가 남아 있다. 응답 형식을 통째로 바꾸면 그분들의
+  //   AI 검색이 그날로 죽는다. 그래서 **부탁한 클라이언트에게만** 흘려보내고,
+  //   아무 말 없이 부르면 예전과 **똑같은 JSON** 을 준다. 옛 앱은 아무것도 안 고쳐도 계속 돈다.
+  //
+  // 형식은 SSE(text/event-stream): `data: {…}\n\n` 한 줄이 사건 하나.
+  //   {type:"open"}                     — 연결됨(프록시가 첫 바이트를 흘려보내게 하는 역할도 함)
+  //   {type:"delta", text:"…"}          — 글자 조각. 화면 뒤에 이어 붙인다
+  //   {type:"reset"}                    — 지금까지 붙인 글자는 버려라(도구 쓰기 전 서두였다)
+  //   {type:"status", text:"'컨설팅' 찾는 중"} — 지금 무엇을 하는 중인지
+  //   {type:"done", reply, results, terms}    — 끝. 최종본으로 한 번 맞춘다
+  //   {type:"error", message}
+  if (body.stream) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        let closed = false;
+        const send = (obj) => {
+          if (closed) return;
+          try { controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`)); }
+          catch { closed = true; }   // 사용자가 화면을 떠나 연결이 끊긴 경우
+        };
+        try {
+          send({ type: "open" });
+          const out = await runConversation(messages, send);
+          send({ type: "done", ...out });
+        } catch (e) {
+          console.error("[/api/assistant] stream error:", e);
+          send({ type: "error", message: e.message || "assistant_failed" });
+        } finally {
+          closed = true;
+          try { controller.close(); } catch { /* 이미 닫힘 */ }
         }
-        toolResults.push({ type: "tool_result", tool_use_id: block.id, content: JSON.stringify(compact) });
-      }
-      convo.push({ role: "user", content: toolResults });
-    }
-
-    return NextResponse.json(
-      {
-        reply: reply || "죄송해요, 잘 이해하지 못했어요. 무엇을 찾으시는지 한 번만 더 말씀해 주시겠어요?",
-        results: collected,
-        // AI 가 문장을 이해해 뽑아낸 검색어. 앱·웹이 이걸로 목록을 다시 좁힌다.
-        terms: usedTerms.slice(0, 3),
       },
-      { headers: CORS }
-    );
+    });
+    return new Response(stream, {
+      headers: {
+        ...CORS,
+        "Content-Type": "text/event-stream; charset=utf-8",
+        // no-transform 이 핵심 — 중간 프록시가 응답을 모아뒀다 한 번에 보내면
+        // 흘려보내는 의미가 사라진다. X-Accel-Buffering 은 nginx 계열용 같은 뜻.
+        "Cache-Control": "no-cache, no-transform",
+        "X-Accel-Buffering": "no",
+        Connection: "keep-alive",
+      },
+    });
+  }
+
+  // ── ② 예전 방식(한 번에 JSON) — 구버전 클라이언트 ────────────────────
+  try {
+    const out = await runConversation(messages, null);
+    return NextResponse.json(out, { headers: CORS });
   } catch (e) {
     console.error("[/api/assistant] error:", e);
     return NextResponse.json(
