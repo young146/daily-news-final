@@ -19,6 +19,18 @@
         {
             "path": "/api/cron/rebuild-magazine",
             "schedule": "30 1 * * *"
+        },
+        {
+            "path": "/api/cron/ad-expiry-alerts",
+            "schedule": "0 2 * * *"
+        },
+        {
+            "path": "/api/cron/ad-weekly-stats",
+            "schedule": "30 2 * * 1"
+        },
+        {
+            "path": "/api/cron/weekly-report",
+            "schedule": "0 2 * * 1"
         }
     ],
     "functions": {
