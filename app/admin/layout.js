@@ -39,7 +39,6 @@ export default function AdminLayout({ children }) {
         { href: '/admin/email-logs', icon: ClipboardList, label: '이메일 발송 기록' },
         { href: '/admin/promo-cards', icon: Megaphone, label: '홍보카드' },
         { href: '/admin/ad-center', icon: Megaphone, label: '🎯 통합 광고센터' },
-        { href: '/admin/ads', icon: Megaphone, label: '앱 광고 관리' },
         { href: '/admin/push-notifications', icon: Bell, label: '푸시 알림 관리' },
         { href: '/admin/settings', icon: Settings, label: '설정' },
     ];
