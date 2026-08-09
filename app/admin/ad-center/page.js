@@ -93,7 +93,7 @@ const SIZE_GUIDE = {
 const sizeGuide = (surface, placement) => SIZE_GUIDE[`${surface}:${placement}`] || "자유 크기";
 
 // 지면별 노출 페이지(타겟팅). 아무것도 선택 안 하면 그 지면의 '모든 페이지'에 노출.
-// 앱 = 기존 앱광고 폼과 동일. 웹(vnkorlife+chaovietnam) = 3분류(홈/뉴스터미날/상세) 공통.
+// 앱/vnkorlife = 실제 화면별. chaovietnam(뉴스 사이트) = 홈/뉴스터미날/상세.
 const APP_PAGES = [
   { value: "home", label: "🏠 메인 화면" },
   { value: "danggn", label: "🥕 당근 목록" },
@@ -106,12 +106,22 @@ const APP_PAGES = [
   { value: "magazine-detail", label: "📰 매거진 상세" },
   { value: "neighbor", label: "🏪 이웃사업" },
 ];
-const WEB_PAGES = [
+// vnkorlife = 실제 페이지값(AdBanner의 page prop과 일치). 뉴스터미날은 chaovietnam 몫이라 없음.
+const VNKORLIFE_PAGES = [
+  { value: "home", label: "🏠 홈페이지" },
+  { value: "market", label: "🥕 당근/나눔 목록" },
+  { value: "market-detail", label: "🥕 당근/나눔 상세" },
+  { value: "realestate", label: "🏢 부동산 목록" },
+  { value: "realestate-detail", label: "🏢 부동산 상세" },
+  { value: "jobs", label: "💼 구인구직 목록" },
+  { value: "jobs-detail", label: "💼 구인구직 상세" },
+];
+const CHAOVIETNAM_PAGES = [
   { value: "home", label: "🏠 홈페이지" },
   { value: "news-terminal", label: "📰 뉴스 터미날" },
   { value: "detail", label: "📄 상세페이지 (컨텐츠·뉴스 상세)" },
 ];
-const SURFACE_PAGES = { app: APP_PAGES, vnkorlife: WEB_PAGES, chaovietnam: WEB_PAGES };
+const SURFACE_PAGES = { app: APP_PAGES, vnkorlife: VNKORLIFE_PAGES, chaovietnam: CHAOVIETNAM_PAGES };
 const pageLabel = (surface, value) =>
   (SURFACE_PAGES[surface]?.find((p) => p.value === value)?.label || value).replace(/^[^\s]+\s/, "");
 
