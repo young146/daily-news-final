@@ -29,13 +29,15 @@ export async function GET(request) {
 
         // 성과 숫자는 '있으면 좋은 것'. 실패해도 알림은 반드시 나가야 하므로 분리한다.
         let stats = {};
+        let statsFailed = false;
         try {
             stats = await fetchAdStatsMap({ startDate: '30daysAgo', endDate: 'yesterday' });
         } catch (e) {
+            statsFailed = true;
             console.warn('[ad-expiry-alerts] 성과 조회 실패(무시):', e?.message);
         }
 
-        const html = buildExpiryEmailHtml(items, today, stats);
+        const html = buildExpiryEmailHtml(items, today, stats, statsFailed);
         if (preview) {
             return new NextResponse(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
         }
