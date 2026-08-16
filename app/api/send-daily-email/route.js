@@ -94,6 +94,27 @@ export async function POST(request) {
     const otherNewsItems = recentNews.filter(n => !n.isTopNews);
     const orderedItems = [...topNewsItems, ...otherNewsItems];
 
+    // 🇰🇷 오늘 한국에선 — 오늘 발행된 한국 뉴스(연합 계열)를 수동 선정과 무관하게 자동 포함.
+    // 구독자 99% 가 한국인인데 카드뉴스 선정은 베트남 뉴스 위주라, 한국 뉴스가 이메일에
+    // 실릴 자리 자체가 없었다 (2026-08-16 실측: 30일간 이메일 내 한국 뉴스 1건).
+    // source 로 거른다 — 번역 단계가 category 를 International 등으로 바꿔버리기 때문.
+    let koreaNews = [];
+    try {
+      const cardNewsIds = new Set(orderedItems.map(n => n.id));
+      const koreaCandidates = await prisma.newsItem.findMany({
+        where: {
+          status: 'PUBLISHED',
+          publishedAt: { gte: today },
+          source: { in: ['Yonhap Main'] },
+        },
+        orderBy: [{ keywordScore: 'desc' }, { publishedAt: 'desc' }],
+        take: 8,
+      });
+      koreaNews = koreaCandidates.filter(n => !cardNewsIds.has(n.id) && n.wordpressUrl).slice(0, 5);
+    } catch (e) {
+      console.warn('[SendEmail] 한국 뉴스 블록 조회 실패 (섹션 생략):', e.message);
+    }
+
     // Fetch active promo cards — 요일 + 채널(email) 필터 적용 (lib/promo-card-filters.js)
     const allPromoCards = await prisma.promoCard.findMany({
       where: { isActive: true },
@@ -112,8 +133,10 @@ export async function POST(request) {
 
     // 명명권(스폰서) 설정 — 비활성(기본)이면 씬짜오 브랜딩 그대로
     const sponsor = await getSponsor();
-    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards, sponsor);
-    const subject = emailSubject(sponsor, todayString);
+    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards, sponsor, koreaNews);
+    // 제목에 그날의 톱 기사(편집자가 고른 탑뉴스)를 앞세운다 — 매일 같은 제목은 열 이유가 없다
+    const topHeadline = orderedItems[0]?.translatedTitle || orderedItems[0]?.title || '';
+    const subject = emailSubject(sponsor, todayString, topHeadline);
 
     // Preview mode: return HTML only, don't send
     if (body.preview === true) {
@@ -143,14 +166,21 @@ export async function POST(request) {
   }
 }
 
-function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], sponsor = null) {
+function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], sponsor = null, koreaNews = []) {
   // Vercel 의 NEXT_PUBLIC_BASE_URL 에 프로토콜이 빠져 있으면(예: "daily-news-final.vercel.app")
   // 이메일 안의 href 가 상대경로로 해석돼 수신거부 링크가 죽는다 → https:// 를 보정한다.
   const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chaovietnam.co.kr';
   const baseUrl = /^https?:\/\//.test(rawBaseUrl) ? rawBaseUrl : `https://${rawBaseUrl}`;
-  const directUrl = (target) => target || '#';
 
-  const trackedTerminalUrl = directUrl(terminalUrl);
+  // 측정용 UTM (2026-08-16 복구) — /api/click 리다이렉트는 네이버 메일이 스팸으로 분류해
+  // 2026-04-17 에 제거했다(커밋 8bd9e0e). 대신 직링크에 UTM 만 붙인다: 리다이렉트가 아니라
+  // 네이버에 안전하고, GA4 에서 이메일 유입(source=email/medium=newsletter)이 잡힌다.
+  const withUtm = (target, content) => {
+    if (!target || !/^https?:\/\//.test(target)) return target || '#';
+    const sep = target.includes('?') ? '&' : '?';
+    return `${target}${sep}utm_source=email&utm_medium=newsletter&utm_content=${content}`;
+  };
+  const trackedTerminalUrl = withUtm(terminalUrl, 'terminal');
 
   let html = `
     <div style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; max-width: 700px; margin: 0 auto; color: #333; padding: 20px; background-color: #fff;">
@@ -170,7 +200,7 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
   if (newsItems && newsItems.length > 0) {
     newsItems.forEach(item => {
       const url = item.wordpressUrl || terminalUrl;
-      const trackedNewsUrl = directUrl(url);
+      const trackedNewsUrl = withUtm(url, 'news');
       const summary = (item.translatedSummary || item.summary || '').replace(/\n/g, '<br/>');
       html += `
         <div style="margin-bottom: 25px; line-height: 1.6;">
@@ -184,6 +214,23 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
         </div>
       `;
     });
+  }
+
+  // 🇰🇷 오늘 한국에선 — 제목만 노출(요약을 다 주면 클릭할 이유가 사라진다), 링크는 우리 사이트
+  if (koreaNews && koreaNews.length > 0) {
+    const koreaItemsHtml = koreaNews.map(item => `
+        <li style="margin: 0 0 10px 0; line-height: 1.5;">
+          <a href="${withUtm(item.wordpressUrl, 'korea')}" target="_blank" style="font-size: 14px; color: #1e3a8a; text-decoration: none; font-weight: 600;">
+            ${item.translatedTitle || item.title} →
+          </a>
+        </li>`).join('');
+    html += `
+    <div style="margin: 30px 0; padding: 18px 20px; background: #eff6ff; border-left: 4px solid #1d4ed8; border-radius: 0 8px 8px 0;">
+      <p style="font-size: 15px; font-weight: bold; color: #1e3a8a; margin: 0 0 12px 0;">🇰🇷 오늘 한국에선</p>
+      <ul style="margin: 0; padding: 0 0 0 4px; list-style: none;">${koreaItemsHtml}
+      </ul>
+    </div>
+  `;
   }
 
   // 섹션 안내 문구
@@ -206,7 +253,7 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
       const ytMatch = card.videoUrl?.match(/(?:youtube\.com.*v=|youtu\.be\/)([^&\n?#]+)/);
       const ytId = ytMatch ? ytMatch[1] : null;
       const imgSrc = card.imageUrl || (ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null);
-      const trackedPromoUrl = directUrl(card.linkUrl);
+      const trackedPromoUrl = withUtm(card.linkUrl, 'promo');
       html += `<div style="margin-bottom: 28px; background: #fff8f0; border: 1px solid #fed7aa; border-radius: 10px; overflow: hidden;">
         ${imgSrc ? `<a href="${trackedPromoUrl}" target="_blank" style="display:block;"><img src="${imgSrc}" alt="${card.title}" style="width:100%;height:auto;display:block;" /></a>` : ''}
         <div style="padding: 16px 20px;">

@@ -103,15 +103,13 @@ async function crawlYonhapVietnam() {
             }
 
             const summary = $el.find('.lead, .summary, p').first().text().trim();
-            const imgEl = $el.find('img').first();
-            let imageUrl = imgEl.attr('src') || imgEl.attr('data-src') || null;
-            if (imageUrl && imageUrl.startsWith('//')) imageUrl = 'https:' + imageUrl;
+            // ⚠️ 연합뉴스 사진은 저작권 리스크로 수집하지 않는다 (2026-08-16)
 
             listItems.push({
                 title,
                 summary,
                 originalUrl: link,
-                imageUrl,
+                imageUrl: null,
                 category: 'Korea-Hot',
                 source: 'Yonhap Vietnam',
                 publishedAt: new Date(),
@@ -137,8 +135,7 @@ async function crawlYonhapVietnam() {
                     || $detail('article').html()
                     || $detail('.content-area').html();
 
-                const metaImage = $detail('meta[property="og:image"]').attr('content');
-                if (metaImage) item.imageUrl = metaImage;
+                // ⚠️ 연합뉴스 사진(og:image)은 저작권 리스크로 수집하지 않는다 (2026-08-16)
 
                 item.content = content ? content.trim() : item.summary;
                 detailedItems.push(item);

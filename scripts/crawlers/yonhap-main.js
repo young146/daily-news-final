@@ -4,6 +4,13 @@ const cheerio = require('cheerio');
 const HOMEPAGE_URL = 'https://www.yna.co.kr/';
 const RSS_URL = 'https://www.yna.co.kr/rss/news.xml';
 const MAX_ITEMS = 10;
+// 섹션별 RSS 확장 (2026-08-16): 교민·한국 거주 독자가 실제로 반응하는 경제·연예·스포츠를 추가.
+// 메인 헤드라인(news.xml)은 편집국 판단이라 잡탕 → 섹션 피드로 수요 있는 주제를 보강한다.
+const SECTION_FEEDS = [
+    { url: 'https://www.yna.co.kr/rss/economy.xml', label: '경제', max: 5 },
+    { url: 'https://www.yna.co.kr/rss/entertainment.xml', label: '연예', max: 4 },
+    { url: 'https://www.yna.co.kr/rss/sports.xml', label: '스포츠', max: 4 },
+];
 const MIN_TITLE_LEN = 10;
 const REQUEST_TIMEOUT = 20000;
 const HEADERS = {
@@ -21,26 +28,30 @@ const SECTION_NAMES = new Set([
     '뉴스', '홈', '메인', 'HOME', '검색'
 ]);
 
+// 기사가 아닌 공지성 항목 — RSS 에 섞여 들어오는 잡음 (실제 수집 테스트에서 확인)
+const JUNK_PREFIXES = ['[부고]', '[인사]', '[게시판]', '[알림]', '[연합뉴스 이 시각 헤드라인]', '[오늘의 주요일정]', '[사진톡톡]', '[고침]'];
+
 function isLikelyArticle(title, link) {
     if (!title || !link) return false;
     const t = title.trim();
     if (t.length < MIN_TITLE_LEN) return false;
     if (SECTION_NAMES.has(t)) return false;
+    if (JUNK_PREFIXES.some((p) => t.startsWith(p))) return false;
     if (!ARTICLE_URL_PATTERN.test(link)) return false;
     return true;
 }
 
 // 1차 시도: RSS 피드 (안정적, 항상 기사만)
-async function fetchFromRSS() {
+async function fetchFromRSS(rssUrl = RSS_URL, maxItems = MAX_ITEMS, label = '주요') {
     try {
-        console.log('[YonhapMain] Trying RSS feed...');
-        const { data } = await axios.get(RSS_URL, { timeout: REQUEST_TIMEOUT, headers: HEADERS });
+        console.log(`[YonhapMain] Trying RSS feed (${label})...`);
+        const { data } = await axios.get(rssUrl, { timeout: REQUEST_TIMEOUT, headers: HEADERS });
         const $ = cheerio.load(data, { xmlMode: true });
 
         const items = [];
         let rejected = 0;
         $('item').each((i, el) => {
-            if (items.length >= MAX_ITEMS) return false;
+            if (items.length >= maxItems) return false;
             const $el = $(el);
             const title = $el.find('title').first().text().trim();
             const link = $el.find('link').first().text().trim();
@@ -64,10 +75,10 @@ async function fetchFromRSS() {
             });
         });
 
-        console.log(`[YonhapMain] RSS accepted ${items.length}, rejected ${rejected}`);
+        console.log(`[YonhapMain] RSS(${label}) accepted ${items.length}, rejected ${rejected}`);
         return items;
     } catch (err) {
-        console.warn(`[YonhapMain] RSS fetch failed: ${err.message}`);
+        console.warn(`[YonhapMain] RSS(${label}) fetch failed: ${err.message}`);
         return [];
     }
 }
@@ -143,8 +154,8 @@ async function fetchDetail(item) {
             || $('article').html()
             || $('.content-area').html();
 
-        const metaImage = $('meta[property="og:image"]').attr('content');
-        if (metaImage) item.imageUrl = metaImage;
+        // ⚠️ 연합뉴스 사진(og:image)은 의도적으로 가져오지 않는다 (2026-08-16).
+        // 언론사 사진 저작권은 텍스트보다 집행이 훨씬 엄격하다 — imageUrl 은 null 로 둔다.
 
         item.content = content ? content.trim() : item.summary;
         return item;
@@ -161,6 +172,14 @@ async function crawlYonhapMain() {
         let items = await fetchFromRSS();
         if (items.length === 0) {
             items = await fetchFromHomepage();
+        }
+
+        // 섹션 피드 보강 — 한 피드가 실패해도 나머지는 계속 (Promise.allSettled)
+        const sectionResults = await Promise.allSettled(
+            SECTION_FEEDS.map(f => fetchFromRSS(f.url, f.max, f.label))
+        );
+        for (const r of sectionResults) {
+            if (r.status === 'fulfilled') items.push(...r.value);
         }
 
         if (items.length === 0) {

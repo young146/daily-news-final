@@ -26,15 +26,14 @@ async function crawlYonhap() {
             const link = titleEl.attr('href');
 
             const summary = $(el).find('.lead').text().trim();
-            const imgEl = $(el).find('.img-con01 img');
-            const imageUrl = imgEl.attr('src');
+            // ⚠️ 연합뉴스 사진은 저작권 리스크로 수집하지 않는다 (2026-08-16)
 
             if (title && link) {
                 listItems.push({
                     title,
                     summary,
                     originalUrl: link,
-                    imageUrl: imageUrl,
+                    imageUrl: null,
                     category: 'Society', // Default
                     source: 'Yonhap News',
                     publishedAt: new Date(), // Approximate
@@ -58,11 +57,7 @@ async function crawlYonhap() {
                 // Yonhap English content selector
                 let content = $detail('.article-txt').html() || $detail('.story-news').html();
 
-                // Improve Image Extraction from Detail Page
-                const metaImage = $detail('meta[property="og:image"]').attr('content');
-                if (metaImage) {
-                    item.imageUrl = metaImage;
-                }
+                // ⚠️ 연합뉴스 사진(og:image)은 저작권 리스크로 수집하지 않는다 (2026-08-16)
 
                 if (content) {
                     item.content = content.trim();
