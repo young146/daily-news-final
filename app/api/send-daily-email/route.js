@@ -108,9 +108,42 @@ export async function POST(request) {
           source: { in: ['Yonhap Main'] },
         },
         orderBy: [{ keywordScore: 'desc' }, { publishedAt: 'desc' }],
-        take: 8,
+        take: 12,
       });
-      koreaNews = koreaCandidates.filter(n => !cardNewsIds.has(n.id) && n.wordpressUrl).slice(0, 5);
+
+      // 구글 트렌드(한국 급상승 검색어)와 제목이 겹치는 기사를 앞세운다 — "지금 한국인이
+      // 실제로 찾는 주제" 신호. 포털 랭킹은 전부 수집 불가(네이버·네이트 robots 금지,
+      // 다음 랭킹 폐지)라 검색어(사실 데이터) × 연합 기사(기존 합법 수집) 조합으로 대체.
+      // 트렌드 조회가 실패해도 기본 순서(keywordScore→최신순)로 그대로 나간다.
+      let trendTerms = [];
+      try {
+        const resp = await fetch('https://trends.google.com/trending/rss?geo=KR', {
+          signal: AbortSignal.timeout(7000),
+        });
+        const xml = await resp.text();
+        trendTerms = [...xml.matchAll(/<title>([^<]+)<\/title>/g)]
+          .map(m => m[1].trim())
+          .filter(t => t && t !== 'Daily Search Trends')
+          .slice(0, 20);
+        console.log(`[SendEmail] 한국 트렌드 검색어 ${trendTerms.length}개: ${trendTerms.slice(0, 5).join(', ')}...`);
+      } catch (e) {
+        console.warn('[SendEmail] 트렌드 조회 실패 (기본 순서 사용):', e.message);
+      }
+      // 매칭 규칙: 검색어 전체 일치 또는 3자 이상 토큰 일치 (대소문자 무시).
+      // 실측상 트렌드어가 영어("lafc vs san diego")거나 띄어쓰기가 달라 전체 일치만으론 놓친다.
+      const trendHit = (n) => {
+        const title = (n.translatedTitle || n.title || '').toLowerCase();
+        return trendTerms.some(t => {
+          const term = t.toLowerCase();
+          if (title.includes(term)) return true;
+          return term.split(/\s+/).some(tok => tok.length >= 3 && title.includes(tok));
+        }) ? 1 : 0;
+      };
+
+      koreaNews = koreaCandidates
+        .filter(n => !cardNewsIds.has(n.id) && n.wordpressUrl)
+        .sort((a, b) => trendHit(b) - trendHit(a)) // 안정 정렬 — 동점이면 DB 순서 유지
+        .slice(0, 5);
     } catch (e) {
       console.warn('[SendEmail] 한국 뉴스 블록 조회 실패 (섹션 생략):', e.message);
     }
