@@ -144,7 +144,10 @@ export async function POST(request) {
 }
 
 function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], sponsor = null) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chaovietnam.co.kr';
+  // Vercel 의 NEXT_PUBLIC_BASE_URL 에 프로토콜이 빠져 있으면(예: "daily-news-final.vercel.app")
+  // 이메일 안의 href 가 상대경로로 해석돼 수신거부 링크가 죽는다 → https:// 를 보정한다.
+  const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chaovietnam.co.kr';
+  const baseUrl = /^https?:\/\//.test(rawBaseUrl) ? rawBaseUrl : `https://${rawBaseUrl}`;
   const directUrl = (target) => target || '#';
 
   const trackedTerminalUrl = directUrl(terminalUrl);

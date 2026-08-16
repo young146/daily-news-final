@@ -39,7 +39,9 @@ async function fetchRecentJobsAndRealEstate() {
 const prisma = new PrismaClient();
 
 function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], appFunnel = null, sponsor = null) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chaovietnam.co.kr';
+  // 프로토콜 누락 env 값 보정 (app/api/send-daily-email/route.js 와 동일한 이유)
+  const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chaovietnam.co.kr';
+  const baseUrl = /^https?:\/\//.test(rawBaseUrl) ? rawBaseUrl : `https://${rawBaseUrl}`;
   const trackUrl = (target, type) => {
     if (!target) return '#';
     return `${baseUrl}/api/click?url=${encodeURIComponent(target)}&type=${type}`;
