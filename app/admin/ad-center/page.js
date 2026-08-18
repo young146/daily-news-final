@@ -109,6 +109,7 @@ const APP_PAGES = [
 // vnkorlife = 실제 페이지값(AdBanner의 page prop과 일치). 뉴스터미날은 chaovietnam 몫이라 없음.
 const VNKORLIFE_PAGES = [
   { value: "home", label: "🏠 홈페이지" },
+  { value: "blog", label: "📝 블로그 글" },
   { value: "market", label: "🥕 당근/나눔 목록" },
   { value: "market-detail", label: "🥕 당근/나눔 상세" },
   { value: "realestate", label: "🏢 부동산 목록" },
