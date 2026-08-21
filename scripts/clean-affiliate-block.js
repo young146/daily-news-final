@@ -46,21 +46,40 @@ function saveState(st) { try { fs.writeFileSync(STATE_FILE, JSON.stringify(st));
 
 /** <div class="chaovn-aff" ...> … </div> 블록을 (여러 개라도) 전부 제거 */
 function stripAll(html) {
+  // 제휴 블록 여는 태그 찾기 — 정규식 이스케이프 문제를 피하려고 문자열 검색만 쓴다.
+  //  ① 신형: <div class="chaovn-aff" ...>
+  //  ② 구형: <div style="...background:#fffaf5">   ← class 가 없던 시절(대다수)
+  function findOpen(s, from) {
+    const cands = [];
+    const i1 = s.indexOf('<div class="chaovn-aff"', from);
+    if (i1 !== -1) cands.push(i1);
+    // 구형: '#fffaf5' 를 품은 <div ...> 태그의 시작점을 역으로 찾는다
+    let i2 = s.indexOf('background:#fffaf5', from);
+    while (i2 !== -1) {
+      const open = s.lastIndexOf('<div', i2);
+      const close = s.indexOf('>', i2);
+      // '<div' 와 '>' 사이에 있어야 그 태그의 속성이다
+      if (open !== -1 && close !== -1 && open < i2 && i2 < close) { cands.push(open); break; }
+      i2 = s.indexOf('background:#fffaf5', i2 + 1);
+    }
+    return cands.length ? Math.min.apply(null, cands) : -1;
+  }
+
   let out = html, removed = 0;
   for (;;) {
-    const start = out.indexOf('<div class="chaovn-aff"');
+    const start = findOpen(out, 0);
     if (start === -1) break;
-    let depth = 0, end = -1;
-    const re = /<div\b|<\/div>/gi;
-    re.lastIndex = start;
-    let m;
-    while ((m = re.exec(out)) !== null) {
-      if (m[0].toLowerCase().startsWith('<div')) depth++;
-      else depth--;
-      if (depth === 0) { end = m.index + m[0].length; break; }
+    // 중첩 div 를 세어 정확히 닫는 </div> 를 찾는다
+    let depth = 0, i = start, end = -1;
+    while (i < out.length) {
+      const nOpen = out.indexOf('<div', i);
+      const nClose = out.indexOf('</div>', i);
+      if (nClose === -1) break;
+      if (nOpen !== -1 && nOpen < nClose) { depth++; i = nOpen + 4; }
+      else { depth--; i = nClose + 6; if (depth === 0) { end = i; break; } }
     }
     if (end === -1) break;                       // 짝이 안 맞으면 손대지 않는다
-    out = (out.slice(0, start) + out.slice(end));
+    out = out.slice(0, start) + out.slice(end);
     removed++;
   }
   return { html: out.replace(/\s+$/, ''), removed };
@@ -75,8 +94,9 @@ async function main() {
   let run = 0;
   outer:
   while (true) {
-    const params = new URLSearchParams({ per_page: '25', orderby: 'date', order: 'desc', context: 'edit', _fields: 'id,date,content' });
-    if (st.before) params.set('before', st.before);
+    // 검색으로 '제휴 블록이 있는 글'만 골라 처리한다(전체 2.7만 건을 훑지 않음 → 훨씬 빠름).
+    // 처리하면 검색 대상에서 빠지므로 항상 1페이지만 반복해서 가져오면 된다.
+    const params = new URLSearchParams({ per_page: '25', search: '교민이 자주 찾는 서비스', orderby: 'date', order: 'desc', context: 'edit', _fields: 'id,date,content' });
     const res = await fetch(`${WP}/wp-json/wp/v2/posts?${params}`, { headers: { Authorization: authHeader() } });
     if (!res.ok) { console.error(`[aff-clean] 목록 조회 실패 ${res.status}`); break; }
     const posts = await res.json();
