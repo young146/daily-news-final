@@ -1402,6 +1402,16 @@ function jenny_daily_news_shortcode($atts)
     $output .= '<!-- Ad Inserter: #jenny-ad-top -->';
     $output .= '</div></div>';
 
+    // 상단 광고 바로 아래 — 통합 광고센터 슬롯 (2026-08-21 추가)
+    // 왜: 뉴스 터미널에도 광고 자리가 필요하다(제휴 상품·쿠팡 등). 본문 HTML 에 박지 않고
+    //     통합센터(ads_unified) → 공개 API 가 공급하는 표준 슬롯을 쓴다.
+    //     page=news-terminal / 위치는 통합센터에서 지정(top·in-content·bottom).
+    if (function_exists('xinchao_render_ad')) {
+        $output .= '<div class="jenny-ad-unified" style="margin:10px auto 16px;">';
+        $output .= xinchao_render_ad('news-terminal', 'in-content', '', 728);
+        $output .= '</div>';
+    }
+
     // 레이아웃 wrapper 시작 (메인 + 사이드바)
     $output .= '<div class="jenny-layout-wrapper">';
 
