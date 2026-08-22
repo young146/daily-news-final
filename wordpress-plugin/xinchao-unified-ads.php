@@ -2,7 +2,7 @@
 /**
  * Plugin Name: XinChao 통합 광고 (Unified Ads)
  * Description: 통합 광고센터(ads_unified)의 chaovietnam 지면 광고를 공개 API로 불러와 표시한다. 기사 본문에 위치별 자동 삽입 — 상단(1) + 중간(매 N단락마다) + 하단(1). 사이드바는 [xinchao_ad slot="sidebar"] 숏코드. Advanced Ads/Ad Inserter 불필요. 직원은 통합센터에서 등록만 하면 되고, 위치는 우선순위로 자동 결정.
- * Version: 3.2.0
+ * Version: 3.3.0
  * Author: XinChao
  *
  * ── 위치(통합센터에서 지정) ──
@@ -137,6 +137,166 @@ add_shortcode('xinchao_ad', 'xinchao_unified_ads_shortcode');
 
 // 텍스트 위젯에서도 [xinchao_ad] 숏코드가 실행되게(사이드바 등)
 add_filter('widget_text_content', 'do_shortcode', 11);
+
+/**
+ * ══ 쇼핑 캐러셀 (제휴 상품) ═════════════════════════════════════════
+ * [xinchao_shopping]  — 알리익스프레스 상품 캐러셀 + (한국 접속자만) 쿠팡 배너.
+ *   limit="24"   상품 몇 개까지 (기본 24)
+ *   max="728"    최대 폭 px
+ *   coupang="0"  쿠팡 배너 끄기 (기본 켬)
+ *
+ * 왜 숏코드인가: 상품 HTML 을 지면마다 붙여넣으면 상품을 바꿀 때 전부 다시 손봐야 한다.
+ *   상품 목록은 vnkorlife 가 공개 API 로 한 곳에서 내주고, 각 지면은 불러다 그린다.
+ *   → 갱신은 aliProducts.json 하나만 바꾸면 vnkorlife·chaovietnam·뉴스터미널 동시 반영.
+ *
+ * 지역: 알리는 한국·베트남 양쪽 다 배송되므로 항상 보여준다.
+ *   쿠팡만 한국 접속자에게 보여준다 — 쿠팡은 한국 외 IP 를 차단(Access Denied)하므로
+ *   베트남 방문자가 누르면 에러 페이지로 간다. 판별은 기기 시간대(Asia/Seoul).
+ *   ⚠️ VPN 은 IP 만 바꾸고 시간대는 그대로라, VPN 으로는 쿠팡이 안 뜬다(고장 아님).
+ *
+ * ⚠️ 고지문은 제휴 정책상 필수다. 알리·쿠팡 각각 지우지 말 것.
+ */
+define('XINCHAO_ALI_PRODUCTS_API', 'https://vnkorlife.com/api/public/ali-products');
+define('XINCHAO_COUPANG_WIDGET', 'https://ads-partners.coupang.com/widgets.html?id=1019744&template=carousel&trackingCode=AF8354756&subId=&width=680&height=140&tsource=');
+
+function xinchao_render_shopping($limit = 24, $max = 728, $coupang = true) {
+    $uid = 'xcshop_' . wp_generate_password(8, false, false);
+
+    ob_start();
+    ?>
+    <div id="<?php echo esc_attr($uid); ?>" class="xinchao-shopping" style="max-width:<?php echo (int)$max; ?>px;margin:18px auto;"></div>
+    <script>
+    (function(){
+      var el = document.getElementById(<?php echo json_encode($uid); ?>);
+      if (!el) return;
+      var API         = <?php echo json_encode(XINCHAO_ALI_PRODUCTS_API); ?>;
+      var LIMIT       = <?php echo (int)$limit; ?>;
+      var COUPANG_ON  = <?php echo $coupang ? 'true' : 'false'; ?>;
+      var COUPANG_SRC = <?php echo json_encode(XINCHAO_COUPANG_WIDGET); ?>;
+
+      // ── 집계: 기존 광고와 같은 GA4 이벤트에 실어 광고주 리포트와 한 곳에서 본다.
+      //    캐러셀은 카드가 수십 개라 카드마다 노출을 세면 이벤트가 폭주한다 →
+      //    노출은 '캐러셀 1개' 단위로, 클릭은 상품별로 센다.
+      function send(name, id, title){
+        if (typeof gtag !== 'function') return;
+        try { gtag('event', name, { promo_id: String(id||''), promo_name: title||'', promo_slot: 'shopping' }); } catch(e){}
+      }
+      function watchOnce(node, id, title){
+        if (!('IntersectionObserver' in window)) { send('promo_impression', id, title); return; }
+        var io = new IntersectionObserver(function(es){
+          for (var i=0;i<es.length;i++) if (es[i].isIntersecting) { send('promo_impression', id, title); io.disconnect(); }
+        }, { threshold: 0.5 });
+        io.observe(node);
+      }
+      function isKorea(){
+        try {
+          var tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || '';
+          return tz === 'Asia/Seoul' || tz === 'Asia/Pyongyang';
+        } catch(e){ return false; }   // 판별 실패 시 쿠팡은 접는다(에러 페이지로 보내느니 낫다)
+      }
+      function money(v){
+        var n = String(v||'').replace(/[^0-9]/g,'');
+        return n ? Number(n).toLocaleString() + '₫' : (v||'');
+      }
+      function note(text){
+        var p = document.createElement('p');
+        p.textContent = text;
+        p.style.cssText = 'margin:4px 0 0;text-align:center;font-size:11px;color:#94a3b8;';
+        return p;
+      }
+
+      // ── 쿠팡 (한국 접속자만) ─────────────────────────────────────
+      if (COUPANG_ON && isKorea()) {
+        var cbox = document.createElement('div');
+        var cw = document.createElement('div');
+        cw.style.cssText = 'margin:0 0 4px;overflow-x:auto;';
+        var ifr = document.createElement('iframe');
+        ifr.src = COUPANG_SRC; ifr.width = 680; ifr.height = 140;
+        ifr.title = '쿠팡 추천 상품'; ifr.referrerPolicy = 'unsafe-url';
+        ifr.style.cssText = 'border:0;display:block;margin:0 auto;';
+        cw.appendChild(ifr);
+        cbox.appendChild(cw);
+        cbox.appendChild(note('쿠팡 파트너스 활동의 일환으로 이에 따른 일정액의 수수료를 제공받습니다.'));
+        cbox.style.cssText = 'margin:0 0 18px;';
+        el.appendChild(cbox);
+        watchOnce(cbox, 'coupang_carousel', '쿠팡 다이나믹 배너');
+      }
+
+      // ── 알리익스프레스 (지역 무관, 항상) ─────────────────────────
+      window.__xcShop = window.__xcShop || {};
+      var p = window.__xcShop[API] || (window.__xcShop[API] = fetch(API, { credentials:'omit' }).then(function(r){ return r.json(); }));
+      p.then(function(d){
+        var items = ((d && d.products) || []).slice(0, LIMIT);
+        if (!items.length) return;
+
+        var sec = document.createElement('div');
+
+        var head = document.createElement('div');
+        head.style.cssText = 'margin-bottom:10px;';
+        head.innerHTML = '<div style="font-size:15px;font-weight:800;color:#1e293b;">🛍️ 알리익스프레스 인기 상품</div>'
+                       + '<div style="font-size:12px;color:#64748b;">해외직구 · 오늘의 특가</div>';
+        sec.appendChild(head);
+
+        var strip = document.createElement('div');
+        strip.style.cssText = 'display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch;';
+
+        items.forEach(function(it){
+          var a = document.createElement('a');
+          a.href = it.url || '#'; a.target = '_blank'; a.rel = 'noopener sponsored';
+          a.style.cssText = 'flex:0 0 150px;width:150px;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#fff;text-decoration:none;color:#334155;';
+
+          var box = document.createElement('div');
+          box.style.cssText = 'position:relative;width:150px;height:150px;background:#f8fafc;';
+          var img = document.createElement('img');
+          img.src = it.image; img.alt = it.title || ''; img.loading = 'lazy';
+          img.style.cssText = 'width:150px;height:150px;object-fit:cover;display:block;';
+          box.appendChild(img);
+          if (it.discount) {
+            var tag = document.createElement('span');
+            tag.textContent = '-' + it.discount;
+            tag.style.cssText = 'position:absolute;left:6px;top:6px;background:#e62e04;color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;';
+            box.appendChild(tag);
+          }
+          a.appendChild(box);
+
+          var body = document.createElement('div');
+          body.style.cssText = 'padding:7px;';
+          var t = document.createElement('div');
+          t.textContent = it.title || '';
+          t.style.cssText = 'font-size:11px;line-height:1.35;height:30px;overflow:hidden;color:#475569;';
+          body.appendChild(t);
+          var pr = document.createElement('div');
+          pr.textContent = money(it.price);
+          pr.style.cssText = 'margin-top:3px;font-size:13px;font-weight:800;color:#e62e04;';
+          body.appendChild(pr);
+          if (it.origPrice) {
+            var op = document.createElement('div');
+            op.textContent = money(it.origPrice);
+            op.style.cssText = 'font-size:10px;color:#94a3b8;text-decoration:line-through;';
+            body.appendChild(op);
+          }
+          a.appendChild(body);
+
+          a.addEventListener('click', function(){ send('promo_click', 'ali_' + (it.id||''), it.title||''); });
+          strip.appendChild(a);
+        });
+
+        sec.appendChild(strip);
+        sec.appendChild(note('제휴 링크입니다. 클릭·구매 시 씬짜오 운영에 도움이 됩니다. (구매 가격은 동일합니다.)'));
+        el.appendChild(sec);
+        watchOnce(sec, 'ali_carousel', '알리익스프레스 캐러셀');
+      }).catch(function(){ /* 상품을 못 받으면 조용히 넘어간다 — 빈 공간을 남기지 않는다 */ });
+    })();
+    </script>
+    <?php
+    return ob_get_clean();
+}
+
+function xinchao_shopping_shortcode($atts) {
+    $a = shortcode_atts(array('limit' => '24', 'max' => '728', 'coupang' => '1'), $atts, 'xinchao_shopping');
+    return xinchao_render_shopping(intval($a['limit']), intval($a['max']), $a['coupang'] !== '0');
+}
+add_shortcode('xinchao_shopping', 'xinchao_shopping_shortcode');
 
 /**
  * 기사 본문 자동 삽입 — 단일 글(post):
