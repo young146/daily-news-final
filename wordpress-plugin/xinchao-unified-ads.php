@@ -165,7 +165,9 @@ function xinchao_render_shopping($limit = 24, $max = 728, $coupang = true) {
     ob_start();
     ?>
     <div id="<?php echo esc_attr($uid); ?>" class="xinchao-shopping" style="max-width:<?php echo (int)$max; ?>px;margin:18px auto;"></div>
-    <script>
+    <?php // LiteSpeed Cache 가 JS 를 type="litespeed/javascript" 로 바꿔 뒤로 미룬다.
+          // 상품 캐러셀은 첫 화면에 보여야 하므로 그 최적화에서 빼둔다. ?>
+    <script data-no-optimize="1" data-no-defer="1" data-cfasync="false">
     (function(){
       var el = document.getElementById(<?php echo json_encode($uid); ?>);
       if (!el) return;
