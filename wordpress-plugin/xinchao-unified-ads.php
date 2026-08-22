@@ -2,7 +2,7 @@
 /**
  * Plugin Name: XinChao 통합 광고 (Unified Ads)
  * Description: 통합 광고센터(ads_unified)의 chaovietnam 지면 광고를 공개 API로 불러와 표시한다. 기사 본문에 위치별 자동 삽입 — 상단(1) + 중간(매 N단락마다) + 하단(1). 사이드바는 [xinchao_ad slot="sidebar"] 숏코드. Advanced Ads/Ad Inserter 불필요. 직원은 통합센터에서 등록만 하면 되고, 위치는 우선순위로 자동 결정.
- * Version: 3.4.0
+ * Version: 4.0.0
  * Author: XinChao
  *
  * ── 위치(통합센터에서 지정) ──
@@ -138,6 +138,54 @@ add_shortcode('xinchao_ad', 'xinchao_unified_ads_shortcode');
 // 텍스트 위젯에서도 [xinchao_ad] 숏코드가 실행되게(사이드바 등)
 add_filter('widget_text_content', 'do_shortcode', 11);
 
+// 알리 상품 목록 정본 — vnkorlife 가 공개 API 로 내준다(aliProducts.json 이 원본).
+//   갱신은 그 JSON 하나만 바꾸면 vnkorlife·chaovietnam·뉴스터미널이 동시에 반영된다.
+define('XINCHAO_ALI_PRODUCTS_API', 'https://vnkorlife.com/api/public/ali-products');
+define('XINCHAO_COUPANG_WIDGET', 'https://ads-partners.coupang.com/widgets.html?id=1019744&template=carousel&trackingCode=AF8354756&subId=&width=680&height=140&tsource=');
+
+/**
+ * 상품 목록을 서버에서 받아 캐시해 둔다.
+ *
+ * 왜 서버에서 받나 (2026-08-22 클라이언트 fetch 에서 전환):
+ *   브라우저가 남의 도메인(vnkorlife.com)을 부르는 방식은 약하다. 광고차단기·백신
+ *   (실제로 McAfee WebAdvisor)·회사 방화벽 중 하나만 걸려도 상품이 통째로 사라진다.
+ *   그런 독자가 얼마나 되는지 알 방법도 없다.
+ *   서버가 미리 받아 HTML 로 박아 내보내면 브라우저는 요청을 하지 않으니 차단당하지 않고,
+ *   LiteSpeed 의 JS 지연과도 무관해진다.
+ *
+ * 캐시: 6시간. 상품은 Export 로 가끔 갱신되므로 이 정도면 충분하다.
+ *   받아오기에 실패하면 직전 성공분을 계속 쓴다(하루). 화면이 비는 것보다 낫다.
+ */
+function xinchao_get_ali_products($limit = 24) {
+    $fresh = get_transient('xinchao_ali_products');
+    if (is_array($fresh)) return array_slice($fresh, 0, $limit);
+
+    $res = wp_remote_get(XINCHAO_ALI_PRODUCTS_API, array('timeout' => 8));
+    if (is_wp_error($res) || wp_remote_retrieve_response_code($res) !== 200) {
+        // 실패 — 예비분(있으면)으로 버틴다.
+        $backup = get_option('xinchao_ali_products_backup');
+        return is_array($backup) ? array_slice($backup, 0, $limit) : array();
+    }
+
+    $json = json_decode(wp_remote_retrieve_body($res), true);
+    $items = (is_array($json) && isset($json['products']) && is_array($json['products']))
+        ? $json['products'] : array();
+    if (!$items) {
+        $backup = get_option('xinchao_ali_products_backup');
+        return is_array($backup) ? array_slice($backup, 0, $limit) : array();
+    }
+
+    set_transient('xinchao_ali_products', $items, 6 * HOUR_IN_SECONDS);
+    update_option('xinchao_ali_products_backup', $items, false);   // 장애 대비 예비분
+    return array_slice($items, 0, $limit);
+}
+
+/** "VND 50643" → "50,643₫" */
+function xinchao_ali_price($v) {
+    $n = preg_replace('/[^0-9]/', '', (string) $v);
+    return $n === '' ? '' : number_format((int) $n) . '₫';
+}
+
 /**
  * ══ 쇼핑 캐러셀 (제휴 상품) ═════════════════════════════════════════
  * [xinchao_shopping]  — 알리익스프레스 상품 캐러셀 + (한국 접속자만) 쿠팡 배너.
@@ -145,149 +193,113 @@ add_filter('widget_text_content', 'do_shortcode', 11);
  *   max="728"    최대 폭 px
  *   coupang="0"  쿠팡 배너 끄기 (기본 켬)
  *
- * 왜 숏코드인가: 상품 HTML 을 지면마다 붙여넣으면 상품을 바꿀 때 전부 다시 손봐야 한다.
- *   상품 목록은 vnkorlife 가 공개 API 로 한 곳에서 내주고, 각 지면은 불러다 그린다.
- *   → 갱신은 aliProducts.json 하나만 바꾸면 vnkorlife·chaovietnam·뉴스터미널 동시 반영.
- *
- * 지역: 알리는 한국·베트남 양쪽 다 배송되므로 항상 보여준다.
- *   쿠팡만 한국 접속자에게 보여준다 — 쿠팡은 한국 외 IP 를 차단(Access Denied)하므로
- *   베트남 방문자가 누르면 에러 페이지로 간다. 판별은 기기 시간대(Asia/Seoul).
+ * 알리 = 서버 렌더(위 참조). 쿠팡만 작은 JS 로 지역을 가린다 —
+ *   쿠팡은 한국 외 IP 를 차단(Access Denied)해서 베트남 방문자가 누르면 에러 페이지로 간다.
+ *   서버에서 IP 국가를 알 방법이 없으므로 기기 시간대(Asia/Seoul)로 판별한다.
  *   ⚠️ VPN 은 IP 만 바꾸고 시간대는 그대로라, VPN 으로는 쿠팡이 안 뜬다(고장 아님).
  *
  * ⚠️ 고지문은 제휴 정책상 필수다. 알리·쿠팡 각각 지우지 말 것.
  */
-define('XINCHAO_ALI_PRODUCTS_API', 'https://vnkorlife.com/api/public/ali-products');
-define('XINCHAO_COUPANG_WIDGET', 'https://ads-partners.coupang.com/widgets.html?id=1019744&template=carousel&trackingCode=AF8354756&subId=&width=680&height=140&tsource=');
-
 function xinchao_render_shopping($limit = 24, $max = 728, $coupang = true) {
+    $items = xinchao_get_ali_products($limit);
+    if (!$items && !$coupang) return '';
+
     $uid = 'xcshop_' . wp_generate_password(8, false, false);
+    $note = 'margin:4px 0 0;text-align:center;font-size:11px;color:#94a3b8;';
 
     ob_start();
     ?>
-    <div id="<?php echo esc_attr($uid); ?>" class="xinchao-shopping" style="max-width:<?php echo (int)$max; ?>px;margin:18px auto;"></div>
-    <?php // LiteSpeed Cache 가 JS 를 type="litespeed/javascript" 로 바꿔 뒤로 미룬다.
-          // 상품 캐러셀은 첫 화면에 보여야 하므로 그 최적화에서 빼둔다. ?>
+    <div id="<?php echo esc_attr($uid); ?>" class="xinchao-shopping" style="max-width:<?php echo (int)$max; ?>px;margin:18px auto;">
+
+      <?php if ($coupang) : ?>
+      <?php // 기본은 숨김. 한국 시간대일 때만 JS 가 켠다(그때 iframe 을 붙인다 — 한국 밖에선 아예 안 부른다). ?>
+      <div class="xcshop-coupang" style="display:none;margin:0 0 18px;">
+        <div class="xcshop-coupang-frame" style="overflow-x:auto;"></div>
+        <p style="<?php echo esc_attr($note); ?>">쿠팡 파트너스 활동의 일환으로 이에 따른 일정액의 수수료를 제공받습니다.</p>
+      </div>
+      <?php endif; ?>
+
+      <?php if ($items) : ?>
+      <div style="margin-bottom:10px;">
+        <div style="font-size:15px;font-weight:800;color:#1e293b;">🛍️ 알리익스프레스 인기 상품</div>
+        <div style="font-size:12px;color:#64748b;">해외직구 · 오늘의 특가</div>
+      </div>
+      <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch;">
+        <?php foreach ($items as $it) :
+            $title = isset($it['title']) ? $it['title'] : '';
+            $img   = isset($it['image']) ? $it['image'] : '';
+            $url   = isset($it['url']) ? $it['url'] : '';
+            $disc  = isset($it['discount']) ? $it['discount'] : '';
+            $price = xinchao_ali_price(isset($it['price']) ? $it['price'] : '');
+            $orig  = xinchao_ali_price(isset($it['origPrice']) ? $it['origPrice'] : '');
+            if (!$img || !$url) continue;
+        ?>
+        <a href="<?php echo esc_url($url); ?>" target="_blank" rel="noopener sponsored"
+           data-ali-id="<?php echo esc_attr(isset($it['id']) ? $it['id'] : ''); ?>"
+           data-ali-title="<?php echo esc_attr($title); ?>"
+           style="flex:0 0 150px;width:150px;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#fff;text-decoration:none;color:#334155;">
+          <div style="position:relative;width:150px;height:150px;background:#f8fafc;">
+            <img src="<?php echo esc_url($img); ?>" alt="<?php echo esc_attr($title); ?>" loading="lazy"
+                 style="width:150px;height:150px;object-fit:cover;display:block;">
+            <?php if ($disc) : ?>
+            <span style="position:absolute;left:6px;top:6px;background:#e62e04;color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;">-<?php echo esc_html($disc); ?></span>
+            <?php endif; ?>
+          </div>
+          <div style="padding:7px;">
+            <div style="font-size:11px;line-height:1.35;height:30px;overflow:hidden;color:#475569;"><?php echo esc_html($title); ?></div>
+            <?php if ($price) : ?><div style="margin-top:3px;font-size:13px;font-weight:800;color:#e62e04;"><?php echo esc_html($price); ?></div><?php endif; ?>
+            <?php if ($orig) : ?><div style="font-size:10px;color:#94a3b8;text-decoration:line-through;"><?php echo esc_html($orig); ?></div><?php endif; ?>
+          </div>
+        </a>
+        <?php endforeach; ?>
+      </div>
+      <p style="<?php echo esc_attr($note); ?>">제휴 링크입니다. 클릭·구매 시 씬짜오 운영에 도움이 됩니다. (구매 가격은 동일합니다.)</p>
+      <?php endif; ?>
+
+    </div>
     <script data-no-optimize="1" data-no-defer="1" data-cfasync="false">
     (function(){
       var el = document.getElementById(<?php echo json_encode($uid); ?>);
       if (!el) return;
-      var API         = <?php echo json_encode(XINCHAO_ALI_PRODUCTS_API); ?>;
-      var LIMIT       = <?php echo (int)$limit; ?>;
-      var COUPANG_ON  = <?php echo $coupang ? 'true' : 'false'; ?>;
-      var COUPANG_SRC = <?php echo json_encode(XINCHAO_COUPANG_WIDGET); ?>;
+
+      // ── 쿠팡: 한국 시간대일 때만 붙인다 ─────────────────────────
+      var box = el.querySelector('.xcshop-coupang');
+      if (box) {
+        var korea = false;
+        try {
+          var tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || '';
+          korea = (tz === 'Asia/Seoul' || tz === 'Asia/Pyongyang');
+        } catch(e){}
+        if (korea) {
+          var f = document.createElement('iframe');
+          f.src = <?php echo json_encode(XINCHAO_COUPANG_WIDGET); ?>;
+          f.width = 680; f.height = 140; f.title = '쿠팡 추천 상품';
+          f.referrerPolicy = 'unsafe-url'; f.scrolling = 'no';
+          f.style.cssText = 'border:0;display:block;margin:0 auto;';
+          box.querySelector('.xcshop-coupang-frame').appendChild(f);
+          box.style.display = '';
+        }
+      }
 
       // ── 집계: 기존 광고와 같은 GA4 이벤트에 실어 광고주 리포트와 한 곳에서 본다.
-      //    캐러셀은 카드가 수십 개라 카드마다 노출을 세면 이벤트가 폭주한다 →
-      //    노출은 '캐러셀 1개' 단위로, 클릭은 상품별로 센다.
+      //    노출은 캐러셀 1개 단위(카드마다 세면 이벤트가 폭주한다), 클릭은 상품별.
       function send(name, id, title){
         if (typeof gtag !== 'function') return;
         try { gtag('event', name, { promo_id: String(id||''), promo_name: title||'', promo_slot: 'shopping' }); } catch(e){}
       }
-      function watchOnce(node, id, title){
-        if (!('IntersectionObserver' in window)) { send('promo_impression', id, title); return; }
-        var io = new IntersectionObserver(function(es){
-          for (var i=0;i<es.length;i++) if (es[i].isIntersecting) { send('promo_impression', id, title); io.disconnect(); }
-        }, { threshold: 0.5 });
-        io.observe(node);
-      }
-      function isKorea(){
-        try {
-          var tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || '';
-          return tz === 'Asia/Seoul' || tz === 'Asia/Pyongyang';
-        } catch(e){ return false; }   // 판별 실패 시 쿠팡은 접는다(에러 페이지로 보내느니 낫다)
-      }
-      function money(v){
-        var n = String(v||'').replace(/[^0-9]/g,'');
-        return n ? Number(n).toLocaleString() + '₫' : (v||'');
-      }
-      function note(text){
-        var p = document.createElement('p');
-        p.textContent = text;
-        p.style.cssText = 'margin:4px 0 0;text-align:center;font-size:11px;color:#94a3b8;';
-        return p;
-      }
-
-      // ── 쿠팡 (한국 접속자만) ─────────────────────────────────────
-      if (COUPANG_ON && isKorea()) {
-        var cbox = document.createElement('div');
-        var cw = document.createElement('div');
-        cw.style.cssText = 'margin:0 0 4px;overflow-x:auto;';
-        var ifr = document.createElement('iframe');
-        ifr.src = COUPANG_SRC; ifr.width = 680; ifr.height = 140;
-        ifr.title = '쿠팡 추천 상품'; ifr.referrerPolicy = 'unsafe-url';
-        ifr.style.cssText = 'border:0;display:block;margin:0 auto;';
-        cw.appendChild(ifr);
-        cbox.appendChild(cw);
-        cbox.appendChild(note('쿠팡 파트너스 활동의 일환으로 이에 따른 일정액의 수수료를 제공받습니다.'));
-        cbox.style.cssText = 'margin:0 0 18px;';
-        el.appendChild(cbox);
-        watchOnce(cbox, 'coupang_carousel', '쿠팡 다이나믹 배너');
-      }
-
-      // ── 알리익스프레스 (지역 무관, 항상) ─────────────────────────
-      window.__xcShop = window.__xcShop || {};
-      var p = window.__xcShop[API] || (window.__xcShop[API] = fetch(API, { credentials:'omit' }).then(function(r){ return r.json(); }));
-      p.then(function(d){
-        var items = ((d && d.products) || []).slice(0, LIMIT);
-        if (!items.length) return;
-
-        var sec = document.createElement('div');
-
-        var head = document.createElement('div');
-        head.style.cssText = 'margin-bottom:10px;';
-        head.innerHTML = '<div style="font-size:15px;font-weight:800;color:#1e293b;">🛍️ 알리익스프레스 인기 상품</div>'
-                       + '<div style="font-size:12px;color:#64748b;">해외직구 · 오늘의 특가</div>';
-        sec.appendChild(head);
-
-        var strip = document.createElement('div');
-        strip.style.cssText = 'display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch;';
-
-        items.forEach(function(it){
-          var a = document.createElement('a');
-          a.href = it.url || '#'; a.target = '_blank'; a.rel = 'noopener sponsored';
-          a.style.cssText = 'flex:0 0 150px;width:150px;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#fff;text-decoration:none;color:#334155;';
-
-          var box = document.createElement('div');
-          box.style.cssText = 'position:relative;width:150px;height:150px;background:#f8fafc;';
-          var img = document.createElement('img');
-          img.src = it.image; img.alt = it.title || ''; img.loading = 'lazy';
-          img.style.cssText = 'width:150px;height:150px;object-fit:cover;display:block;';
-          box.appendChild(img);
-          if (it.discount) {
-            var tag = document.createElement('span');
-            tag.textContent = '-' + it.discount;
-            tag.style.cssText = 'position:absolute;left:6px;top:6px;background:#e62e04;color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;';
-            box.appendChild(tag);
-          }
-          a.appendChild(box);
-
-          var body = document.createElement('div');
-          body.style.cssText = 'padding:7px;';
-          var t = document.createElement('div');
-          t.textContent = it.title || '';
-          t.style.cssText = 'font-size:11px;line-height:1.35;height:30px;overflow:hidden;color:#475569;';
-          body.appendChild(t);
-          var pr = document.createElement('div');
-          pr.textContent = money(it.price);
-          pr.style.cssText = 'margin-top:3px;font-size:13px;font-weight:800;color:#e62e04;';
-          body.appendChild(pr);
-          if (it.origPrice) {
-            var op = document.createElement('div');
-            op.textContent = money(it.origPrice);
-            op.style.cssText = 'font-size:10px;color:#94a3b8;text-decoration:line-through;';
-            body.appendChild(op);
-          }
-          a.appendChild(body);
-
-          a.addEventListener('click', function(){ send('promo_click', 'ali_' + (it.id||''), it.title||''); });
-          strip.appendChild(a);
+      el.querySelectorAll('a[data-ali-id]').forEach(function(a){
+        a.addEventListener('click', function(){
+          send('promo_click', 'ali_' + a.getAttribute('data-ali-id'), a.getAttribute('data-ali-title'));
         });
-
-        sec.appendChild(strip);
-        sec.appendChild(note('제휴 링크입니다. 클릭·구매 시 씬짜오 운영에 도움이 됩니다. (구매 가격은 동일합니다.)'));
-        el.appendChild(sec);
-        watchOnce(sec, 'ali_carousel', '알리익스프레스 캐러셀');
-      }).catch(function(){ /* 상품을 못 받으면 조용히 넘어간다 — 빈 공간을 남기지 않는다 */ });
+      });
+      if ('IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function(es){
+          for (var i=0;i<es.length;i++) if (es[i].isIntersecting) { send('promo_impression','ali_carousel','알리익스프레스 캐러셀'); io.disconnect(); }
+        }, { threshold: 0.5 });
+        io.observe(el);
+      } else {
+        send('promo_impression','ali_carousel','알리익스프레스 캐러셀');
+      }
     })();
     </script>
     <?php
