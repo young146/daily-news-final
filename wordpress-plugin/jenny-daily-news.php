@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 2.2.0
+ * Version: 2.3.0
  * Author: Jenny (Antigravity)
  */
 
@@ -1417,7 +1417,7 @@ function jenny_daily_news_shortcode($atts)
     //   페이지 본문에 숏코드를 넣을 자리가 없으므로 여기서 렌더해 붙인다.
     if (function_exists('xinchao_render_shopping')) {
         $output .= '<div class="jenny-shopping" style="margin:0 auto 18px;">';
-        $output .= xinchao_render_shopping(24, 728, true);
+        $output .= xinchao_render_shopping(12, 728, true);
         $output .= '</div>';
     }
 
