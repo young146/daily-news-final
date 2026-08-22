@@ -2,7 +2,7 @@
 /**
  * Plugin Name: XinChao 통합 광고 (Unified Ads)
  * Description: 통합 광고센터(ads_unified)의 chaovietnam 지면 광고를 공개 API로 불러와 표시한다. 기사 본문에 위치별 자동 삽입 — 상단(1) + 중간(매 N단락마다) + 하단(1). 사이드바는 [xinchao_ad slot="sidebar"] 숏코드. Advanced Ads/Ad Inserter 불필요. 직원은 통합센터에서 등록만 하면 되고, 위치는 우선순위로 자동 결정.
- * Version: 4.0.0
+ * Version: 4.1.0
  * Author: XinChao
  *
  * ── 위치(통합센터에서 지정) ──
@@ -261,6 +261,15 @@ function xinchao_render_shopping($limit = 24, $max = 728, $coupang = true) {
     (function(){
       var el = document.getElementById(<?php echo json_encode($uid); ?>);
       if (!el) return;
+
+      // ── 광고차단 회피: Sahifa 의 .e3lan 영역에서 빠져나온다 ──────
+      // e3lan 은 아랍어로 '광고'. 이 테마의 광고 클래스라 차단 필터 목록에 올라 있어
+      // 영역이 통째로 display:none 된다(실측: 홈은 안 보이고 뉴스터미널은 보였다).
+      // 상품 카드는 광고 스크립트가 아니라 우리 HTML 이므로, 그 영역 밖으로 옮기면 살아난다.
+      try {
+        var zone = el.closest ? el.closest('.e3lan') : null;
+        if (zone && zone.parentNode) zone.parentNode.insertBefore(el, zone);
+      } catch(e){}
 
       // ── 쿠팡: 한국 시간대일 때만 붙인다 ─────────────────────────
       var box = el.querySelector('.xcshop-coupang');
