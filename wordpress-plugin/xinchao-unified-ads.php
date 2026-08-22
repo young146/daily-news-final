@@ -2,7 +2,7 @@
 /**
  * Plugin Name: XinChao 통합 광고 (Unified Ads)
  * Description: 통합 광고센터(ads_unified)의 chaovietnam 지면 광고를 공개 API로 불러와 표시한다. 기사 본문에 위치별 자동 삽입 — 상단(1) + 중간(매 N단락마다) + 하단(1). 사이드바는 [xinchao_ad slot="sidebar"] 숏코드. Advanced Ads/Ad Inserter 불필요. 직원은 통합센터에서 등록만 하면 되고, 위치는 우선순위로 자동 결정.
- * Version: 4.2.0
+ * Version: 4.3.0
  * Author: XinChao
  *
  * ── 위치(통합센터에서 지정) ──
@@ -338,12 +338,17 @@ function xinchao_render_shopping($limit = 24, $max = 728, $coupang = true) {
           korea = (tz === 'Asia/Seoul' || tz === 'Asia/Pyongyang');
         } catch(e){}
         if (korea) {
-          var f = document.createElement('iframe');
-          f.src = <?php echo json_encode(XINCHAO_COUPANG_WIDGET); ?>;
-          f.width = 680; f.height = 140; f.title = '쿠팡 추천 상품';
-          f.referrerPolicy = 'unsafe-url'; f.scrolling = 'no';
-          f.style.cssText = 'border:0;display:block;margin:0 auto;';
-          box.querySelector('.xcshop-coupang-frame').appendChild(f);
+          // iframe 을 태그 문자열로 넣는다(HTML 파서 경로).
+          // 왜: createElement + 속성 대입으로 만들면 chaovietnam 에서 위젯 안쪽 상품
+          //   이미지가 끝없이 로딩만 했다. 같은 위젯이 vnkorlife 에서는 정상이었고,
+          //   차이는 워드프레스 쪽 LiteSpeed 뿐이었다. LiteSpeed 의 lazy-load 는
+          //   나중에 끼어들어 iframe 의 src 를 걷어내므로, 파서가 속성을 한 번에
+          //   적용하게 하고 제외 표시(data-no-lazy)를 함께 단다.
+          box.querySelector('.xcshop-coupang-frame').innerHTML =
+            '<iframe src="' + <?php echo json_encode(XINCHAO_COUPANG_WIDGET); ?> + '" width="680" height="140"'
+            + ' title="쿠팡 추천 상품" referrerpolicy="unsafe-url"'
+            + ' data-no-lazy="1" data-skip-lazy="1" data-lazyloaded="1"'
+            + ' style="border:0;display:block;margin:0 auto;"></iframe>';
           box.style.display = '';
         }
       }
