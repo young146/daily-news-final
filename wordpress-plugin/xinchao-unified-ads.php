@@ -2,7 +2,7 @@
 /**
  * Plugin Name: XinChao 통합 광고 (Unified Ads)
  * Description: 통합 광고센터(ads_unified)의 chaovietnam 지면 광고를 공개 API로 불러와 표시한다. 기사 본문에 위치별 자동 삽입 — 상단(1) + 중간(매 N단락마다) + 하단(1). 사이드바는 [xinchao_ad slot="sidebar"] 숏코드. Advanced Ads/Ad Inserter 불필요. 직원은 통합센터에서 등록만 하면 되고, 위치는 우선순위로 자동 결정.
- * Version: 3.3.0
+ * Version: 3.4.0
  * Author: XinChao
  *
  * ── 위치(통합센터에서 지정) ──
