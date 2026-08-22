@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 2.0.0
+ * Version: 2.1.0
  * Author: Jenny (Antigravity)
  */
 
