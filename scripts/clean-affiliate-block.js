@@ -54,13 +54,16 @@ function stripAll(html) {
     const i1 = s.indexOf('<div class="chaovn-aff"', from);
     if (i1 !== -1) cands.push(i1);
     // 구형: '#fffaf5' 를 품은 <div ...> 태그의 시작점을 역으로 찾는다
-    let i2 = s.indexOf('background:#fffaf5', from);
+    // CSS 공백 유무 두 형태 모두 탐지: 'background:#fffaf5' / 'background: #fffaf5'
+    const NEEDLES = ['background:#fffaf5', 'background: #fffaf5'];
+    let i2 = -1, used = NEEDLES[0];
+    for (const nd of NEEDLES) { const k = s.indexOf(nd, from); if (k !== -1 && (i2 === -1 || k < i2)) { i2 = k; used = nd; } }
     while (i2 !== -1) {
       const open = s.lastIndexOf('<div', i2);
       const close = s.indexOf('>', i2);
       // '<div' 와 '>' 사이에 있어야 그 태그의 속성이다
       if (open !== -1 && close !== -1 && open < i2 && i2 < close) { cands.push(open); break; }
-      i2 = s.indexOf('background:#fffaf5', i2 + 1);
+      i2 = s.indexOf(used, i2 + 1);
     }
     return cands.length ? Math.min.apply(null, cands) : -1;
   }
