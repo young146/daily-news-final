@@ -1,14 +1,14 @@
 <?php
 /**
  * Plugin Name: XinChao 통합 광고 (Unified Ads)
- * Description: 통합 광고센터(ads_unified)의 chaovietnam 지면 광고를 공개 API로 불러와 표시한다. 기사 본문에 위치별 자동 삽입 — 상단(1) + 중간(매 N단락마다) + 하단(1). 사이드바는 [xinchao_ad slot="sidebar"] 숏코드. Advanced Ads/Ad Inserter 불필요. 직원은 통합센터에서 등록만 하면 되고, 위치는 우선순위로 자동 결정.
- * Version: 4.3.0
+ * Description: 통합 광고센터(ads_unified)의 chaovietnam 지면 광고를 공개 API로 불러와 표시한다. 기사 본문에 위치별 자동 삽입 — 상단(1) + 중간(2) + 하단(1). 사이드바는 [xinchao_ad slot="sidebar"] 숏코드. Advanced Ads/Ad Inserter 불필요. 직원은 통합센터에서 등록만 하면 되고, 위치는 우선순위로 자동 결정.
+ * Version: 4.4.0
  * Author: XinChao
  *
  * ── 위치(통합센터에서 지정) ──
  *   상단(top) / 중간(in-content) / 하단(bottom) / 사이드바(sidebar)
  *   같은 위치에 여러 광고가 있으면 '우선순위(낮을수록 먼저)' 순으로 위→아래 슬롯에 자동 배정.
- *   중간(in-content)은 기사 본문 매 N단락마다 슬롯이 생기고, 우선순위대로 채워진다(모자라면 아래는 빔).
+ *   중간(in-content)은 본문을 3등분한 경계에 2칸이 생기고, 우선순위대로 채워진다(모자라면 아래는 빔).
  *
  * ── 워드프레스에서 할 일 ──
  *   1) 기사 본문: 자동(플러그인이 상단/중간/하단 삽입). 할 일 없음.
@@ -23,9 +23,66 @@ if (!defined('ABSPATH')) exit;
 define('XINCHAO_UNIFIED_ADS_API', 'https://daily-news-final.vercel.app/api/public/ads');
 
 // ── 기사 본문 자동 삽입 설정 (여기 숫자만 바꾸면 됨) ──
-define('XINCHAO_BODY_EVERY', 2);      // 중간 광고: 몇 단락마다
+define('XINCHAO_BODY_SLOTS', 2);      // 중간 광고 칸 수 (본문을 칸수+1 로 등분한 경계에 넣는다)
 define('XINCHAO_BODY_MAX', 728);      // 본문 광고 최대 폭(px)
 define('XINCHAO_BODY_ENABLED', true); // 본문 자동삽입 on/off
+
+/**
+ * 지금 보고 있는 페이지가 통합센터의 어느 '페이지 버킷'인지 판정한다.
+ *
+ * 왜 필요한가 (2026-08-23):
+ *   사이드바 숏코드가 page 없이 불려서, "상세페이지 전용"으로 판 광고가 홈에도 떴다.
+ *   광고주와의 약속이 지켜지지 않는 것이라, 값을 손으로 적게 두지 않고 자동으로 판정한다.
+ *
+ * @return string '' | home | news-terminal | detail
+ */
+function xinchao_current_page_bucket() {
+    if (is_singular('post')) return 'detail';
+    if (is_front_page() || is_home()) return 'home';
+    $post = get_post();
+    if ($post && has_shortcode($post->post_content, 'daily_news_list')) return 'news-terminal';
+    return '';
+}
+
+/**
+ * 자체 홍보("기본 광고") 소재 — 팔린 광고가 없는 슬롯을 채운다. (PROGRESS_AD_SLOTS.md §9)
+ *
+ * 통합센터에 광고로 등록하지 않고 여기 내장하는 이유:
+ *   등록하면 노출 통계가 유료 광고와 섞이고, 만료일 관리 대상이 된다.
+ *
+ * 이미지가 아니라 HTML 배너다 — 새 이미지 파일을 서버에 올릴 필요가 없고 어떤 폭에서도 안 깨진다.
+ */
+function xinchao_house_creatives() {
+    return array(
+        array(
+            'id'    => 'house_app',
+            'title' => '씬짜오 앱 설치',
+            'sub'   => '베트남 생활 정보를 손안에 — 당근·구인·부동산·뉴스',
+            'cta'   => '무료 설치',
+            'url'   => 'https://vnkorlife.com/download',
+            'c1'    => '#f97316', 'c2' => '#ea580c',
+        ),
+        array(
+            'id'    => 'house_magazine',
+            'title' => '교민 생활정보 씬짜오',
+            'sub'   => '한인 업소록 · 일자리 · 부동산을 한 곳에서',
+            'cta'   => '보러 가기',
+            'url'   => 'https://vnkorlife.com/',
+            'c1'    => '#0ea5e9', 'c2' => '#0369a1',
+        ),
+        array(
+            'id'    => 'house_contact',
+            'title' => '이 자리에 광고하세요',
+            'sub'   => '씬짜오 베트남 · 앱 · 웹 통합 광고 문의',
+            'cta'   => '광고 문의',
+            'url'   => 'https://chaovietnam.co.kr/ad-inquiry/',
+            'c1'    => '#8b5cf6', 'c2' => '#6d28d9',
+        ),
+    );
+}
+
+// 한 페이지에서 자체 홍보를 최대 몇 칸까지 그릴지. 20칸이 전부 우리 배너면 도배로 보인다.
+define('XINCHAO_HOUSE_MAX', 2);
 
 /**
  * 광고 슬롯 HTML(컨테이너 + 로드 스크립트).
@@ -33,20 +90,25 @@ define('XINCHAO_BODY_ENABLED', true); // 본문 자동삽입 on/off
  *   - $n = '' (빈값)  → 해당 위치의 광고 '전체'를 우선순위 순으로 세로로 쌓아 표시 (사이드바에 적합).
  *   - $n = 정수       → 해당 위치의 n번째(0=1등) 광고 1개만 (본문 슬롯 배분용).
  *
- * @param string     $page  '' | home | news-terminal | detail
- * @param string     $slot  '' | top | in-content | bottom | sidebar
+ * ⚠️ 컨테이너 클래스는 `xc-slot` 이다. `ad`·`banner`·`e3lan` 같은 낱말을 쓰면
+ *    광고차단 필터에 걸려 유료 광고가 통째로 안 보인다(PROGRESS_AD_SLOTS.md §5-1 실측).
+ *
+ * @param string     $page  '' | home | news-terminal | detail   ('' = 현재 페이지 자동 판정)
+ * @param string     $slot  '' | header | top | in-content | section | bottom | sidebar
  * @param int|string $n     '' = 전체 쌓기 / 정수 = 그 순번 1개
  * @param int        $max   최대 폭(px)
+ * @param bool       $house 팔린 광고가 없을 때 자체 홍보로 채울지 (§9)
  */
-function xinchao_render_ad($page = '', $slot = '', $n = 0, $max = 728) {
+function xinchao_render_ad($page = '', $slot = '', $n = 0, $max = 728, $house = true) {
     $stack = ($n === '' || $n === null);   // 빈값이면 전체 쌓기
     $ni = $stack ? 0 : (int) $n;
-    $uid = 'xcad_' . wp_generate_password(8, false, false);
+    if ($page === '') $page = xinchao_current_page_bucket();
+    $uid = 'xcs_' . wp_generate_password(8, false, false);
     $url = XINCHAO_UNIFIED_ADS_API . ($page ? ('?page=' . rawurlencode($page)) : '');
 
     ob_start();
     ?>
-    <div id="<?php echo esc_attr($uid); ?>" class="xinchao-ad" style="max-width:<?php echo (int)$max; ?>px;margin:14px auto;text-align:center;"></div>
+    <div id="<?php echo esc_attr($uid); ?>" class="xc-slot" style="max-width:<?php echo (int)$max; ?>px;margin:14px auto;text-align:center;"></div>
     <script>
     (function(){
       var el = document.getElementById(<?php echo json_encode($uid); ?>);
@@ -55,6 +117,9 @@ function xinchao_render_ad($page = '', $slot = '', $n = 0, $max = 728) {
       var slot = <?php echo json_encode($slot); ?>;
       var n = <?php echo (int)$ni; ?>;
       var stack = <?php echo $stack ? 'true' : 'false'; ?>;
+      var houseOk = <?php echo $house ? 'true' : 'false'; ?>;
+      var house = <?php echo wp_json_encode(xinchao_house_creatives()); ?>;
+      var houseMax = <?php echo (int) XINCHAO_HOUSE_MAX; ?>;
       window.__xcAd = window.__xcAd || {};
       var p = window.__xcAd[url] || (window.__xcAd[url] = fetch(url, { credentials: 'omit' }).then(function(r){ return r.json(); }));
 
@@ -107,17 +172,59 @@ function xinchao_render_ad($page = '', $slot = '', $n = 0, $max = 728) {
         watchImpression(a, ad, slot);
         return a;
       }
+
+      // ── 자체 홍보 폴백 (§9) ────────────────────────────────────────────
+      // 팔린 광고가 없는 슬롯에만 그린다 — 유료 광고가 들어오면 자동으로 밀려난다.
+      // 한 페이지 최대 houseMax 칸. 소재는 순서대로 돌려 같은 페이지에서 겹치지 않게 한다.
+      function makeHouse(){
+        if (!houseOk || !house.length) return null;
+        var used = window.__xcHouseN || 0;
+        if (used >= houseMax) return null;
+        window.__xcHouseN = used + 1;
+        var h = house[used % house.length];
+        var a = document.createElement('a');
+        a.href = h.url; a.target = '_blank'; a.rel = 'noopener';
+        a.setAttribute('aria-label', h.title);
+        a.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;'
+          + 'padding:14px 16px;border-radius:10px;text-decoration:none;text-align:left;'
+          + 'background:linear-gradient(135deg,' + h.c1 + ',' + h.c2 + ');color:#fff;margin-bottom:14px;';
+        var txt = document.createElement('div');
+        txt.style.cssText = 'min-width:0;';
+        var t1 = document.createElement('div');
+        t1.textContent = h.title;
+        t1.style.cssText = 'font-size:15px;font-weight:800;line-height:1.3;';
+        var t2 = document.createElement('div');
+        t2.textContent = h.sub;
+        t2.style.cssText = 'font-size:12px;opacity:.9;margin-top:2px;line-height:1.35;';
+        txt.appendChild(t1); txt.appendChild(t2);
+        var btn = document.createElement('span');
+        btn.textContent = h.cta;
+        btn.style.cssText = 'flex:0 0 auto;background:rgba(255,255,255,.22);border-radius:999px;'
+          + 'padding:7px 14px;font-size:12px;font-weight:800;white-space:nowrap;';
+        a.appendChild(txt); a.appendChild(btn);
+        // 집계는 하되 promo_id 를 house_* 로 구분한다 → 광고주 리포트에서 제외할 수 있다.
+        a.addEventListener('click', function(){ send('promo_click', h, slot); });
+        watchImpression(a, h, slot);
+        return a;
+      }
+
+      function fallback(){
+        if (el.firstChild) return;
+        var hs = makeHouse();
+        if (hs) el.appendChild(hs); else el.style.display = 'none';
+      }
+
       p.then(function(d){
         var ads = (d && d.ads) || [];
         if (slot) ads = ads.filter(function(a){ return a.slot === slot; });
         if (stack) {
           ads.forEach(function(ad){ var node = make(ad); if (node) el.appendChild(node); });
-          if (!el.firstChild) el.style.display = 'none';
         } else {
           var node = make(ads[n]);
-          if (node) el.appendChild(node); else el.style.display = 'none';
+          if (node) el.appendChild(node);
         }
-      }).catch(function(){ el.style.display = 'none'; });
+        fallback();
+      }).catch(fallback);
     })();
     </script>
     <?php
@@ -128,10 +235,12 @@ function xinchao_render_ad($page = '', $slot = '', $n = 0, $max = 728) {
  * [xinchao_ad slot="sidebar" max="300"] — 특정 위치(위젯/페이지) 삽입용.
  *   n 미지정 → 그 위치 광고 '전체'를 세로로 쌓음(사이드바에 적합, 위젯 1개로 광고 여러 개).
  *   n="0" 처럼 지정 → 그 순번 1개만.
+ *   page 미지정 → 지금 보는 페이지로 자동 판정(홈 사이드바에 상세 전용 광고가 뜨던 문제 해결).
+ *   house="0" → 자체 홍보 폴백 끄기.
  */
 function xinchao_unified_ads_shortcode($atts) {
-    $a = shortcode_atts(array('page' => '', 'slot' => '', 'n' => '', 'max' => '728'), $atts, 'xinchao_ad');
-    return xinchao_render_ad($a['page'], $a['slot'], $a['n'], intval($a['max']));
+    $a = shortcode_atts(array('page' => '', 'slot' => '', 'n' => '', 'max' => '728', 'house' => '1'), $atts, 'xinchao_ad');
+    return xinchao_render_ad($a['page'], $a['slot'], $a['n'], intval($a['max']), $a['house'] !== '0');
 }
 add_shortcode('xinchao_ad', 'xinchao_unified_ads_shortcode');
 
@@ -386,8 +495,13 @@ add_shortcode('xinchao_shopping', 'xinchao_shopping_shortcode');
 
 /**
  * 기사 본문 자동 삽입 — 단일 글(post):
- *   본문 상단에 top 1개 → 매 N단락마다 in-content(우선순위 위→아래) → 본문 끝에 bottom 1개.
+ *   본문 상단에 top 1개 → 본문을 등분한 경계에 in-content 2개 → 본문 끝에 bottom 1개.
  * wpautop(우선순위 10) 이후 동작하도록 the_content 우선순위 20. 렌더된 HTML 직접 삽입.
+ *
+ * ⚠️ 2026-08-23 변경 — 중간 광고가 '매 2단락마다'에서 '본문을 3등분한 2칸'으로 바뀌었다.
+ *   왜: 예전 방식은 긴 기사에서 최대 6칸까지 늘어나 읽기 흐름이 끊겼고(8/21 알리 상품이
+ *   문단마다 도배된 사고도 이 구조 탓), 기사마다 칸 수가 달라 "이 기사엔 몇 칸"을
+ *   광고주에게 말할 수 없었다. 이제 단락 수와 무관하게 항상 같은 칸 수다.
  */
 function xinchao_inject_body_ads($content) {
     if (!XINCHAO_BODY_ENABLED) return $content;
@@ -398,11 +512,28 @@ function xinchao_inject_body_ads($content) {
     $bottom = xinchao_render_ad('detail', 'bottom', 0, XINCHAO_BODY_MAX);
 
     $paragraphs = explode('</p>', $content);
-    $count = count($paragraphs);
 
-    // 단락이 거의 없으면 상단 + 하단만
-    if ($count < 2) {
+    // 빈 조각을 뺀 '진짜 단락'의 위치만 모은다. explode 결과에는 공백 조각이 섞인다.
+    $real = array();
+    foreach ($paragraphs as $i => $para) {
+        if (trim($para) !== '') $real[] = $i;
+    }
+    $n = count($real);
+
+    // 단락이 거의 없으면 상단 + 하단만 (중간을 끼울 자리가 없다)
+    if ($n < 3) {
         return $top . $content . $bottom;
+    }
+
+    // 본문을 (칸수+1) 등분한 경계 뒤에 슬롯을 놓는다.
+    // 중복 방지로 키에 담는다 — 아주 짧은 글은 두 경계가 같은 단락에 떨어질 수 있고,
+    // 그러면 광고 두 개가 붙어 나온다.
+    $cuts = array();
+    for ($k = 1; $k <= XINCHAO_BODY_SLOTS; $k++) {
+        $pos = (int) floor($n * $k / (XINCHAO_BODY_SLOTS + 1));
+        if ($pos < 1) $pos = 1;
+        if ($pos > $n - 1) $pos = $n - 1;   // 마지막 단락 뒤엔 안 넣는다 — 하단 슬롯이 따로 있다
+        $cuts[$real[$pos - 1]] = true;
     }
 
     $body = '';
@@ -410,9 +541,7 @@ function xinchao_inject_body_ads($content) {
     foreach ($paragraphs as $index => $para) {
         if (trim($para) === '') { $body .= $para; continue; }
         $body .= $para . '</p>';
-        $paraNo = $index + 1;
-        // 매 N단락 뒤(마지막 단락 뒤엔 넣지 않음 — 하단 슬롯이 따로 들어감)
-        if (($paraNo % XINCHAO_BODY_EVERY) === 0 && $index < $count - 1) {
+        if (isset($cuts[$index])) {
             $body .= xinchao_render_ad('detail', 'in-content', $slot++, XINCHAO_BODY_MAX);
         }
     }
@@ -420,6 +549,90 @@ function xinchao_inject_body_ads($content) {
     return $top . $body . $bottom;
 }
 add_filter('the_content', 'xinchao_inject_body_ads', 20);
+
+// ─────────────────────────────────────────────────────────
+// 🧩 테마 지면 슬롯 (헤더 · 상단 · 섹션 · 하단) — 홈과 기사 상세
+//
+// 왜 JS 로 꽂는가:
+//   시작 페이지는 테마(Sahifa)가 그린다. 우리 플러그인이 끼어들 PHP 훅이 없다.
+//   테마 파일을 고치면 테마 업데이트 때 날아간다.
+//   → 푸터에서 슬롯을 만들어 두고, 완성된 DOM 의 정해진 자리로 옮긴다.
+//
+// ⚠️ 테마의 광고 칸(.e3lan)에 넣지 않는다. e3lan 은 아랍어 '광고'이고 광고차단 필터에
+//   등재돼 있어 그 안의 것은 통째로 사라진다(2026-08-22 실측). 우리 컨테이너는 xc-slot.
+//
+// ⚠️ 뉴스 터미널은 여기 대상이 아니다 — 그 화면은 jenny 플러그인이 통째로 만들므로
+//   서버에서 직접 심는다(테마 헤더·#main-content 자체가 없다).
+// ─────────────────────────────────────────────────────────
+
+// 시작 페이지 섹션(cat-box) 아래 슬롯을 몇 개까지 만들지. 섹션이 이보다 적으면 있는 만큼만.
+define('XINCHAO_HOME_SECTION_SLOTS', 12);
+
+function xinchao_inject_dom_slots() {
+    $page = xinchao_current_page_bucket();
+    if ($page !== 'home' && $page !== 'detail') return;
+
+    $items = array();
+    // 헤더 아래 1칸 — 두 페이지 공통(사이트 어디서나 같은 자리라 '전 지면' 상품으로 팔린다)
+    $items[] = array('anchor' => 'header', 'html' => xinchao_render_ad($page, 'header', 0, 970));
+
+    if ($page === 'home') {
+        // 헤더 하단(= 콘텐츠 첫 칸)
+        $items[] = array('anchor' => 'top', 'html' => xinchao_render_ad($page, 'top', 0, 970));
+        // 각 섹션 아래
+        for ($i = 0; $i < XINCHAO_HOME_SECTION_SLOTS; $i++) {
+            $items[] = array('anchor' => 'section:' . $i, 'html' => xinchao_render_ad($page, 'section', $i, 970, false));
+        }
+        // 페이지 끝
+        $items[] = array('anchor' => 'bottom', 'html' => xinchao_render_ad($page, 'bottom', 0, 970));
+    }
+
+    echo '<div id="xc-stage" style="display:none">';
+    foreach ($items as $it) {
+        echo '<div data-xc-anchor="' . esc_attr($it['anchor']) . '">' . $it['html'] . '</div>';
+    }
+    echo '</div>';
+    ?>
+    <script>
+    (function(){
+      var stage = document.getElementById('xc-stage');
+      if (!stage) return;
+      var header  = document.getElementById('theme-header');
+      var content = document.querySelector('#main-content .content')
+                 || document.querySelector('#main-content')
+                 || null;
+      var boxes   = (content || document).querySelectorAll('section.cat-box');
+
+      // 슬롯 하나를 제자리로 옮긴다. 자리를 못 찾으면 false → 숨긴 채로 둔다
+      // (테마가 바뀌어도 페이지가 깨지지 않고, 그냥 그 칸만 없는 것이 된다).
+      function place(node, anchor){
+        var parts = anchor.split(':'), kind = parts[0], idx = parseInt(parts[1] || '0', 10);
+        if (kind === 'header') {
+          if (!header || !header.parentNode) return false;
+          header.parentNode.insertBefore(node, header.nextSibling);
+          return true;
+        }
+        if (kind === 'section') {
+          var b = boxes[idx];
+          if (!b || !b.parentNode) return false;
+          b.parentNode.insertBefore(node, b.nextSibling);
+          return true;
+        }
+        if (!content) return false;
+        if (kind === 'top')    { content.insertBefore(node, content.firstChild); return true; }
+        if (kind === 'bottom') { content.appendChild(node); return true; }
+        return false;
+      }
+
+      Array.prototype.slice.call(stage.children).forEach(function(w){
+        if (place(w, w.getAttribute('data-xc-anchor'))) w.style.display = '';
+      });
+      stage.parentNode && stage.parentNode.removeChild(stage);
+    })();
+    </script>
+    <?php
+}
+add_action('wp_footer', 'xinchao_inject_dom_slots', 5);
 
 // ─────────────────────────────────────────────────────────
 // 📋 광고 재고 조회 (관리자 전용) — 관리자 메뉴: 도구 → "광고 재고"

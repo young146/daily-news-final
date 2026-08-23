@@ -1396,8 +1396,17 @@ function jenny_daily_news_shortcode($atts)
 
     $exchange = jenny_get_exchange_data();
 
+    // 헤더 아래 1칸 — 통합 광고센터 표준 슬롯 (PROGRESS_AD_SLOTS.md §8-2)
+    // 이 화면은 테마 헤더가 없다. 페이지 최상단이 곧 '헤더 아래'다.
+    $output = '';
+    if (function_exists('xinchao_render_ad')) {
+        $output .= '<div class="jenny-slot-header" style="margin:0 auto 12px;">';
+        $output .= xinchao_render_ad('news-terminal', 'header', 0, 970);
+        $output .= '</div>';
+    }
+
     // 상단 전면 광고 (레이아웃 wrapper 바깥에 배치)
-    $output = '<div id="jenny-ad-top" class="jenny-ad-section jenny-ad-top-banner">';
+    $output .= '<div id="jenny-ad-top" class="jenny-ad-section jenny-ad-top-banner">';
     $output .= '<div class="jenny-ad-placeholder jenny-ad-large">';
     $output .= '<!-- Ad Inserter: #jenny-ad-top -->';
     $output .= '</div></div>';
@@ -1405,10 +1414,11 @@ function jenny_daily_news_shortcode($atts)
     // 상단 광고 바로 아래 — 통합 광고센터 슬롯 (2026-08-21 추가)
     // 왜: 뉴스 터미널에도 광고 자리가 필요하다(제휴 상품·쿠팡 등). 본문 HTML 에 박지 않고
     //     통합센터(ads_unified) → 공개 API 가 공급하는 표준 슬롯을 쓴다.
-    //     page=news-terminal / 위치는 통합센터에서 지정(top·in-content·bottom).
+    // ⚠️ 2026-08-23: 위치를 in-content → top 으로 고쳤다. 이 화면의 in-content 는
+    //     표준에 없는 자리였고(§8-2), 그래서 '본문 중간'으로 판 광고가 여기 얹혔다.
     if (function_exists('xinchao_render_ad')) {
-        $output .= '<div class="jenny-ad-unified" style="margin:10px auto 16px;">';
-        $output .= xinchao_render_ad('news-terminal', 'in-content', '', 728);
+        $output .= '<div class="jenny-slot-top" style="margin:10px auto 16px;">';
+        $output .= xinchao_render_ad('news-terminal', 'top', 0, 728);
         $output .= '</div>';
     }
 
@@ -1727,6 +1737,7 @@ function jenny_daily_news_shortcode($atts)
     // 이전에는 섹션의 모든 기사를 카드로 뿌려서, 카드 하나가 세로 400px 을 먹는 탓에
     // 뒤쪽 섹션(여행·음식 등)까지 화면 20장 넘게 스크롤해야 했다. 그 결과 뒷 섹션은
     // 사실상 아무도 보지 못했고 거기 붙은 광고도 노출되지 않았다.
+    $xc_section_n = 0;   // 통합센터 section 슬롯 순번 (= 우선순위 순번)
     foreach ($sections as $sec_key => $sec_info) {
         if (empty($grouped_posts[$sec_key])) continue;
 
@@ -1772,9 +1783,25 @@ function jenny_daily_news_shortcode($atts)
         $output .= '<div id="' . $ad_end_id . '" class="jenny-ad-section"><div class="jenny-ad-placeholder">';
         $output .= '<!-- Ad Inserter: #' . $ad_end_id . ' -->';
         $output .= '</div></div>';
+
+        // 통합 광고센터 section 슬롯 — 섹션 하나당 1칸 (§8-2).
+        // 자체 홍보 폴백은 끈다(false): 섹션이 여러 개라 켜 두면 같은 배너가 줄줄이 붙는다.
+        if (function_exists('xinchao_render_ad')) {
+            $output .= '<div class="jenny-slot-section" style="margin:0 auto 16px;">';
+            $output .= xinchao_render_ad('news-terminal', 'section', $xc_section_n, 728, false);
+            $output .= '</div>';
+        }
+        $xc_section_n++;
     }
 
     wp_reset_postdata();
+
+    // 페이지 끝 1칸 — 통합 광고센터 표준 슬롯 (§8-2)
+    if (function_exists('xinchao_render_ad')) {
+        $output .= '<div class="jenny-slot-bottom" style="margin:8px auto 20px;">';
+        $output .= xinchao_render_ad('news-terminal', 'bottom', 0, 728);
+        $output .= '</div>';
+    }
 
     // 메인 콘텐츠 영역 닫기
     $output .= '</div>'; // Close jenny-main-content

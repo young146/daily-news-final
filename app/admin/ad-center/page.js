@@ -47,9 +47,16 @@ const SURFACES = [
   { key: "app", label: "📱 앱", color: "indigo" },
   { key: "vnkorlife", label: "🌐 vnkorlife.com", color: "emerald" },
   { key: "chaovietnam", label: "📰 chaovietnam.co.kr", color: "orange" },
+  // 뉴스 터미널은 chaovietnam 안에 있지만 **따로 파는 지면**이다.
+  //   · 독자가 가장 많이 오는 화면이고
+  //   · 자리 구성이 다르다(사이드바 없음 · 섹션마다 1칸)
+  // chaovietnam 밑의 '페이지' 하나로 두면 그 지면만 따로 팔 수가 없다.
+  { key: "news-terminal", label: "🗞 뉴스 터미널", color: "rose" },
 ];
 
-// 지면별 노출 위치 선택지. chaovietnam은 워드프레스 Ad Inserter가 위치를 담당하므로 단일 슬롯.
+// 지면별 노출 위치 선택지. PROGRESS_AD_SLOTS.md §8 의 표준 어휘를 따른다.
+//   header = 사이트 헤더 바로 아래 (페이지 최상단) · top = 콘텐츠 첫 칸
+//   in-content = 본문/목록 중간 · section = 섹션 블록 아래 · bottom = 페이지 끝 · sidebar
 const PLACEMENTS = {
   app: [
     { value: "head", label: "헤드 배너 (상단)" },
@@ -58,20 +65,29 @@ const PLACEMENTS = {
     { value: "popup", label: "전면 팝업 (10초 지연)" },
   ],
   vnkorlife: [
-    { value: "top", label: "상단 배너" },
-    { value: "in-content", label: "본문 내 배너" },
+    { value: "top", label: "상단 배너 (검색창·머리말 아래)" },
+    { value: "in-content", label: "본문·목록 중간" },
     { value: "bottom", label: "하단 배너" },
     { value: "sidebar", label: "사이드바" },
   ],
+  "news-terminal": [
+    { value: "header", label: "헤더 아래 (페이지 최상단)" },
+    { value: "top", label: "상단 광고 아래 (첫 칸)" },
+    { value: "section", label: "섹션 아래 (섹션마다 1칸)" },
+    { value: "bottom", label: "페이지 끝" },
+  ],
   chaovietnam: [
-    { value: "top", label: "본문 상단" },
-    { value: "in-content", label: "본문 중간 (매 2단락마다 자동)" },
-    { value: "bottom", label: "본문 하단/끝" },
+    { value: "header", label: "헤더 아래 (페이지 최상단)" },
+    { value: "top", label: "콘텐츠 첫 칸 (상세는 본문 상단)" },
+    { value: "in-content", label: "본문 중간 (상세 전용 · 2칸)" },
+    { value: "section", label: "섹션 아래 (홈·뉴스터미널)" },
+    { value: "bottom", label: "페이지 끝" },
     { value: "sidebar", label: "사이드바" },
   ],
 };
 
-const DEFAULT_PLACEMENT = { app: "head", vnkorlife: "top", chaovietnam: "in-content" };
+// 기본값은 어느 페이지에나 있는 자리로 둔다. chaovietnam 의 in-content 는 상세 전용이라 기본값에 맞지 않는다.
+const DEFAULT_PLACEMENT = { app: "head", vnkorlife: "top", chaovietnam: "top", "news-terminal": "top" };
 const SURFACE_LABEL = Object.fromEntries(SURFACES.map((s) => [s.key, s.label]));
 
 // 지면·위치별 권장 이미지 크기(px). 안 맞아도 표시 시 자동으로 슬롯에 맞춰짐(잘림 없이 축소/여백).
@@ -85,6 +101,12 @@ const SIZE_GUIDE = {
   "vnkorlife:in-content": "1456 × 400 (가로 배너)",
   "vnkorlife:bottom": "1456 × 400 (가로 배너)",
   "vnkorlife:sidebar": "600 × 500 (정사각형에 가까움)",
+  "news-terminal:header": "970 × 250 또는 728 × 90 (가로 배너)",
+  "news-terminal:top": "728 × 90 (가로 배너)",
+  "news-terminal:section": "728 × 90 (가로 배너)",
+  "news-terminal:bottom": "728 × 90 (가로 배너)",
+  "chaovietnam:header": "970 × 250 또는 728 × 90 (가로 배너)",
+  "chaovietnam:section": "970 × 250 또는 728 × 90 (가로 배너)",
   "chaovietnam:top": "970 × 250 또는 728 × 90 (가로 배너)",
   "chaovietnam:in-content": "970 × 250 또는 728 × 90 (가로 배너)",
   "chaovietnam:bottom": "970 × 250 또는 728 × 90 (가로 배너)",
@@ -109,20 +131,71 @@ const APP_PAGES = [
 // vnkorlife = 실제 페이지값(AdBanner의 page prop과 일치). 뉴스터미날은 chaovietnam 몫이라 없음.
 const VNKORLIFE_PAGES = [
   { value: "home", label: "🏠 홈페이지" },
-  { value: "blog", label: "📝 블로그 글" },
   { value: "market", label: "🥕 당근/나눔 목록" },
   { value: "market-detail", label: "🥕 당근/나눔 상세" },
   { value: "realestate", label: "🏢 부동산 목록" },
   { value: "realestate-detail", label: "🏢 부동산 상세" },
   { value: "jobs", label: "💼 구인구직 목록" },
   { value: "jobs-detail", label: "💼 구인구직 상세" },
+  { value: "neighborbusiness", label: "🏪 동네업소 목록" },
+  { value: "neighborbusiness-detail", label: "🏪 동네업소 상세" },
+  { value: "yellowpage", label: "📒 옐로페이지" },
+  { value: "yellowpage-detail", label: "📒 업소 상세" },
+  { value: "blog", label: "📝 블로그 목록" },
+  { value: "blog-detail", label: "📝 블로그 글" },
 ];
 const CHAOVIETNAM_PAGES = [
   { value: "home", label: "🏠 홈페이지" },
-  { value: "news-terminal", label: "📰 뉴스 터미날" },
   { value: "detail", label: "📄 상세페이지 (컨텐츠·뉴스 상세)" },
 ];
-const SURFACE_PAGES = { app: APP_PAGES, vnkorlife: VNKORLIFE_PAGES, chaovietnam: CHAOVIETNAM_PAGES };
+// 뉴스 터미널은 화면이 하나뿐이라 '노출 페이지'를 고를 것이 없다 → 빈 배열이면 선택칸을 숨긴다.
+const NEWS_TERMINAL_PAGES = [];
+const SURFACE_PAGES = { app: APP_PAGES, vnkorlife: VNKORLIFE_PAGES, chaovietnam: CHAOVIETNAM_PAGES, "news-terminal": NEWS_TERMINAL_PAGES };
+
+// ──────────────────────────────────────────────
+// 실제로 존재하는 슬롯 (PROGRESS_AD_SLOTS.md §8 = 정본)
+//
+// 왜 이 표가 필요한가: 예전에는 지면만 고르면 위치 4개가 다 보였는데,
+// 실제로는 chaovietnam 홈에 사이드바 하나뿐이었다. 없는 자리로 등록한 광고는
+// 어디에도 뜨지 않는다 — 판 사람도 산 사람도 그걸 알 방법이 없었다.
+// 값은 "그 페이지에 그 자리가 몇 칸 있는지"이고, 키가 없으면 그 자리는 없는 것이다.
+// ──────────────────────────────────────────────
+const APP_ALL = { head: "1", inner: "1", bottom: "1", popup: "1" };
+const VNK_LIST = { top: "1", "in-content": "6개당 1", bottom: "1", sidebar: "1" };
+const VNK_DETAIL = { top: "1", "in-content": "1", bottom: "1", sidebar: "1" };
+
+const PAGE_SLOTS = {
+  app: Object.fromEntries(APP_PAGES.map((p) => [p.value, APP_ALL])),
+  vnkorlife: {
+    home: { top: "1", bottom: "1" },
+    market: VNK_LIST,
+    "market-detail": VNK_DETAIL,
+    realestate: VNK_LIST,
+    "realestate-detail": VNK_DETAIL,
+    jobs: VNK_LIST,
+    "jobs-detail": VNK_DETAIL,
+    neighborbusiness: VNK_LIST,
+    "neighborbusiness-detail": VNK_DETAIL,
+    yellowpage: { top: "1", "in-content": "2" },
+    "yellowpage-detail": { top: "1", bottom: "1" },
+    blog: { top: "1", "in-content": "4개당 1", bottom: "1" },
+    "blog-detail": { top: "1", "in-content": "3", bottom: "1", sidebar: "1" },
+  },
+  chaovietnam: {
+    home: { header: "1", top: "1", section: "12", bottom: "1", sidebar: "6" },
+    detail: { header: "1", top: "1", "in-content": "2", bottom: "1", sidebar: "6" },
+  },
+  // 화면이 하나뿐인 지면. 사이드바가 없다 — 이 화면을 통째로 그리는 플러그인이
+  // 본문에 전체 폭을 준다(테마 사이드바 자체가 없다).
+  "news-terminal": {},
+};
+
+
+// 이 지면·페이지에 이 위치가 몇 칸 있는지. 없으면 null.
+const slotCount = (surface, page, position) => PAGE_SLOTS[surface]?.[page]?.[position] ?? null;
+// 이 위치를 가진 페이지 목록 (아무 페이지도 없으면 빈 배열)
+const pagesWithSlot = (surface, position) =>
+  (SURFACE_PAGES[surface] || []).filter((p) => slotCount(surface, p.value, position) !== null).map((p) => p.value);
 const pageLabel = (surface, value) =>
   (SURFACE_PAGES[surface]?.find((p) => p.value === value)?.label || value).replace(/^[^\s]+\s/, "");
 
@@ -150,7 +223,7 @@ const emptyForm = () => ({
   type: "image",
   images: [],
   linkUrl: "",
-  surfaces: ["app", "vnkorlife", "chaovietnam"], // 기본: 묶어 노출
+  surfaces: ["app", "vnkorlife", "chaovietnam", "news-terminal"], // 기본: 묶어 노출
   placements: {
     app: { position: "head", targetPages: [] },
     vnkorlife: { position: "top", targetPages: [] },
@@ -455,13 +528,20 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
   };
 
   const setPlacement = (surface, value) => {
-    setForm((prev) => ({
-      ...prev,
-      placements: {
-        ...prev.placements,
-        [surface]: { ...prev.placements[surface], position: value },
-      },
-    }));
+    setForm((prev) => {
+      // 새 위치가 없는 페이지는 선택에서 뗀다.
+      // 안 그러면 "홈 + 본문중간"처럼 실제로는 존재하지 않는 조합이 저장되고,
+      // 그 광고는 어디에도 안 뜬다(어디가 잘못됐는지 알 방법도 없다).
+      const cur = prev.placements[surface]?.targetPages || [];
+      const kept = cur.filter((pg) => slotCount(surface, pg, value) !== null);
+      return {
+        ...prev,
+        placements: {
+          ...prev.placements,
+          [surface]: { ...prev.placements[surface], position: value, targetPages: kept },
+        },
+      };
+    });
   };
 
   const toggleTargetPage = (surface, page) => {
@@ -645,7 +725,7 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
             노출 지면 선택 <span className="text-red-500">*</span>
             <span className="font-normal text-slate-500 text-xs ml-2">(이 광고를 어디에 띄울지 — 여러 곳 동시 가능)</span>
           </label>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {SURFACES.map((s) => {
               const on = form.surfaces.includes(s.key);
               return (
@@ -669,6 +749,11 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
                           📐 권장 {sizeGuide(s.key, form.placements[s.key]?.position || DEFAULT_PLACEMENT[s.key])} px
                         </p>
                       </div>
+                      {SURFACE_PAGES[s.key].length === 0 ? (
+                        <p className="text-[11px] text-slate-500">
+                          화면이 하나뿐인 지면입니다 — 고를 페이지가 없습니다.
+                        </p>
+                      ) : (
                       <div>
                         <label className="block text-[11px] font-semibold text-slate-500 mb-1">
                           노출 페이지 <span className="font-normal text-slate-400">(안 고르면 전체)</span>
@@ -676,17 +761,39 @@ function AdForm({ initial, onSaved, onCancel, onError }) {
                         <div className="flex flex-wrap gap-1.5">
                           {SURFACE_PAGES[s.key].map((p) => {
                             const sel = (form.placements[s.key]?.targetPages || []).includes(p.value);
+                            const pos = form.placements[s.key]?.position || DEFAULT_PLACEMENT[s.key];
+                            // 그 페이지에 이 자리가 없으면 아예 못 고르게 한다.
+                            // 고를 수 있게 두면 "등록은 됐는데 아무 데도 안 뜨는" 광고가 만들어진다.
+                            const n = slotCount(s.key, p.value, pos);
+                            const off = n === null;
                             return (
-                              <button key={p.value} type="button" onClick={() => toggleTargetPage(s.key, p.value)}
+                              <button key={p.value} type="button" disabled={off}
+                                title={off ? "이 페이지에는 그 자리가 없습니다" : `이 페이지의 해당 자리: ${n}칸`}
+                                onClick={() => toggleTargetPage(s.key, p.value)}
                                 className={`rounded-md border px-2 py-1 text-[11px] font-semibold transition-all ${
-                                  sel ? "border-indigo-600 bg-indigo-600 text-white shadow-sm" : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
+                                  off
+                                    ? "border-slate-200 bg-slate-100 text-slate-300 cursor-not-allowed line-through"
+                                    : sel
+                                      ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
+                                      : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
                                 }`}>
-                                {p.label}
+                                {p.label}{!off && n !== "1" ? ` ·${n}` : ""}
                               </button>
                             );
                           })}
                         </div>
+                        {/* 페이지를 안 고르면 '그 위치가 있는 모든 페이지'에 나간다.
+                            어디에 나가는지 눈으로 보여 준다 — 안 보이면 판 사람도 모른다. */}
+                        {(form.placements[s.key]?.targetPages || []).length === 0 && (
+                          <p className="mt-1 text-[11px] text-slate-500">
+                            전체 노출 → 이 위치가 있는 페이지{" "}
+                            <b className="text-slate-700">
+                              {pagesWithSlot(s.key, form.placements[s.key]?.position || DEFAULT_PLACEMENT[s.key]).length}곳
+                            </b>
+                          </p>
+                        )}
                       </div>
+                      )}
                     </div>
                   )}
                 </div>
