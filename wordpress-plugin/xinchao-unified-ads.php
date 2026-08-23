@@ -2,10 +2,14 @@
 /**
  * Plugin Name: XinChao 통합 광고 (Unified Ads)
  * Description: 통합 광고센터(ads_unified)의 chaovietnam 지면 광고를 공개 API로 불러와 표시한다. 기사 본문에 위치별 자동 삽입 — 상단(1) + 중간(2) + 하단(1). 사이드바는 [xinchao_ad slot="sidebar"] 숏코드. Advanced Ads/Ad Inserter 불필요. 직원은 통합센터에서 등록만 하면 되고, 위치는 우선순위로 자동 결정.
- * Version: 4.4.0
+ * Version: 4.5.0
  * Author: XinChao
  *
  * ── 변경 이력 ──
+ *   4.5.0 (2026-08-23) 슬롯 진단 모드. 주소 끝에 ?xcads=debug 를 붙이면 빈 슬롯도
+ *                      이름표를 단 점선 상자로 보인다(?xcads=off 로 끔).
+ *                      켠 상태는 sessionStorage 에 남아 페이지를 옮겨도 유지된다.
+ *                      독자에게는 아무 영향이 없다 — 켠 사람 브라우저에서만 보인다.
  *   4.4.0 (2026-08-23) 슬롯 표준 적용 (chao-vn-app 저장소의 PROGRESS_AD_SLOTS.md §8-3)
  *                      · 컨테이너 클래스 xinchao-ad → xc-slot  (ad/banner/e3lan 은 광고차단 필터에 걸린다)
  *                      · 현재 페이지 자동 판정 → 사이드바가 더 이상 페이지를 섞지 않는다
@@ -129,6 +133,39 @@ function xinchao_render_ad($page = '', $slot = '', $n = 0, $max = 728, $house = 
       var houseOk = <?php echo $house ? 'true' : 'false'; ?>;
       var house = <?php echo wp_json_encode(xinchao_house_creatives()); ?>;
       var houseMax = <?php echo (int) XINCHAO_HOUSE_MAX; ?>;
+      var dbgName = <?php echo json_encode(($page ?: 'auto') . ' / ' . ($slot ?: 'all') . ($stack ? '' : (' #' . $ni))); ?>;
+
+      // ── 슬롯 진단 모드 ────────────────────────────────────────────────
+      // 광고가 없는 슬롯은 스스로 숨는다 → "자리가 제대로 잡혔는지" 확인할 방법이 없었다.
+      // ?xcads=debug 로 켜고 ?xcads=off 로 끈다. 켠 상태는 sessionStorage 에 남아
+      // 페이지를 옮겨 다녀도 유지된다. 켠 사람 브라우저에서만 보이므로 독자에겐 영향 없다.
+      // 각 슬롯이 스스로 판정한다 — 다른 스크립트가 먼저 돌기를 기다리지 않아 순서 문제가 없다.
+      var dbg = (function(){
+        try {
+          var q = new URLSearchParams(location.search).get('xcads');
+          if (q === 'debug') sessionStorage.setItem('xcads_debug', '1');
+          if (q === 'off')   sessionStorage.removeItem('xcads_debug');
+          return sessionStorage.getItem('xcads_debug') === '1';
+        } catch (e) { return false; }
+      })();
+
+      // 진단용 이름표. 어느 지면·어느 자리·몇 번째 칸인지 그대로 적는다.
+      function tag(text, color){
+        var d = document.createElement('div');
+        d.textContent = text;
+        d.style.cssText = 'font:11px/1.4 monospace;color:#fff;background:' + color
+          + ';padding:2px 8px;border-radius:4px;display:inline-block;margin:0 0 4px;';
+        return d;
+      }
+      // 빈 슬롯 자리를 보여주는 점선 상자
+      function emptyBox(){
+        var d = document.createElement('div');
+        d.style.cssText = 'border:2px dashed #cbd5e1;border-radius:8px;padding:14px 10px;'
+          + 'background:repeating-linear-gradient(45deg,#f8fafc,#f8fafc 8px,#f1f5f9 8px,#f1f5f9 16px);';
+        d.appendChild(tag('빈 슬롯 · ' + dbgName, '#64748b'));
+        return d;
+      }
+
       window.__xcAd = window.__xcAd || {};
       var p = window.__xcAd[url] || (window.__xcAd[url] = fetch(url, { credentials: 'omit' }).then(function(r){ return r.json(); }));
 
@@ -217,10 +254,22 @@ function xinchao_render_ad($page = '', $slot = '', $n = 0, $max = 728, $house = 
         return a;
       }
 
-      function fallback(){
-        if (el.firstChild) return;
+      // 슬롯을 마무리한다.
+      //   광고 있음 → 그대로 (진단 모드면 무슨 자리인지 이름표를 얹는다)
+      //   광고 없음 → 자체 홍보 → 그것도 못 쓰면 진단 모드에선 빈 상자, 아니면 숨김
+      function finish(filled){
+        if (filled) {
+          if (dbg) el.insertBefore(tag('광고 · ' + dbgName, '#16a34a'), el.firstChild);
+          return;
+        }
         var hs = makeHouse();
-        if (hs) el.appendChild(hs); else el.style.display = 'none';
+        if (hs) {
+          el.appendChild(hs);
+          if (dbg) el.insertBefore(tag('자체 홍보 · ' + dbgName, '#7c3aed'), el.firstChild);
+          return;
+        }
+        if (dbg) { el.appendChild(emptyBox()); return; }
+        el.style.display = 'none';
       }
 
       p.then(function(d){
@@ -232,8 +281,8 @@ function xinchao_render_ad($page = '', $slot = '', $n = 0, $max = 728, $house = 
           var node = make(ads[n]);
           if (node) el.appendChild(node);
         }
-        fallback();
-      }).catch(fallback);
+        finish(!!el.firstChild);
+      }).catch(function(){ finish(false); });
     })();
     </script>
     <?php
@@ -633,9 +682,25 @@ function xinchao_inject_dom_slots() {
         return false;
       }
 
+      // 진단 모드에서는 '자리를 못 찾은' 슬롯도 보여 준다.
+      // 조용히 사라지면 왜 그 칸이 없는지 알 방법이 없다.
+      var dbg = false;
+      try { dbg = sessionStorage.getItem('xcads_debug') === '1'; } catch (e) {}
+
+      var orphan = [];
       Array.prototype.slice.call(stage.children).forEach(function(w){
-        if (place(w, w.getAttribute('data-xc-anchor'))) w.style.display = '';
+        if (place(w, w.getAttribute('data-xc-anchor'))) { w.style.display = ''; return; }
+        orphan.push(w.getAttribute('data-xc-anchor'));
       });
+
+      if (dbg && orphan.length) {
+        var warn = document.createElement('div');
+        warn.textContent = '⚠ 자리를 못 찾은 슬롯: ' + orphan.join(', ');
+        warn.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99999;max-width:60vw;'
+          + 'font:12px/1.4 monospace;color:#fff;background:#b91c1c;padding:8px 12px;border-radius:6px;';
+        document.body.appendChild(warn);
+      }
+
       stage.parentNode && stage.parentNode.removeChild(stage);
     })();
     </script>

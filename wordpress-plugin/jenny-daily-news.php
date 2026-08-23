@@ -2,10 +2,15 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 2.4.0
+ * Version: 2.5.0
  * Author: Jenny (Antigravity)
  *
  * ── 변경 이력 ──
+ *   2.5.0 (2026-08-23) 죽은 광고칸(jenny-ad-section) 13개 제거.
+ *                      Ad Inserter 가 채우라고 만든 자리인데 그 플러그인이 이미 없어서
+ *                      전부 빈 채로 min-height 100~200px 회색 상자만 그리고 있었다
+ *                      (한 페이지에 빈 공간 1,500px 이상). 같은 자리는 통합 광고센터
+ *                      슬롯이 이미 차지하고 있고, 그 슬롯은 비면 스스로 숨는다.
  *   2.4.0 (2026-08-23) 통합 광고센터 표준 슬롯 4종 추가 — header 1 · top 1 · section 섹션당 1 · bottom 1.
  *                      예전 in-content 호출을 top 으로 정정(표준에 없는 자리였다).
  *                      이 화면은 테마 헤더도 #main-content 도 없는 단독 템플릿이라 슬롯을 서버에서 직접 심는다.
@@ -1411,12 +1416,6 @@ function jenny_daily_news_shortcode($atts)
         $output .= '</div>';
     }
 
-    // 상단 전면 광고 (레이아웃 wrapper 바깥에 배치)
-    $output .= '<div id="jenny-ad-top" class="jenny-ad-section jenny-ad-top-banner">';
-    $output .= '<div class="jenny-ad-placeholder jenny-ad-large">';
-    $output .= '<!-- Ad Inserter: #jenny-ad-top -->';
-    $output .= '</div></div>';
-
     // 상단 광고 바로 아래 — 통합 광고센터 슬롯 (2026-08-21 추가)
     // 왜: 뉴스 터미널에도 광고 자리가 필요하다(제휴 상품·쿠팡 등). 본문 HTML 에 박지 않고
     //     통합센터(ads_unified) → 공개 API 가 공급하는 표준 슬롯을 쓴다.
@@ -1732,10 +1731,13 @@ function jenny_daily_news_shortcode($atts)
         }
         $output .= '</div>'; // Close jenny-top-news-row
 
-        // Ad Slot after Top News
-        $output .= '<div id="jenny-ad-after-topnews" class="jenny-ad-section"><div class="jenny-ad-placeholder">';
-        $output .= '<!-- Ad Inserter: #jenny-ad-after-topnews -->';
-        $output .= '</div></div>';
+        // 주요 뉴스 뒤 1칸 — 통합 광고센터 section 슬롯의 0번.
+        // 예전엔 Ad Inserter 용 빈 상자였다(채우는 플러그인이 없어 회색 칸만 남았다).
+        if (function_exists('xinchao_render_ad')) {
+            $output .= '<div class="jenny-slot-section" style="margin:0 auto 16px;">';
+            $output .= xinchao_render_ad('news-terminal', 'section', 0, 728, false);
+            $output .= '</div>';
+        }
     }
 
     // --- 2. Render Sections ---
@@ -1743,7 +1745,7 @@ function jenny_daily_news_shortcode($atts)
     // 이전에는 섹션의 모든 기사를 카드로 뿌려서, 카드 하나가 세로 400px 을 먹는 탓에
     // 뒤쪽 섹션(여행·음식 등)까지 화면 20장 넘게 스크롤해야 했다. 그 결과 뒷 섹션은
     // 사실상 아무도 보지 못했고 거기 붙은 광고도 노출되지 않았다.
-    $xc_section_n = 0;   // 통합센터 section 슬롯 순번 (= 우선순위 순번)
+    $xc_section_n = 1;   // 통합센터 section 슬롯 순번 (= 우선순위 순번). 0번은 '주요 뉴스 뒤'가 쓴다
     foreach ($sections as $sec_key => $sec_info) {
         if (empty($grouped_posts[$sec_key])) continue;
 
@@ -1783,14 +1785,7 @@ function jenny_daily_news_shortcode($atts)
         $output .= '<a href="#" class="jenny-more-mobile jenny-section-open" data-section="' . esc_attr($sec_key) . '">';
         $output .= esc_html(jenny_strip_section_emoji($sec_info['title'])) . ' 뉴스 더보기 ›</a>';
 
-        // AD SLOT after each section — 지면은 그대로 유지한다.
-        // 오히려 뒤쪽 섹션까지 사람이 도달하게 되므로 실제 노출은 늘어난다.
-        $ad_end_id = 'jenny-ad-' . esc_attr($sec_key) . '-end';
-        $output .= '<div id="' . $ad_end_id . '" class="jenny-ad-section"><div class="jenny-ad-placeholder">';
-        $output .= '<!-- Ad Inserter: #' . $ad_end_id . ' -->';
-        $output .= '</div></div>';
-
-        // 통합 광고센터 section 슬롯 — 섹션 하나당 1칸 (§8-2).
+        // 섹션 끝 1칸 — 통합 광고센터 section 슬롯 (§8-2).
         // 자체 홍보 폴백은 끈다(false): 섹션이 여러 개라 켜 두면 같은 배너가 줄줄이 붙는다.
         if (function_exists('xinchao_render_ad')) {
             $output .= '<div class="jenny-slot-section" style="margin:0 auto 16px;">';
@@ -3328,56 +3323,15 @@ function jenny_get_styles()
 
         /* 사이드바 제거됨 → 본문이 항상 전체 폭 사용 (margin-right 예약 없음) */
 
-        /* 광고 섹션 공통 스타일 */
-        .jenny-ad-section {
-            margin: 24px 0;
+        /* 광고 슬롯 자리 — 통합 광고센터 슬롯을 감싸는 칸.
+           ⚠️ 높이를 주지 않는다. 광고가 없으면 슬롯이 스스로 숨어야 하는데,
+              min-height 를 주면 빈 칸이 회색 상자로 남는다(2.4.0 이전의 그 문제다). */
+        .jenny-slot-header,
+        .jenny-slot-top,
+        .jenny-slot-section,
+        .jenny-slot-bottom {
             text-align: center;
             width: 100%;
-        }
-
-        .jenny-ad-placeholder {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border: 2px dashed #dee2e6;
-            border-radius: 8px;
-            padding: 30px 20px;
-            color: #6c757d;
-            font-size: 13px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100px;
-        }
-
-        /* 상단 전면 광고 (더 크고 눈에 띔) */
-        .jenny-ad-top-banner {
-            margin: 0 0 24px 0;
-        }
-        .jenny-ad-top-banner .jenny-ad-large {
-            background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
-            border-color: #ffc107;
-            min-height: 180px; /* 모바일: 더 높은 광고 */
-            padding: 40px 20px;
-            font-size: 14px;
-        }
-        @media (min-width: 768px) {
-            .jenny-ad-top-banner .jenny-ad-large {
-                min-height: 200px; /* PC: 더 높음 */
-            }
-        }
-
-        /* 뉴스 4개당 중간 광고 */
-        .jenny-ad-inline {
-            margin: 20px 0;
-        }
-        .jenny-ad-inline .jenny-ad-placeholder {
-            min-height: 150px; /* 100px에서 50% 증가 */
-            padding: 35px 20px;
-        }
-
-        /* 섹션 끝 광고 */
-        .jenny-ad-section:not(.jenny-ad-top-banner):not(.jenny-ad-inline) .jenny-ad-placeholder {
-            min-height: 150px; /* 100px에서 50% 증가 */
         }
 
         /* 사이드바 광고 (PC에서만 표시) */
@@ -3408,25 +3362,6 @@ function jenny_get_styles()
             }
         }
 
-        /* 모바일 광고 최적화 */
-        @media (max-width: 768px) {
-            .jenny-ad-section {
-                margin: 16px 0;
-            }
-            .jenny-ad-placeholder {
-                padding: 20px 15px;
-                font-size: 12px;
-                min-height: 120px; /* 80px에서 50% 증가 */
-            }
-            .jenny-ad-top-banner .jenny-ad-large {
-                min-height: 150px;
-                padding: 30px 15px;
-            }
-            .jenny-ad-inline .jenny-ad-placeholder {
-                min-height: 120px; /* 80px에서 50% 증가 */
-                padding: 25px 15px;
-            }
-        }
 
         /* 섹션 뉴스 모달 스타일 */
         .jenny-section-modal {
