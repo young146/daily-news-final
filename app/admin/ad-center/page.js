@@ -65,6 +65,7 @@ const PLACEMENTS = {
     { value: "popup", label: "전면 팝업 (10초 지연)" },
   ],
   vnkorlife: [
+    { value: "header", label: "헤더 아래 (전 페이지 공통)" },
     { value: "top", label: "상단 배너 (검색창·머리말 아래)" },
     { value: "in-content", label: "본문·목록 중간" },
     { value: "bottom", label: "하단 배너" },
@@ -97,6 +98,7 @@ const SIZE_GUIDE = {
   "app:inner": "1080 × 450",
   "app:bottom": "1080 × 150",
   "app:popup": "1080 × 1920",
+  "vnkorlife:header": "1456 × 400 (가로 배너)",
   "vnkorlife:top": "1456 × 400 (가로 배너)",
   "vnkorlife:in-content": "1456 × 400 (가로 배너)",
   "vnkorlife:bottom": "1456 × 400 (가로 배너)",
@@ -137,7 +139,6 @@ const VNKORLIFE_PAGES = [
   { value: "realestate-detail", label: "🏢 부동산 상세" },
   { value: "jobs", label: "💼 구인구직 목록" },
   { value: "jobs-detail", label: "💼 구인구직 상세" },
-  { value: "neighborbusiness", label: "🏪 동네업소 목록" },
   { value: "neighborbusiness-detail", label: "🏪 동네업소 상세" },
   { value: "yellowpage", label: "📒 옐로페이지" },
   { value: "yellowpage-detail", label: "📒 업소 상세" },
@@ -161,25 +162,27 @@ const SURFACE_PAGES = { app: APP_PAGES, vnkorlife: VNKORLIFE_PAGES, chaovietnam:
 // 값은 "그 페이지에 그 자리가 몇 칸 있는지"이고, 키가 없으면 그 자리는 없는 것이다.
 // ──────────────────────────────────────────────
 const APP_ALL = { head: "1", inner: "1", bottom: "1", popup: "1" };
-const VNK_LIST = { top: "1", "in-content": "6개당 1", bottom: "1", sidebar: "1" };
-const VNK_DETAIL = { top: "1", "in-content": "1", bottom: "1", sidebar: "1" };
+// header 는 전역 레이아웃(AppShell)에 한 번 심어 어느 페이지에나 있다.
+const VNK_LIST = { header: "1", top: "1", "in-content": "6개당 1", bottom: "1", sidebar: "1" };
+const VNK_DETAIL = { header: "1", top: "1", "in-content": "1", bottom: "1", sidebar: "1" };
 
 const PAGE_SLOTS = {
   app: Object.fromEntries(APP_PAGES.map((p) => [p.value, APP_ALL])),
   vnkorlife: {
-    home: { top: "1", bottom: "1" },
+    home: { header: "1", top: "1", "in-content": "1", bottom: "1" },
     market: VNK_LIST,
     "market-detail": VNK_DETAIL,
     realestate: VNK_LIST,
     "realestate-detail": VNK_DETAIL,
     jobs: VNK_LIST,
     "jobs-detail": VNK_DETAIL,
-    neighborbusiness: VNK_LIST,
+    // ⚠️ 동네업소 '목록'은 없다 — /neighborbusiness 는 /yellowpage 로 리다이렉트된다
+    //    (코드 주석: "이웃업소 둘러보기는 옐로페이지로 통합됨"). 상세만 살아 있다.
     "neighborbusiness-detail": VNK_DETAIL,
-    yellowpage: { top: "1", "in-content": "2" },
-    "yellowpage-detail": { top: "1", bottom: "1" },
-    blog: { top: "1", "in-content": "4개당 1", bottom: "1" },
-    "blog-detail": { top: "1", "in-content": "3", bottom: "1", sidebar: "1" },
+    yellowpage: { header: "1", top: "1", "in-content": "2" },
+    "yellowpage-detail": { header: "1", top: "1", bottom: "1" },
+    blog: { header: "1", top: "1", "in-content": "4개당 1", bottom: "1" },
+    "blog-detail": { header: "1", top: "1", "in-content": "3", bottom: "1", sidebar: "1" },
   },
   chaovietnam: {
     home: { header: "1", top: "1", section: "12", bottom: "1", sidebar: "6" },

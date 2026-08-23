@@ -2,10 +2,14 @@
 /**
  * Plugin Name: XinChao 통합 광고 (Unified Ads)
  * Description: 통합 광고센터(ads_unified)의 chaovietnam 지면 광고를 공개 API로 불러와 표시한다. 기사 본문에 위치별 자동 삽입 — 상단(1) + 중간(2) + 하단(1). 사이드바는 [xinchao_ad slot="sidebar"] 숏코드. Advanced Ads/Ad Inserter 불필요. 직원은 통합센터에서 등록만 하면 되고, 위치는 우선순위로 자동 결정.
- * Version: 4.6.0
+ * Version: 4.6.1
  * Author: XinChao
  *
  * ── 변경 이력 ──
+ *   4.6.1 (2026-08-23) 위 4.6.0 이 실제로는 동작하지 않았다 — 위젯 안에 슬롯 스크립트가
+ *                      있어서 textContent 가 '자바스크립트 소스'까지 글자로 세는 바람에
+ *                      '비어 있음' 판정이 영영 참이 되지 않았다. 사본에서 script/style 을
+ *                      떼고 판정하도록 고침.
  *   4.6.0 (2026-08-23) 빈 슬롯이 위젯 껍데기만 남기지 않게 함.
  *                      사이드바에 슬롯 창구를 자리마다 두면, 광고 없는 칸은 슬롯만 숨고
  *                      위젯 상자와 그 바깥 여백이 남아 사이드바에 빈 틈이 줄줄이 생겼다.
@@ -287,7 +291,13 @@ function xinchao_render_ad($page = '', $slot = '', $n = 0, $max = 728, $house = 
           if (!el.closest) return;
           var w = el.closest('.widget');
           if (!w) return;
-          if (w.textContent.trim() !== '') return;          // 제목·글자가 있으면 그대로 둔다
+          // ⚠️ w.textContent 를 그대로 쓰면 안 된다 — 슬롯이 심어 놓은 <script> 안의
+          //    자바스크립트 소스까지 '글자'로 세어, 빈 위젯이 절대 비어 보이지 않는다
+          //    (4.6.0 이 이 이유로 동작하지 않았다). 사본에서 script/style 을 떼고 본다.
+          var probe = w.cloneNode(true);
+          var junk = probe.querySelectorAll('script, style');
+          for (var i = 0; i < junk.length; i++) junk[i].parentNode.removeChild(junk[i]);
+          if (probe.textContent.trim() !== '') return;          // 제목·글자가 있으면 그대로 둔다
           if (w.querySelector('img, iframe, ins, video')) return; // 다른 볼거리가 있으면 그대로
           w.style.display = 'none';
         } catch (e) {}
