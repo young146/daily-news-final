@@ -2,10 +2,15 @@
 /**
  * Plugin Name: XinChao 통합 광고 (Unified Ads)
  * Description: 통합 광고센터(ads_unified)의 chaovietnam 지면 광고를 공개 API로 불러와 표시한다. 기사 본문에 위치별 자동 삽입 — 상단(1) + 중간(2) + 하단(1). 사이드바는 [xinchao_ad slot="sidebar"] 숏코드. Advanced Ads/Ad Inserter 불필요. 직원은 통합센터에서 등록만 하면 되고, 위치는 우선순위로 자동 결정.
- * Version: 4.5.0
+ * Version: 4.6.0
  * Author: XinChao
  *
  * ── 변경 이력 ──
+ *   4.6.0 (2026-08-23) 빈 슬롯이 위젯 껍데기만 남기지 않게 함.
+ *                      사이드바에 슬롯 창구를 자리마다 두면, 광고 없는 칸은 슬롯만 숨고
+ *                      위젯 상자와 그 바깥 여백이 남아 사이드바에 빈 틈이 줄줄이 생겼다.
+ *                      슬롯이 그 위젯의 유일한 내용일 때만 위젯째 숨긴다(제목·다른 내용이
+ *                      있으면 건드리지 않는다).
  *   4.5.0 (2026-08-23) 슬롯 진단 모드. 주소 끝에 ?xcads=debug 를 붙이면 빈 슬롯도
  *                      이름표를 단 점선 상자로 보인다(?xcads=off 로 끔).
  *                      켠 상태는 sessionStorage 에 남아 페이지를 옮겨도 유지된다.
@@ -270,6 +275,22 @@ function xinchao_render_ad($page = '', $slot = '', $n = 0, $max = 728, $house = 
         }
         if (dbg) { el.appendChild(emptyBox()); return; }
         el.style.display = 'none';
+        hideEmptyWidget();
+      }
+
+      // 슬롯이 사이드바 위젯 안에 '홀로' 있으면 위젯 상자까지 숨긴다.
+      // 테마가 위젯마다 바깥 여백을 주기 때문에, 슬롯만 숨기면 빈 틈이 남는다.
+      // ⚠️ 제목이나 다른 내용이 있는 위젯은 절대 건드리지 않는다 —
+      //    글자가 남아 있으면(textContent) 그 위젯은 슬롯 전용이 아니다.
+      function hideEmptyWidget(){
+        try {
+          if (!el.closest) return;
+          var w = el.closest('.widget');
+          if (!w) return;
+          if (w.textContent.trim() !== '') return;          // 제목·글자가 있으면 그대로 둔다
+          if (w.querySelector('img, iframe, ins, video')) return; // 다른 볼거리가 있으면 그대로
+          w.style.display = 'none';
+        } catch (e) {}
       }
 
       p.then(function(d){
