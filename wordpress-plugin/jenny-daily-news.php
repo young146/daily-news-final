@@ -2,8 +2,14 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 2.3.0
+ * Version: 2.4.0
  * Author: Jenny (Antigravity)
+ *
+ * ── 변경 이력 ──
+ *   2.4.0 (2026-08-23) 통합 광고센터 표준 슬롯 4종 추가 — header 1 · top 1 · section 섹션당 1 · bottom 1.
+ *                      예전 in-content 호출을 top 으로 정정(표준에 없는 자리였다).
+ *                      이 화면은 테마 헤더도 #main-content 도 없는 단독 템플릿이라 슬롯을 서버에서 직접 심는다.
+ *                      슬롯 표준: chao-vn-app 저장소의 PROGRESS_AD_SLOTS.md §8-4
  */
 
 if (!defined('ABSPATH')) {
