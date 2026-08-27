@@ -47,7 +47,7 @@ const html = renderDailyNewsEmail({
       '<rect width="1200" height="630" fill="url(#g)"/>' +
       '<rect width="1200" height="630" fill="url(#s)"/>' +
       '<text x="54" y="74" fill="rgba(255,255,255,.92)" font-size="26" font-weight="bold" ' +
-      'font-family="sans-serif">씨짜오베트남</text>' +
+      'font-family="sans-serif">씬짜오베트남</text>' +
       '<text x="54" y="486" fill="#FFFFFF" font-size="62" font-weight="bold" ' +
       'font-family="sans-serif">호찌민–봉따우 잇는</text>' +
       '<text x="54" y="564" fill="#FFFFFF" font-size="62" font-weight="bold" ' +
