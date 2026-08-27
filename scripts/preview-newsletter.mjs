@@ -69,12 +69,20 @@ const html = renderDailyNewsEmail({
     { title: '미 육군장관, 국방장관 강등 후 연내 사임 전망', url: 'https://chaovietnam.co.kr/k3/' },
     { title: '카이마시, 중북 중남미 경제성장 1위 전망… 16.2% 예측', url: 'https://chaovietnam.co.kr/k4/' },
   ],
+  // ⚠️ 광고 설명은 통합광고센터 편집기에서 **HTML 로** 저장된다.
+  //    여기 일부러 지저분한 실제 형태를 넣어 둔다 — 미리보기가 이걸 못 걸러내면
+  //    메일에 <h2> <span style=...> 가 글자로 찍혀 나간다(2026-08-27 실제 발생).
   promoCards: [
     {
-      title: '제12회 씬짜오 골프대회 참가자 모집',
-      description: '10월 12일 롱탄 골프클럽에서 열립니다.\n교민 누구나 참가하실 수 있습니다.',
+      title: '성우종합인쇄 - 컬러박스·쇼핑백·카다록 일괄 제작',
+      description:
+        '<h2><strong style="color: rgb(0, 0, 0);">뉴스레터에서&nbsp;관심을&nbsp;만들고,&nbsp;' +
+        '앱과&nbsp;뉴스터미널에서&nbsp;브랜드를&nbsp;다시&nbsp;만나게&nbsp;합니다.</strong></h2>' +
+        '<h2></h2><p><span style="color: lab(35.5623 -1.74978 -15.4316); ' +
+        'background-color: rgb(255, 255, 255);">🎨&nbsp;인쇄가&nbsp;필요한&nbsp;모든&nbsp;것,&nbsp;' +
+        '한&nbsp;곳에서&nbsp;해결하세요.</span></p>',
       imageUrl: '',
-      linkUrl: 'https://chaovietnam.co.kr/promo/golf/',
+      linkUrl: 'https://chaovietnam.co.kr/promo/print/',
     },
   ],
   baseUrl: 'https://chaovietnam.co.kr',
