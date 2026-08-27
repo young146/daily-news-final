@@ -21,8 +21,6 @@ const html = renderDailyNewsEmail({
       '<stop offset="0" stop-color="#FDBA74"/><stop offset="1" stop-color="#EA580C"/>' +
       '</linearGradient></defs>' +
       '<rect width="1200" height="630" fill="url(#g)"/>' +
-      '<text x="60" y="150" fill="rgba(255,255,255,.75)" font-size="26" ' +
-      'font-family="sans-serif" letter-spacing="8">2026.08.27</text>' +
       '<text x="60" y="300" fill="#FFFFFF" font-size="66" font-weight="bold" ' +
       'font-family="sans-serif">\uD638\uCC0C\uBBFC\u2013\uBD09\uB530\uC6B0 \uB3C4\uC2DC\uCCA0\uB3C4</text>' +
       '<text x="60" y="390" fill="#FFFFFF" font-size="66" font-weight="bold" ' +
