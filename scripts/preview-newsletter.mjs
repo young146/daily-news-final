@@ -93,11 +93,16 @@ const html = renderDailyNewsEmail({
     },
   ],
 
+  // 한국 뉴스도 사진이 있다 (실측: 후보 8건 전부 보유). 추천뉴스보다 작게 들어간다.
   koreaNews: [
-    { title: '엔비디아 3분기 LPX 양산 돌입… 삼성 파운드리 생산', url: 'https://chaovietnam.co.kr/k1/' },
-    { title: '파나마 운하 통행 강수… 흑 컨테이너 물류 직격탄', url: 'https://chaovietnam.co.kr/k2/' },
-    { title: '미 육군장관, 국방장관 강등 후 연내 사임 전망', url: 'https://chaovietnam.co.kr/k3/' },
-    { title: '카이마시, 중북 중남미 경제성장 1위 전망… 16.2% 예측', url: 'https://chaovietnam.co.kr/k4/' },
+    { title: '엔비디아 3분기 LPX 양산 돌입… 삼성 파운드리 생산',
+      imageUrl: ph(200, 140, '', '#3B4A63', '#141A22'), url: 'https://chaovietnam.co.kr/k1/' },
+    { title: '파나마 운하 통행 강수… 흑 컨테이너 물류 직격탄',
+      imageUrl: ph(200, 140, '', '#2F5148', '#101815'), url: 'https://chaovietnam.co.kr/k2/' },
+    { title: '미 육군장관, 국방장관 강등 후 연내 사임 전망',
+      imageUrl: ph(200, 140, '', '#59453B', '#1A1310'), url: 'https://chaovietnam.co.kr/k3/' },
+    { title: '카이마시, 중북 중남미 경제성장 1위 전망… 16.2% 예측',
+      imageUrl: '', url: 'https://chaovietnam.co.kr/k4/' },
   ],
 
   // ⚠️ 광고 설명은 통합광고센터 편집기에서 **HTML 로** 저장된다.

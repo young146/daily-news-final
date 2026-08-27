@@ -93,7 +93,35 @@ export async function POST(request) {
 
     const topNewsItems = recentNews.filter(n => n.isTopNews);
     const otherNewsItems = recentNews.filter(n => !n.isTopNews);
-    const orderedItems = [...topNewsItems, ...otherNewsItems];
+    let orderedItems = [...topNewsItems, ...otherNewsItems];
+
+    // ⚠️ 대비책 — 카드뉴스 선정('♥ 카드')이 하나도 없는 날이 있다.
+    //    2026-08-27 실제로 그랬다: 그날 기사가 60건 발행됐는데 isCardNews 는 0건이라
+    //    메일에서 뉴스 목록이 통째로 빠지고 카드 한 장만 덜렁 나갔다.
+    //    매일 나가는 메일이 사람 손 하나에 이렇게 걸리면 안 된다.
+    //    → 선정이 비면 그날 발행분에서 자동으로 채운다(인기검색어 관련도 → 최신순).
+    //      한국 뉴스는 아래 자기 자리가 따로 있으므로 뺀다.
+    //    ※ 자동으로 채웠어도 '선정' 을 대신하는 것은 아니다. 편집자가 고른 날은
+    //      그 선택이 그대로 우선한다.
+    if (otherNewsItems.length === 0) {
+      try {
+        const auto = await prisma.newsItem.findMany({
+          where: {
+            status: 'PUBLISHED',
+            publishedAt: { gte: today },
+            isTopNews: false,
+            wordpressUrl: { not: null },
+            source: { notIn: ['Yonhap Main'] },
+          },
+          orderBy: [{ keywordScore: 'desc' }, { publishedAt: 'desc' }],
+          take: 5,
+        });
+        orderedItems = [...topNewsItems, ...auto];
+        console.log(`[SendEmail] 카드뉴스 선정 0건 → 그날 발행분에서 ${auto.length}건 자동 선택`);
+      } catch (e) {
+        console.warn('[SendEmail] 추천뉴스 자동 선택 실패 (목록 생략):', e.message);
+      }
+    }
 
     // 🇰🇷 오늘 한국에선 — 오늘 발행된 한국 뉴스(연합 계열)를 수동 선정과 무관하게 자동 포함.
     // 구독자 99% 가 한국인인데 카드뉴스 선정은 베트남 뉴스 위주라, 한국 뉴스가 이메일에
@@ -224,21 +252,25 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
   //
   // 다섯 줄로 끊는 이유도 취향이 아니다: 목록이 길수록 그 아래 광고까지
   // 내려오는 사람이 줄어든다. 광고를 한 화면이라도 빨리 만나게 하려는 것.
+  // (선정이 0건인 날의 대비책은 POST 안에서 미리 처리한다 — 이 함수는 DB 를 모른다)
   const RECOMMEND_COUNT = 5;
+  const toRow = (item) => ({
+    title: item.translatedTitle || item.title || '',
+    // 작은 썸네일용 사진. 워드프레스에 올라간 판을 먼저 쓴다 — 원본 주소는
+    // 언론사 서버라 핫링크가 막히는 경우가 있고, 메일에서는 그러면 빈칸이 된다.
+    imageUrl: item.wordpressImageUrl || item.imageUrl || '',
+    url: withUtm(item.wordpressUrl || terminalUrl, 'news'),
+  });
+
   const items = (newsItems || [])
     .filter((item) => !item.isTopNews)
     .slice(0, RECOMMEND_COUNT)
-    .map((item) => ({
-      title: item.translatedTitle || item.title || '',
-      // 작은 썸네일용 사진. 워드프레스에 올라간 판을 먼저 쓴다 — 원본 주소는
-      // 언론사 서버라 핫링크가 막히는 경우가 있고, 메일에서는 그러면 빈칸이 된다.
-      imageUrl: item.wordpressImageUrl || item.imageUrl || '',
-      url: withUtm(item.wordpressUrl || terminalUrl, 'news'),
-    }));
+    .map(toRow);
 
   // 🇰🇷 오늘 한국에선 — 제목만 노출(요약을 다 주면 클릭할 이유가 사라진다), 링크는 우리 사이트
   const korea = (koreaNews || []).map((item) => ({
     title: item.translatedTitle || item.title || '',
+    imageUrl: item.wordpressImageUrl || item.imageUrl || '',
     url: withUtm(item.wordpressUrl, 'korea'),
   }));
 
