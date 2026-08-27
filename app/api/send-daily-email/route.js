@@ -1,7 +1,8 @@
 import prisma from '@/lib/prisma';
 import { sendNewsletterWithFallback } from '../../../lib/email-service.js';
 import { filterCardsForToday } from '@/lib/promo-card-filters';
-import { getSponsor, emailSubject, emailHeaderHtml } from '@/lib/sponsor';
+import { getSponsor, emailSubject, isSponsored, PUBLISHER_NAME, PUBLISHER_NAME_EN } from '@/lib/sponsor';
+import { renderDailyNewsEmail } from '@/lib/newsletter-template';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // Vercel Pro: 최대 5분 (대량 발송용)
@@ -200,6 +201,9 @@ export async function POST(request) {
 }
 
 function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], sponsor = null, koreaNews = []) {
+  // 화면(디자인)은 lib/newsletter-template.js 가 맡는다. 여기서는 **자료를 그 모양에 맞춰
+  // 넘기는 일만** 한다 — 디자인을 고칠 때 발송 로직을 건드리지 않게 하려는 분리다.
+  //
   // Vercel 의 NEXT_PUBLIC_BASE_URL 에 프로토콜이 빠져 있으면(예: "daily-news-final.vercel.app")
   // 이메일 안의 href 가 상대경로로 해석돼 수신거부 링크가 죽는다 → https:// 를 보정한다.
   const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chaovietnam.co.kr';
@@ -213,106 +217,43 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
     const sep = target.includes('?') ? '&' : '?';
     return `${target}${sep}utm_source=email&utm_medium=newsletter&utm_content=${content}`;
   };
-  const trackedTerminalUrl = withUtm(terminalUrl, 'terminal');
 
-  let html = `
-    <div style="font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; max-width: 700px; margin: 0 auto; color: #333; padding: 20px; background-color: #fff;">
-      ${emailHeaderHtml(sponsor, dateString)}
-  `;
-
-  if (cardImageUrl) {
-    html += `
-      <div style="margin-bottom: 30px;">
-        <a href="${trackedTerminalUrl}" target="_blank" style="text-decoration: none;">
-          <img src="${cardImageUrl}" alt="오늘의 뉴스 카드" style="max-width: 100%; height: auto; display: block; border: 1px solid #eee;" />
-        </a>
-      </div>
-    `;
-  }
-
-  if (newsItems && newsItems.length > 0) {
-    newsItems.forEach(item => {
-      const url = item.wordpressUrl || terminalUrl;
-      const trackedNewsUrl = withUtm(url, 'news');
-      const summary = (item.translatedSummary || item.summary || '').replace(/\n/g, '<br/>');
-      html += `
-        <div style="margin-bottom: 25px; line-height: 1.6;">
-          <h3 style="font-size: 16px; font-weight: bold; margin: 0 0 8px 0; color: #222;">📍 ${item.translatedTitle || item.title}</h3>
-          <p style="font-size: 14px; margin: 0 0 8px 0; color: #444;">${summary}</p>
-          <div style="font-size: 13px;">
-            <a href="${trackedNewsUrl}" style="color: #0056b3; text-decoration: underline; word-break: break-all;" target="_blank">
-              자세한 내용은 링크를 클릭: ${url}
-            </a>
-          </div>
-        </div>
-      `;
-    });
-  }
+  const items = (newsItems || []).map((item) => ({
+    title: item.translatedTitle || item.title || '',
+    summary: item.translatedSummary || item.summary || '',
+    url: withUtm(item.wordpressUrl || terminalUrl, 'news'),
+  }));
 
   // 🇰🇷 오늘 한국에선 — 제목만 노출(요약을 다 주면 클릭할 이유가 사라진다), 링크는 우리 사이트
-  if (koreaNews && koreaNews.length > 0) {
-    const koreaItemsHtml = koreaNews.map(item => `
-        <li style="margin: 0 0 10px 0; line-height: 1.5;">
-          <a href="${withUtm(item.wordpressUrl, 'korea')}" target="_blank" style="font-size: 14px; color: #1e3a8a; text-decoration: none; font-weight: 600;">
-            ${item.translatedTitle || item.title} →
-          </a>
-        </li>`).join('');
-    html += `
-    <div style="margin: 30px 0; padding: 18px 20px; background: #eff6ff; border-left: 4px solid #1d4ed8; border-radius: 0 8px 8px 0;">
-      <p style="font-size: 15px; font-weight: bold; color: #1e3a8a; margin: 0 0 12px 0;">🇰🇷 오늘 한국에선</p>
-      <ul style="margin: 0; padding: 0 0 0 4px; list-style: none;">${koreaItemsHtml}
-      </ul>
-    </div>
-  `;
-  }
+  const korea = (koreaNews || []).map((item) => ({
+    title: item.translatedTitle || item.title || '',
+    url: withUtm(item.wordpressUrl, 'korea'),
+  }));
 
-  // 섹션 안내 문구
-  html += `
-    <div style="margin: 30px 0; padding: 16px 20px; background: #f8f9fa; border-left: 4px solid #d1121d; border-radius: 0 6px 6px 0;">
-      <p style="font-size: 15px; font-weight: bold; color: #1a1a1a; margin: 0 0 6px 0; line-height: 1.6;">
-        베트남의 흐름을 관망할 수 있는 뉴스가 섹션별로 다양하게 게재되어 있습니다.
-      </p>
-      <a href="${trackedTerminalUrl}" target="_blank" style="font-size: 13px; color: #d1121d; text-decoration: underline;">
-        👉 뉴스 터미널에서 전체 뉴스 확인하기
-      </a>
-    </div>
-  `;
+  const promos = (promoCards || []).map((card) => {
+    const ytMatch = card.videoUrl?.match(/(?:youtube\.com.*v=|youtu\.be\/)([^&\n?#]+)/);
+    const ytId = ytMatch ? ytMatch[1] : null;
+    return {
+      title: card.title || '',
+      description: card.description || '',
+      imageUrl: card.imageUrl || (ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : ''),
+      linkUrl: withUtm(card.linkUrl, 'promo'),
+    };
+  });
 
-  // Promo Cards Section
-  if (promoCards && promoCards.length > 0) {
-    html += `<div style="margin-top: 40px; border-top: 3px solid #f97316; padding-top: 24px;">
-      <p style="font-size: 13px; font-weight: bold; color: #f97316; letter-spacing: 1px; margin: 0 0 20px 0;">📣 함께 홍보해요</p>`;
-    promoCards.forEach(card => {
-      const ytMatch = card.videoUrl?.match(/(?:youtube\.com.*v=|youtu\.be\/)([^&\n?#]+)/);
-      const ytId = ytMatch ? ytMatch[1] : null;
-      const imgSrc = card.imageUrl || (ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null);
-      const trackedPromoUrl = withUtm(card.linkUrl, 'promo');
-      html += `<div style="margin-bottom: 28px; background: #fff8f0; border: 1px solid #fed7aa; border-radius: 10px; overflow: hidden;">
-        ${imgSrc ? `<a href="${trackedPromoUrl}" target="_blank" style="display:block;"><img src="${imgSrc}" alt="${card.title}" style="width:100%;height:auto;display:block;" /></a>` : ''}
-        <div style="padding: 16px 20px;">
-          <h3 style="font-size: 16px; font-weight: bold; color: #1f2937; margin: 0 0 8px 0;">${card.title}</h3>
-          ${card.description ? `<p style="font-size: 13px; color: #4b5563; line-height: 1.7; white-space: pre-wrap; margin: 0 0 14px 0;">${card.description}</p>` : ''}
-          ${card.linkUrl ? `<a href="${trackedPromoUrl}" target="_blank" style="display:inline-block;background:#f97316;color:#fff;font-size:13px;font-weight:bold;padding:10px 22px;border-radius:6px;text-decoration:none;">참여하기 →</a>` : ''}
-        </div>
-      </div>`;
-    });
-    html += `</div>`;
-  }
-
-  html += `
-      <div style="margin-top: 40px; border-top: 1px solid #ddd; padding-top: 20px;">
-        <div style="font-size: 12px; color: #666; line-height: 1.6;">
-          <p style="margin: 0 0 5px 0;"><strong>HANHOA CO., LTD | www.chaovietnam.co.kr</strong></p>
-          <p style="margin: 0 0 5px 0;">9Th Floor, EBM Building, 685-685 Dien Bien Phu, Ward 25, Binh Thanh</p>
-          <p style="margin: 0;">T. 028)3511 1075 / 3511 1095 | E. info@chaovietnam.co.kr</p>
-          <div style="margin-top: 20px; text-align: center; border-top: 1px dashed #eee; padding-top: 15px;">
-            <p style="margin: 0; color: #888; font-size: 11px;">더 이상 뉴스레터를 받고 싶지 않으시다면 아래 링크를 클릭해 주세요.</p>
-            <a href="${baseUrl}/unsubscribe" target="_blank" style="color: #999; text-decoration: underline; font-size: 11px; display: inline-block; margin-top: 5px;">수신 거부 (Unsubscribe)</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  return html;
+  return renderDailyNewsEmail({
+    dateString,
+    cardImageUrl,
+    terminalUrl: withUtm(terminalUrl, 'terminal'),
+    newsItems: items,
+    koreaNews: korea,
+    promoCards: promos,
+    brand: {
+      publisherName: PUBLISHER_NAME,
+      publisherNameEn: PUBLISHER_NAME_EN,
+      isSponsored: isSponsored(sponsor),
+      sponsor: sponsor || {},
+    },
+    baseUrl,
+  });
 }
