@@ -11,9 +11,28 @@ import 'react-quill-new/dist/quill.snow.css';
 
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
+// 목록에 보여줄 한 줄 요약. 태그를 지우는 것만으로는 부족하다 —
+// 편집기가 남긴 &nbsp; &amp; 같은 **기호가 글자 그대로 보인다**
+// (2026-08-27 사장님이 발견: 목록에 "&nbsp;유턴·투자·입주를&nbsp;검토..." 로 찍혔다).
+// textarea 에 넣었다 꺼내면 브라우저가 기호를 실제 글자로 풀어준다(스크립트 실행 없음).
 const stripHtml = (html) => {
     if (!html) return "";
-    return html.replace(/<[^>]*>?/gm, '');
+    const noTags = html.replace(/<[^>]*>?/gm, '');
+    if (typeof document !== "undefined") {
+        const el = document.createElement("textarea");
+        el.innerHTML = noTags;
+        return el.value.replace(/\s+/g, " ").trim();
+    }
+    // 서버에서 그려질 때의 대비책 (자주 쓰이는 것만)
+    return noTags
+        .replace(/&nbsp;/g, " ")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/\s+/g, " ")
+        .trim();
 };
 
 const WEEKDAY_LIST = [

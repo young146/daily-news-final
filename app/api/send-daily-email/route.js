@@ -218,11 +218,23 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
     return `${target}${sep}utm_source=email&utm_medium=newsletter&utm_content=${content}`;
   };
 
-  const items = (newsItems || []).map((item) => ({
-    title: item.translatedTitle || item.title || '',
-    summary: item.translatedSummary || item.summary || '',
-    url: withUtm(item.wordpressUrl || terminalUrl, 'news'),
-  }));
+  // 아래 목록에는 **톱뉴스를 넣지 않는다** (2026-08-27 사장님 지시).
+  // 바로 위 큰 사진이 이미 그날의 톱뉴스다 — 같은 기사가 두 번 나오면
+  // "고르지도 않고 기계가 뱉었구나" 로 읽힌다.
+  //
+  // 다섯 줄로 끊는 이유도 취향이 아니다: 목록이 길수록 그 아래 광고까지
+  // 내려오는 사람이 줄어든다. 광고를 한 화면이라도 빨리 만나게 하려는 것.
+  const RECOMMEND_COUNT = 5;
+  const items = (newsItems || [])
+    .filter((item) => !item.isTopNews)
+    .slice(0, RECOMMEND_COUNT)
+    .map((item) => ({
+      title: item.translatedTitle || item.title || '',
+      // 작은 썸네일용 사진. 워드프레스에 올라간 판을 먼저 쓴다 — 원본 주소는
+      // 언론사 서버라 핫링크가 막히는 경우가 있고, 메일에서는 그러면 빈칸이 된다.
+      imageUrl: item.wordpressImageUrl || item.imageUrl || '',
+      url: withUtm(item.wordpressUrl || terminalUrl, 'news'),
+    }));
 
   // 🇰🇷 오늘 한국에선 — 제목만 노출(요약을 다 주면 클릭할 이유가 사라진다), 링크는 우리 사이트
   const korea = (koreaNews || []).map((item) => ({
