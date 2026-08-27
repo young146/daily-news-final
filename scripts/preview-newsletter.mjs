@@ -18,17 +18,17 @@ const html = renderDailyNewsEmail({
     encodeURIComponent(
       '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630">' +
       '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
-      '<stop offset="0" stop-color="#1B3A2C"/><stop offset="1" stop-color="#0B1A14"/>' +
+      '<stop offset="0" stop-color="#FDBA74"/><stop offset="1" stop-color="#EA580C"/>' +
       '</linearGradient></defs>' +
       '<rect width="1200" height="630" fill="url(#g)"/>' +
-      '<text x="60" y="150" fill="rgba(245,222,179,.45)" font-size="26" ' +
+      '<text x="60" y="150" fill="rgba(255,255,255,.75)" font-size="26" ' +
       'font-family="sans-serif" letter-spacing="8">2026.08.27</text>' +
-      '<text x="60" y="300" fill="#F5DEB3" font-size="66" font-weight="bold" ' +
+      '<text x="60" y="300" fill="#FFFFFF" font-size="66" font-weight="bold" ' +
       'font-family="sans-serif">\uD638\uCC0C\uBBFC\u2013\uBD09\uB530\uC6B0 \uB3C4\uC2DC\uCCA0\uB3C4</text>' +
-      '<text x="60" y="390" fill="#F5DEB3" font-size="66" font-weight="bold" ' +
+      '<text x="60" y="390" fill="#FFFFFF" font-size="66" font-weight="bold" ' +
       'font-family="sans-serif">51\uC5B5 \uB2EC\uB7EC \uADDC\uBAA8 \uCD94\uC9C4</text>' +
-      '<rect x="60" y="450" width="90" height="5" fill="#C45614"/>' +
-      '<text x="60" y="530" fill="rgba(245,222,179,.5)" font-size="24" ' +
+      '<rect x="60" y="450" width="90" height="5" fill="#FFFFFF"/>' +
+      '<text x="60" y="530" fill="rgba(255,255,255,.7)" font-size="24" ' +
       'font-family="sans-serif">\uC624\uB298\uC758 \uCE74\uB4DC\uB274\uC2A4 (\uC790\uB9AC\uD45C\uC2DC)</text>' +
       '</svg>'
     ),
