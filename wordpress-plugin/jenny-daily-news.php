@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 2.10.0
+ * Version: 2.11.0
  * Author: Jenny (Antigravity)
  *
  * ── 변경 이력 ──
@@ -5101,3 +5101,168 @@ add_action('wp_footer', function () {
     </script>
     <?php
 }, 5);
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * 숏코드 모음 화면 (v2.11.0 · 2026-08-28)
+ * ───────────────────────────────────────────────────────────────────────
+ * 왜 만드나: 숏코드는 **적어두지 않으면 반드시 잊는다.** 문서에 적어 두면
+ *   이번엔 그 문서를 못 찾는다. 쓰는 자리(워드프레스 관리화면) 안에 있어야
+ *   실제로 다시 찾아진다.
+ *
+ * 자리: **도구 → 씬짜오 숏코드**. 기존 「광고 재고」와 같은 자리에 둔다.
+ *
+ * 살아 있는지 함께 보여 준다: 플러그인이 꺼져 있으면 글에 `[xinchao_ad]` 가
+ *   **글자 그대로** 노출된다. 목록에 "작동 안 함" 이 떠 있으면 그걸 먼저 안다.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+/** 이 사이트에서 쓰는 숏코드 목록. 새 숏코드를 만들면 **여기에 한 줄 추가한다.** */
+function jenny_shortcode_catalog()
+{
+    return array(
+        array(
+            'code' => '[chaovn_subscribe]',
+            'tag'  => 'chaovn_subscribe',
+            'name' => '뉴스레터 구독 — 가로 띠',
+            'desc' => '기사 본문처럼 넓은 자리에 쓰는 가로 띠. 누르면 신청 팝업이 열린다.',
+            'where'=> '기사 본문 끝에는 <b>자동으로</b> 들어간다. 그 밖의 자리에 더 넣고 싶을 때만 쓴다.',
+        ),
+        array(
+            'code' => '[chaovn_subscribe type="card"]',
+            'tag'  => 'chaovn_subscribe',
+            'name' => '뉴스레터 구독 — 세로 카드',
+            'desc' => '사이드바처럼 좁은 자리용. 가로 띠를 좁은 곳에 넣으면 글자가 접혀 모양이 무너진다.',
+            'where'=> '사이드바는 <b>외모 → 위젯 → 「씬짜오 뉴스레터 구독」</b> 위젯을 쓰는 편이 낫다(끄고 켜기 쉽다).',
+        ),
+        array(
+            'code' => '[daily_news_list]',
+            'tag'  => 'daily_news_list',
+            'name' => '데일리 뉴스 목록',
+            'desc' => '그날의 뉴스를 목록으로 그린다.',
+            'where'=> '뉴스 터미널 페이지에서 쓴다.',
+        ),
+        array(
+            'code' => '[xinchao_ad]',
+            'tag'  => 'xinchao_ad',
+            'name' => '통합 광고 슬롯',
+            'desc' => '통합 광고센터에 등록된 광고를 그 자리에 그린다.',
+            'where'=> '광고를 더 넣고 싶은 자리에. 대부분 자리는 이미 자동으로 들어간다.',
+        ),
+        array(
+            'code' => '[xinchao_shopping]',
+            'tag'  => 'xinchao_shopping',
+            'name' => '쇼핑 캐러셀',
+            'desc' => '제휴 상품을 옆으로 넘기는 띠로 보여 준다.',
+            'where'=> '제휴 수익을 노리는 자리에.',
+        ),
+        array(
+            'code' => '[company_directory]',
+            'tag'  => 'company_directory',
+            'name' => '기업 디렉토리',
+            'desc' => '등록된 한인 업체 목록을 그린다.',
+            'where'=> '업소록 페이지에서 쓴다.',
+        ),
+        array(
+            'code' => '[chaovn_issue_cover]',
+            'tag'  => 'chaovn_issue_cover',
+            'name' => '이번 호 표지',
+            'desc' => '지금 발행 중인 호의 표지를 자동으로 보여 준다.',
+            'where'=> '사이드바에. <b>손으로 이미지를 갈아 끼우지 않아도</b> 호가 바뀌면 따라 바뀐다.',
+        ),
+    );
+}
+
+add_action('admin_menu', function () {
+    add_management_page(
+        '씬짜오 숏코드',
+        '📋 씬짜오 숏코드',
+        'edit_posts',           // 편집자도 볼 수 있어야 한다 — 글 쓰는 사람이 쓰는 것이다
+        'chaovn-shortcodes',
+        'jenny_shortcode_page'
+    );
+});
+
+function jenny_shortcode_page()
+{
+    $items = jenny_shortcode_catalog();
+    ?>
+    <div class="wrap">
+      <h1>📋 씬짜오 숏코드</h1>
+      <p style="font-size:14px;color:#50575e;max-width:760px;line-height:1.7">
+        아래 코드를 <b>글·페이지·텍스트 위젯</b>에 그대로 붙여 넣으면 그 자리에 나옵니다.
+        코드 상자를 누르면 <b>복사</b>됩니다.
+      </p>
+
+      <div style="display:grid;gap:14px;max-width:860px;margin-top:18px">
+        <?php foreach ($items as $it):
+            $alive = shortcode_exists($it['tag']); ?>
+          <div style="background:#fff;border:1px solid #dcdcde;border-left:4px solid <?php
+                echo $alive ? '#F97316' : '#d63638'; ?>;border-radius:6px;padding:16px 18px">
+
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <strong style="font-size:15px"><?php echo esc_html($it['name']); ?></strong>
+              <?php if ($alive): ?>
+                <span style="background:#edfaef;color:#00650a;border-radius:99px;
+                             padding:2px 10px;font-size:11.5px;font-weight:700">작동 중</span>
+              <?php else: ?>
+                <span style="background:#fcf0f1;color:#d63638;border-radius:99px;
+                             padding:2px 10px;font-size:11.5px;font-weight:700">작동 안 함</span>
+              <?php endif; ?>
+            </div>
+
+            <p style="margin:8px 0 0;color:#50575e;font-size:13.5px;line-height:1.65">
+              <?php echo esc_html($it['desc']); ?><br>
+              <span style="color:#787c82"><?php echo wp_kses_post($it['where']); ?></span>
+            </p>
+
+            <button type="button" class="chaovn-copy"
+                    data-code="<?php echo esc_attr($it['code']); ?>"
+                    style="margin-top:11px;font-family:Consolas,Menlo,monospace;font-size:13.5px;
+                           background:#f6f7f7;border:1px solid #dcdcde;border-radius:5px;
+                           padding:9px 13px;cursor:pointer;color:#1d2327">
+              <?php echo esc_html($it['code']); ?>
+              <span style="color:#787c82;font-family:inherit;margin-left:8px">복사</span>
+            </button>
+
+            <?php if (!$alive): ?>
+              <p style="margin:10px 0 0;color:#d63638;font-size:13px">
+                이 숏코드를 담당하는 플러그인이 꺼져 있거나 없습니다.
+                <b>지금 이 코드를 글에 넣으면 글자 그대로 보입니다.</b>
+              </p>
+            <?php endif; ?>
+          </div>
+        <?php endforeach; ?>
+      </div>
+
+      <p style="margin-top:22px;color:#787c82;font-size:13px">
+        새 숏코드를 만들면 이 목록에도 한 줄 추가해야 합니다
+        (<code>jenny_shortcode_catalog()</code>).
+      </p>
+    </div>
+
+    <script>
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('.chaovn-copy');
+      if (!b) return;
+      var code = b.getAttribute('data-code');
+      var tail = b.querySelector('span');
+      function ok() {
+        var old = tail.textContent;
+        tail.textContent = '복사됨';
+        tail.style.color = '#00650a';
+        setTimeout(function () { tail.textContent = old; tail.style.color = '#787c82'; }, 1400);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(ok, fallback);
+      } else { fallback(); }
+      // 오래된 브라우저에서도 복사가 되게 — 안 되면 최소한 글자를 선택해 준다
+      function fallback() {
+        var t = document.createElement('textarea');
+        t.value = code; t.style.position = 'fixed'; t.style.opacity = '0';
+        document.body.appendChild(t); t.select();
+        try { document.execCommand('copy'); ok(); } catch (err) {}
+        document.body.removeChild(t);
+      }
+    }, false);
+    </script>
+    <?php
+}
