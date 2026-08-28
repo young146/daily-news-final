@@ -2,10 +2,16 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 2.5.0
+ * Version: 2.6.0
  * Author: Jenny (Antigravity)
  *
  * ── 변경 이력 ──
+ *   2.6.0 (2026-08-28) 기사 본문 끝에 '이어서 볼 뉴스' 6건 + 뉴스 터미널 복귀 버튼.
+ *                      지금까지 동선이 막다른 길이었다 — 터미널에서 기사로 들어가면
+ *                      다 읽은 뒤 갈 곳이 없어 그냥 창을 닫았다(방문 1회에 기사 1건,
+ *                      광고도 1회 노출). 같은 날 다른 기사를 먼저 보여 그날 지면을
+ *                      마저 읽게 하고, 맨 아래에서 터미널로 돌려보낸다.
+ *                      뉴스 카테고리(31, 하위 포함) 글에만 붙는다.
  *   2.5.0 (2026-08-23) 죽은 광고칸(jenny-ad-section) 13개 제거.
  *                      Ad Inserter 가 채우라고 만든 자리인데 그 플러그인이 이미 없어서
  *                      전부 빈 채로 min-height 100~200px 회색 상자만 그리고 있었다
@@ -4467,3 +4473,145 @@ function jenny_get_section_news_rest($request)
 }
 
 // Note: REST API 엔드포인트는 이미 2499번 줄에 등록되어 있음 (jenny/v1/section-news, jenny/v1/sections)
+
+/* ═══════════════════════════════════════════════════════════════════
+ * 뉴스 본문 끝 — 관련 뉴스 + 뉴스 터미널로 돌아가기
+ * (2026-08-28 사장님 지시)
+ *
+ * 왜 필요한가: 지금 동선이 **막다른 길**이었다.
+ *   이메일 → 뉴스 터미널 → 기사 하나 → 끝.
+ *   기사를 다 읽은 사람이 갈 곳이 없어서 그냥 창을 닫는다. 애써 데려온 방문이
+ *   한 꼭지에서 끝나고, 그만큼 광고도 한 번만 노출된다.
+ *
+ * 무엇을 하나:
+ *   ① 관련 뉴스 6건 — **같은 날 다른 기사를 먼저** 보여준다.
+ *      그날 지면을 마저 읽게 하는 흐름이 가장 자연스럽다.
+ *      그날 것이 모자라면 같은 카테고리의 최신 기사로 채운다.
+ *   ② 맨 아래 **뉴스 터미널로 돌아가는 버튼** — 전체 지면으로 되돌린다.
+ *
+ * 설계 메모:
+ *   · 스타일은 전부 인라인이다. 테마가 무엇이든 같은 모습이어야 하고,
+ *     **앱 WebView 안에서도** 그대로 떠야 한다.
+ *   · 본문(the_content)에 붙이므로 앱·웹·카톡 미리보기 어디서 열어도 따라간다.
+ *   · 뉴스 카테고리(31) 글에만 붙인다 — 매거진 글·안내 페이지에는 안 붙는다.
+ * ═══════════════════════════════════════════════════════════════════ */
+
+define('JENNY_NEWS_CAT_ID', 31);
+define('JENNY_TERMINAL_URL', 'https://chaovietnam.co.kr/daily-news-terminal/');
+
+/** 이 글이 '뉴스' 기사인가 (카테고리 31 또는 그 하위) */
+function jenny_is_news_post($post_id)
+{
+    $cats = wp_get_post_categories($post_id);
+    if (empty($cats)) return false;
+    foreach ($cats as $cat_id) {
+        if ((int) $cat_id === JENNY_NEWS_CAT_ID) return true;
+        // 하위 카테고리도 뉴스로 본다 (섹션이 자식으로 붙어 있는 구조)
+        $ancestors = get_ancestors($cat_id, 'category');
+        if (in_array(JENNY_NEWS_CAT_ID, array_map('intval', $ancestors), true)) return true;
+    }
+    return false;
+}
+
+/** 관련 뉴스 목록 — 같은 날 우선, 모자라면 같은 카테고리 최신으로 채움 */
+function jenny_get_related_news($post_id, $limit = 6)
+{
+    $cats = array_values(array_diff(wp_get_post_categories($post_id), array(0)));
+    $post_date = get_the_date('Y-m-d', $post_id);
+
+    $base = array(
+        'post_type'           => 'post',
+        'post_status'         => 'publish',
+        'posts_per_page'      => $limit,
+        'post__not_in'        => array($post_id),
+        'ignore_sticky_posts' => true,
+        'no_found_rows'       => true,   // 페이지 수 계산 생략 — 목록만 필요하다
+        'orderby'             => 'date',
+        'order'               => 'DESC',
+    );
+
+    // ① 같은 날 발행된 다른 기사
+    $same_day = get_posts(array_merge($base, array(
+        'cat'        => JENNY_NEWS_CAT_ID,
+        'date_query' => array(array(
+            'year'  => (int) substr($post_date, 0, 4),
+            'month' => (int) substr($post_date, 5, 2),
+            'day'   => (int) substr($post_date, 8, 2),
+        )),
+    )));
+
+    if (count($same_day) >= $limit) return $same_day;
+
+    // ② 모자라면 같은 섹션(카테고리) 최신으로 채운다
+    $exclude = array_merge(array($post_id), wp_list_pluck($same_day, 'ID'));
+    $fill = get_posts(array_merge($base, array(
+        'posts_per_page' => $limit - count($same_day),
+        'post__not_in'   => $exclude,
+        'category__in'   => !empty($cats) ? $cats : array(JENNY_NEWS_CAT_ID),
+    )));
+
+    return array_merge($same_day, $fill);
+}
+
+/** 본문 끝에 붙이는 블록 */
+function jenny_append_news_footer($content)
+{
+    // 본문이 여러 곳(목록 발췌·검색 결과 등)에서 불릴 수 있다 → 진짜 기사 본문일 때만
+    if (!is_singular('post') || !in_the_loop() || !is_main_query()) return $content;
+
+    $post_id = get_the_ID();
+    if (!jenny_is_news_post($post_id)) return $content;
+
+    $related = jenny_get_related_news($post_id, 6);
+
+    $ORANGE = '#F97316';
+    $INK    = '#231A14';
+    $MUTE   = '#8A8578';
+    $LINE   = '#F0E7DE';
+    $FONT   = "-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕','Noto Sans KR',sans-serif";
+
+    $out = '<div style="margin:48px 0 0;padding-top:8px;font-family:' . $FONT . ';">';
+
+    if (!empty($related)) {
+        $out .= '<div style="font-size:12px;font-weight:700;letter-spacing:.18em;color:' . $ORANGE . ';margin-bottom:16px;">'
+              . '이어서 볼 뉴스</div>';
+        $out .= '<div style="border-top:1px solid ' . $LINE . ';">';
+
+        foreach ($related as $p) {
+            $link  = get_permalink($p->ID);
+            $title = esc_html(get_the_title($p->ID));
+            $date  = get_the_date('n월 j일', $p->ID);
+            $thumb = get_the_post_thumbnail_url($p->ID, 'medium');
+
+            $img = $thumb
+                ? '<img src="' . esc_url($thumb) . '" alt="" width="104" height="72" loading="lazy" '
+                  . 'style="width:104px;height:72px;object-fit:cover;border-radius:8px;display:block;border:0;" />'
+                : '<div style="width:104px;height:72px;border-radius:8px;background:#FFF3E9;"></div>';
+
+            $out .= '<a href="' . esc_url($link) . '" '
+                  . 'style="display:flex;align-items:center;gap:14px;padding:14px 0;'
+                  . 'border-bottom:1px solid ' . $LINE . ';text-decoration:none;">'
+                  . '<div style="flex:0 0 104px;">' . $img . '</div>'
+                  . '<div style="flex:1 1 auto;min-width:0;">'
+                  . '<div style="font-size:16px;line-height:1.5;font-weight:700;color:' . $INK . ';">' . $title . '</div>'
+                  . '<div style="font-size:12.5px;color:' . $MUTE . ';margin-top:5px;">' . esc_html($date) . '</div>'
+                  . '</div></a>';
+        }
+        $out .= '</div>';
+    }
+
+    // 돌아가는 길 — 기사를 다 읽은 사람이 갈 곳
+    $out .= '<div style="text-align:center;margin:30px 0 8px;">'
+          . '<a href="' . esc_url(JENNY_TERMINAL_URL) . '" '
+          . 'style="display:inline-block;background:' . $ORANGE . ';color:#fff;'
+          . 'font-size:15px;font-weight:700;padding:14px 32px;border-radius:999px;'
+          . 'text-decoration:none;">오늘의 뉴스 전체 보기 →</a>'
+          . '<div style="font-size:12.5px;color:' . $MUTE . ';margin-top:12px;">'
+          . '섹션별로 정리된 뉴스 터미널로 이동합니다</div>'
+          . '</div>';
+
+    $out .= '</div>';
+
+    return $content . $out;
+}
+add_filter('the_content', 'jenny_append_news_footer', 20);
