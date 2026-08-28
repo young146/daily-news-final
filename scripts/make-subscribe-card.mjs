@@ -5,6 +5,8 @@
  *   · card-subscribe-16x9.png  (1672×941) — 이메일 광고 슬롯 · 앱 · 웹.
  *                               기존 자체홍보 카드와 **같은 비율**이라 그대로 갈아 끼운다.
  *   · card-subscribe-1x1.png   (1080×1080) — 카카오톡 오픈방 · 페이스북 · 인스타.
+ *   · card-subscribe-og.png    (1200×630)  — **카톡·페북에 링크를 올렸을 때 뜨는 미리보기**.
+ *                                그림만 올리면 눌리지 않는다. 링크를 올려야 눌린다.
  *   · card-subscribe-3x1.png   (2172×724)  — **앱·웹 광고 슬롯**. 기존 광고 실측이 3:1 이었다.
  *                                (16:9 를 그대로 넣으면 잘리거나 여백이 생긴다)
  *
@@ -169,14 +171,18 @@ async function main() {
     `
     <div style="flex:1;display:flex;align-items:center;padding:56px 0 40px 72px;gap:48px">
       <div style="width:830px;flex:none">
-        <img src="${logo}" style="width:270px;display:block;margin-bottom:34px">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:30px">
+          <img src="${logo}" style="width:230px;display:block">
+          <div style="font-size:31px;font-weight:900;color:${HEAD};letter-spacing:-.03em;
+                      border-left:2px solid #E4D8CB;padding-left:16px">씬짜오 데일리뉴스</div>
+        </div>
         <div style="font-size:34px;font-weight:700;color:${ORANGE_DEEP};letter-spacing:-.02em">매일 아침,</div>
         <div style="font-size:76px;font-weight:900;line-height:1.14;letter-spacing:-.035em;margin-top:4px">
           베트남이 <span style="color:${ORANGE_DEEP}">정리되어</span><br>옵니다
         </div>
         <div style="font-size:31px;font-weight:500;color:#5B5048;margin-top:26px;line-height:1.5">
-          현지 뉴스와 한국 소식을 한 통에.<br>
-          <span class="num">${shown}명</span> 넘는 교민·주재원·기업인이 읽고 있습니다.
+          베트남 거주 교민·기업인·주재원을 위한<br>
+          <span class="num">베트남 생활의 필수 정보</span>
         </div>
         <div style="display:flex;gap:14px;margin-top:34px">
           ${chips
@@ -215,12 +221,14 @@ async function main() {
     <div style="flex:1;display:flex;flex-direction:column;align-items:center;
                 padding:44px 56px 0;text-align:center">
       <img src="${logo}" style="width:224px;display:block">
-      <div style="font-size:30px;font-weight:700;color:${ORANGE_DEEP};margin-top:22px">매일 아침,</div>
+      <div style="font-size:32px;font-weight:900;color:${HEAD};margin-top:12px;letter-spacing:-.03em">
+        씬짜오 데일리뉴스</div>
+      <div style="font-size:30px;font-weight:700;color:${ORANGE_DEEP};margin-top:18px">매일 아침,</div>
       <div style="font-size:69px;font-weight:900;line-height:1.16;letter-spacing:-.035em;margin-top:2px">
         베트남이 <span style="color:${ORANGE_DEEP}">정리되어</span> 옵니다
       </div>
       <div style="font-size:27px;font-weight:500;color:#5B5048;margin-top:16px;line-height:1.5">
-        <span class="num">${shown}명</span> 넘는 교민·주재원·기업인이 읽고 있습니다
+        베트남 거주 교민·기업인·주재원을 위한<br><span class="num">베트남 생활의 필수 정보</span>
       </div>
       <div class="cta" style="margin-top:26px;padding:19px 40px;font-size:32px">
         무료 구독 <span style="opacity:.85">→</span>
@@ -250,12 +258,16 @@ async function main() {
     <div style="flex:1;display:flex;align-items:center;justify-content:space-between;
                 padding:52px 92px 52px 108px;gap:64px">
       <div style="flex:1 1 auto;min-width:0">
-        <img src="${logo}" style="width:360px;display:block;margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:18px;margin-bottom:18px">
+          <img src="${logo}" style="width:300px;display:block">
+          <div style="font-size:38px;font-weight:900;color:${HEAD};letter-spacing:-.03em;
+                      border-left:3px solid #E4D8CB;padding-left:18px">씬짜오 데일리뉴스</div>
+        </div>
         <div style="font-size:96px;font-weight:900;line-height:1.1;letter-spacing:-.04em;white-space:nowrap">
           매일 아침, 베트남이 <span style="color:${ORANGE_DEEP}">정리되어</span> 옵니다
         </div>
         <div style="font-size:46px;font-weight:500;color:#5B5048;margin-top:20px;white-space:nowrap">
-          <span class="num">${shown}명</span> 넘는 교민·주재원·기업인이 읽는 뉴스레터
+          베트남 거주 교민·기업인·주재원을 위한 <span class="num">베트남 생활의 필수 정보</span>
         </div>
       </div>
       <div style="flex:0 0 auto;text-align:center">
@@ -265,10 +277,43 @@ async function main() {
     </div>`,
   );
 
+  // ▸ 1200×630 — **카톡·페북에 링크를 올렸을 때 뜨는 미리보기 그림**.
+  //   이미지를 따로 올리는 것보다 이 길이 낫다 — 그림은 눌리지 않지만,
+  //   링크는 미리보기가 뜨고 **그 미리보기를 누르면 신청 페이지로 간다.**
+  //   카톡 미리보기는 손톱만 하게 줄어드니 요소를 줄이고 글자를 키운다.
+  const wo = 1200;
+  const ho = 630;
+  const htmlOg = shell(
+    wo,
+    ho,
+    `
+    <div style="position:absolute;left:0;top:0;bottom:0;width:16px;background:${ORANGE}"></div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;
+                padding:0 72px 0 88px">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:26px">
+        <img src="${logo}" style="width:224px;display:block">
+        <div style="font-size:30px;font-weight:900;color:${HEAD};letter-spacing:-.03em;
+                    border-left:2px solid #E4D8CB;padding-left:16px">씬짜오 데일리뉴스</div>
+      </div>
+      <div style="font-size:34px;font-weight:700;color:${ORANGE_DEEP}">매일 아침,</div>
+      <div style="font-size:76px;font-weight:900;line-height:1.14;letter-spacing:-.04em;margin-top:4px">
+        베트남이 <span style="color:${ORANGE_DEEP}">정리되어</span> 옵니다
+      </div>
+      <div style="font-size:31px;font-weight:500;color:#5B5048;margin-top:22px;line-height:1.5">
+        베트남 거주 교민·기업인·주재원을 위한<br>
+        <span class="num">베트남 생활의 필수 정보</span>
+      </div>
+      <div class="cta" style="margin-top:34px;padding:22px 44px;font-size:34px;align-self:flex-start">
+        무료 구독 신청 <span style="opacity:.85">→</span>
+      </div>
+    </div>`,
+  );
+
   for (const [name, html, w, h] of [
     ['card-subscribe-16x9.png', html16x9, w9, h9],
     ['card-subscribe-1x1.png', html1x1, s, s],
     ['card-subscribe-3x1.png', htmlBanner, wb, hb],
+    ['card-subscribe-og.png', htmlOg, wo, ho],
   ]) {
     const pg = await browser.newPage();
     await pg.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
