@@ -5,6 +5,8 @@
  *   · card-subscribe-16x9.png  (1672×941) — 이메일 광고 슬롯 · 앱 · 웹.
  *                               기존 자체홍보 카드와 **같은 비율**이라 그대로 갈아 끼운다.
  *   · card-subscribe-1x1.png   (1080×1080) — 카카오톡 오픈방 · 페이스북 · 인스타.
+ *   · card-subscribe-3x1.png   (2172×724)  — **앱·웹 광고 슬롯**. 기존 광고 실측이 3:1 이었다.
+ *                                (16:9 를 그대로 넣으면 잘리거나 여백이 생긴다)
  *
  * 왜 손으로 그리지 않고 스크립트로 만드나:
  *   구독자 수는 계속 는다. 숫자가 박힌 그림을 손으로 고치면 반드시 낡은 채로 남는다.
@@ -232,9 +234,41 @@ async function main() {
     </div>`,
   );
 
+  // ▸ 3:1 — 앱·웹 **광고 슬롯**용. 실측한 기존 광고들이 3:1(750×250 · 2172×724)이었다.
+  //   위치마다 3.0~3.9:1 로 제각각이라 **가장자리는 잘릴 수 있다고 보고**
+  //   중요한 것을 중앙 쪽에 모은다. 미리보기 종이는 넣지 않는다 — 이 비율에서는
+  //   납작해져 무슨 그림인지 알아볼 수 없다.
+  const wb = 2172;
+  const hb = 724;
+  const htmlBanner = shell(
+    wb,
+    hb,
+    `
+    <!-- 왼쪽 오렌지 띠: 광고 슬롯은 남의 배너와 나란히 놓인다. 크림 바탕만으로는
+         묻히므로 시선을 잡아 줄 세로 띠를 둔다(잘려도 손해가 없는 자리다). -->
+    <div style="position:absolute;left:0;top:0;bottom:0;width:22px;background:${ORANGE}"></div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:space-between;
+                padding:52px 92px 52px 108px;gap:64px">
+      <div style="flex:1 1 auto;min-width:0">
+        <img src="${logo}" style="width:360px;display:block;margin-bottom:20px">
+        <div style="font-size:96px;font-weight:900;line-height:1.1;letter-spacing:-.04em;white-space:nowrap">
+          매일 아침, 베트남이 <span style="color:${ORANGE_DEEP}">정리되어</span> 옵니다
+        </div>
+        <div style="font-size:46px;font-weight:500;color:#5B5048;margin-top:20px;white-space:nowrap">
+          <span class="num">${shown}명</span> 넘는 교민·주재원·기업인이 읽는 뉴스레터
+        </div>
+      </div>
+      <div style="flex:0 0 auto;text-align:center">
+        <div class="cta" style="padding:34px 62px;font-size:54px">무료 구독 <span style="opacity:.85">→</span></div>
+        <div style="font-size:40px;font-weight:700;color:${ORANGE_DEEP};margin-top:18px">${SHORT_URL}</div>
+      </div>
+    </div>`,
+  );
+
   for (const [name, html, w, h] of [
     ['card-subscribe-16x9.png', html16x9, w9, h9],
     ['card-subscribe-1x1.png', html1x1, s, s],
+    ['card-subscribe-3x1.png', htmlBanner, wb, hb],
   ]) {
     const pg = await browser.newPage();
     await pg.setViewport({ width: w, height: h, deviceScaleFactor: 1 });

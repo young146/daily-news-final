@@ -80,6 +80,17 @@ model Subscriber {
   company    String?
   name       String?
   phone      String?
+  // 휴대전화 국가 — "VN" | "KR". 같은 010/090 이라도 어느 나라 번호인지 모르면
+  // 나중에 전화·문자를 걸 수 없다. 번호만 받고 국가를 안 받으면 그 명단은 못 쓴다.
+  phoneCountry String?
+  // 구독자를 **나중에 광고주가 될 수 있는 사람**으로 보고 받는 정보 (2026-08-28).
+  // 전부 선택 항목이다 — 다 채워야 넘어가게 만들면 신청 자체를 포기한다.
+  // 직업·근무지는 신청서에서 **고르게** 받는다. 손으로 적게 하면 "무역"·"무역업"·
+  // "트레이딩" 이 제각각 들어와 나중에 세지도 못한다.
+  job        String? // 직업·업종 (제조·생산 / 무역·물류 / 건설·부동산 …)
+  jobTitle   String? // 직책 (대표·과장 등) — 회사마다 부르는 이름이 달라 자유 입력
+  region     String? // 근무지 (호치민 / 하노이 / 다낭 … / 한국)
+  gender     String? // "남" | "여" — 적지 않아도 된다
   isActive   Boolean  @default(true)
   // CRM 거래 고객(광고주) 여부. 데일리 뉴스는 전체 발송, 홍보 카드는 isCustomer=true 만 발송.
   isCustomer Boolean  @default(false)

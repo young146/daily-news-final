@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 2.7.0
+ * Version: 2.9.0
  * Author: Jenny (Antigravity)
  *
  * ── 변경 이력 ──
@@ -4620,34 +4620,31 @@ function jenny_append_news_footer($content)
 }
 add_filter('the_content', 'jenny_append_news_footer', 20);
 
-/* ═══════════════════════════════════════════════════════════════════════
- * 기사 하단 구독 칸 (v2.7.0 · 2026-08-28)
+/**
+ * 구독 띠 + 신청 팝업 (v2.9.0 · 2026-08-28)
  * ───────────────────────────────────────────────────────────────────────
- * 왜 여기에 두나:
- *   chaovietnam.co.kr 은 구글에서 **주 78,000회** 노출된다. 검색으로 들어온
- *   사람은 우리를 모르고, 기사 하나 읽고 그대로 나간다. 다시 올 이유가 없다.
- *   여기서 메일 주소 하나를 받으면 **그 사람은 매일 아침 우리를 다시 만난다.**
- *   스치는 트래픽을 매일 만나는 관계로 바꾸는 자리 — 가장 값싸고 가장 크다.
+ * 자리: 광고 슬롯이 아니라 **기사 본문이 끝난 바로 그 자리**다.
+ *   광고 슬롯에 넣으면 노출 통계가 유료 광고와 섞이고, 팔린 광고 자리를 먹는다.
  *
- * 왜 배너가 아니라 **입력칸**인가:
- *   배너는 눌러서 페이지를 옮기고 거기서 또 입력해야 한다. 단계마다 사람이 샌다.
- *   여기서 바로 입력하면 옮길 일이 없다.
+ * 왜 띠 → 팝업인가:
+ *   우리 구독자의 값어치는 **나중에 우리 광고주가 될 수 있는 사람**에 있다.
+ *   그러려면 이메일 한 줄이 아니라 **사람과 회사**를 알아야 한다.
+ *   그런데 칸 여덟 개를 기사 밑에 펼쳐 두면 광고처럼 보여 오히려 거슬린다.
+ *   → 평소에는 한 줄 띠로 얌전히 있다가, 관심 있는 사람이 누르면 팝업에서 받는다.
+ *   단계가 하나 늘어 머릿수는 줄 수 있다. 그게 손해가 아니다 —
+ *   **눌러서 이름·전화까지 적는 사람**이 우리가 찾는 사람이다.
  *
- * 왜 관련뉴스보다 **위**인가:
- *   기사를 끝까지 읽은 직후가 가장 마음이 열린 순간이다. 관련뉴스를 먼저 보이면
- *   거기를 눌러 떠나 버려서, 구독 칸은 아예 눈에 닿지 않는다.
- *
- * 왜 서버를 거치나 (브라우저에서 바로 안 부르고):
- *   명부는 daily-news-final(다른 도메인)이 들고 있다. 브라우저에서 바로 부르면
- *   도메인이 달라 막힌다(CORS). 그래서 **워드프레스가 대신 부른다.**
- * ═══════════════════════════════════════════════════════════════════════ */
+ * v2.9.0 에서 바뀐 것 (사장님 지시):
+ *   · **이름·휴대전화를 필수로** 올렸다. 이메일만 있는 명단은 뉴스레터밖에 못 보낸다.
+ *   · 휴대전화는 **나라를 먼저 고르게** 한다. 같은 090 이라도 한국 번호와 베트남
+ *     번호는 전혀 다른 사람이고, 국번이 없으면 나중에 전화를 걸 수 없다.
+ *   · 직업·근무지는 **고르게** 받는다. 손으로 적게 하면 "무역"·"무역업"·"트레이딩"이
+ *     제각각 들어와 나중에 세지도 못한다. 골라 받아야 "제조업 구독자가 몇 명이니
+ *     그 업종 광고를 팔자" 같은 판단이 선다.
+ *   · 보관·이용 목적을 밝히는 문구를 넣었다.
+ */
 
 define('JENNY_SUBSCRIBE_API', 'https://daily-news-final.vercel.app/api/subscribe');
-
-// 구독자 수 — 사회적 증거로 쓰는 숫자다. **백 단위로 내려** 적는다(넘겨 말하지 않기 위해).
-// ⚠️ 명부가 다음 백 단위를 넘으면 여기를 고친다. 확인: /admin/subscribers
-//    (2026-08-28 죽은 주소 542명을 정리하고 활성 6,651명)
-define('JENNY_SUBSCRIBER_COUNT', '6,600');
 
 /** 브라우저 → 워드프레스 → 명부. 중간 다리. */
 add_action('rest_api_init', function () {
@@ -4670,15 +4667,39 @@ function jenny_rest_subscribe($request)
         return new WP_REST_Response(array('message' => '구독 신청이 완료되었습니다.'), 200);
     }
 
-    $email = isset($params['email']) ? trim((string) $params['email']) : '';
+    $get = function ($k, $max = 80) use ($params) {
+        return isset($params[$k]) ? mb_substr(trim((string) $params[$k]), 0, $max) : '';
+    };
+
+    $email = $get('email');
+    $name  = $get('name', 40);
+    $phone = $get('phone', 40);
+
     if ($email === '' || !is_email($email)) {
         return new WP_REST_Response(array('message' => '유효한 이메일 주소를 입력해 주세요.'), 400);
     }
+    if ($name === '') {
+        return new WP_REST_Response(array('message' => '이름을 입력해 주세요.'), 400);
+    }
+    if (strlen(preg_replace('/\D/', '', $phone)) < 8) {
+        return new WP_REST_Response(array('message' => '휴대전화 번호를 입력해 주세요.'), 400);
+    }
+
+    $payload = array(
+        'email'        => $email,
+        'name'         => $name,
+        'phone'        => $phone,
+        'phoneCountry' => $get('phoneCountry') === 'KR' ? 'KR' : 'VN',
+    );
+    foreach (array('company', 'job', 'jobTitle', 'region', 'gender') as $k) {
+        $v = $get($k, 40);
+        if ($v !== '') $payload[$k] = $v;
+    }
 
     $res = wp_remote_post(JENNY_SUBSCRIBE_API, array(
-        'timeout' => 12,
+        'timeout' => 15,
         'headers' => array('Content-Type' => 'application/json'),
-        'body'    => wp_json_encode(array('email' => $email)),
+        'body'    => wp_json_encode($payload),
     ));
 
     if (is_wp_error($res)) {
@@ -4697,8 +4718,24 @@ function jenny_rest_subscribe($request)
     return new WP_REST_Response(array('message' => $msg), $code ? $code : 500);
 }
 
+/** 신청서에서 고르게 할 항목들. 한곳에 모아 둔다 — 늘리고 줄이기 쉽게. */
+function jenny_subscribe_options()
+{
+    return array(
+        'job' => array(
+            '제조 · 생산', '무역 · 물류', '건설 · 부동산', 'IT · 소프트웨어',
+            '금융 · 회계', '요식 · 서비스', '교육', '의료', '공공 · 단체',
+            '자영업', '학생', '주부', '기타',
+        ),
+        'region' => array(
+            '호치민', '하노이', '다낭', '빈즈엉', '동나이', '하이퐁', '박닌',
+            '기타 베트남', '한국', '기타 국가',
+        ),
+    );
+}
+
 /**
- * 구독 칸 HTML.
+ * 기사 끝의 구독 띠 + 팝업.
  * 스타일은 인라인으로 박는다 — 테마가 무엇이든 같은 모습이어야 하고,
  * 별도 CSS 파일을 물리면 캐시 때문에 옛 모습이 남는 일이 생긴다.
  */
@@ -4708,74 +4745,204 @@ function jenny_subscribe_box()
     $DEEP   = '#EA580C';
     $INK    = '#231A14';
     $MUTE   = '#8A8578';
+    $LINE   = '#E2D6C9';
+    $PAPER  = '#FFFDFB';
     $FONT   = "-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕','Noto Sans KR',sans-serif";
 
-    // 스크립트는 한 화면에 한 번만 — 본문 필터가 여러 번 불릴 수 있다
-    static $script_done = false;
+    static $done = false; // 팝업과 스크립트는 한 화면에 하나면 된다
 
-    $h = '<div class="jenny-sub" style="margin:40px 0 8px;padding:26px 24px;background:#FFF8F2;'
-       . 'border:1px solid #FBD9BE;border-radius:16px;font-family:' . $FONT . ';">'
+    // ── 띠 ──────────────────────────────────────────────────────────
+    // 기존 자체 홍보 띠(앱 설치·교민 생활정보)와 **같은 생김새**로 맞춘다.
+    // 독자 눈에 낯선 물건이 하나 더 생기는 것보다, 이미 익숙한 모양이 낫다.
+    $h = '<div style="margin:40px 0 8px;font-family:' . $FONT . ';">'
+       . '<a href="#" class="jenny-sub-open" role="button" '
+       . 'style="display:flex;align-items:center;gap:16px;text-decoration:none;'
+       . 'background:linear-gradient(135deg,' . $ORANGE . ' 0%,' . $DEEP . ' 100%);'
+       . 'border-radius:12px;padding:18px 20px;color:#fff;">'
+       . '<div style="flex:1 1 auto;min-width:0;">'
+       . '<div style="font-size:17px;font-weight:800;line-height:1.4;">'
+       . '씬짜오 데일리뉴스 무료 구독</div>'
+       . '<div style="font-size:13.5px;opacity:.92;margin-top:4px;line-height:1.5;">'
+       . '매일 아침 베트남·한국 소식을 메일로 — 베트남 생활의 필수 정보</div>'
+       . '</div>'
+       . '<span style="flex:0 0 auto;background:rgba(255,255,255,.22);border-radius:999px;'
+       . 'padding:10px 18px;font-size:14px;font-weight:800;white-space:nowrap;">구독 신청</span>'
+       . '</a></div>';
 
-       . '<div style="font-size:12px;font-weight:800;letter-spacing:.16em;color:' . $DEEP . ';">'
-       . '씬짜오 데일리뉴스</div>'
+    if ($done) return $h;
+    $done = true;
 
-       . '<div style="font-size:21px;font-weight:800;color:' . $INK . ';margin-top:8px;line-height:1.4;">'
-       . '매일 아침, 베트남이 정리되어 옵니다</div>'
+    $endpoint = esc_url_raw(rest_url('jenny/v1/subscribe'));
+    $opts     = jenny_subscribe_options();
 
-       . '<div style="font-size:14.5px;color:#5B5048;margin-top:8px;line-height:1.6;">'
-       . '현지 뉴스와 한국 소식을 한 통에. '
-       . '<b style="color:' . $DEEP . ';">' . JENNY_SUBSCRIBER_COUNT . '명</b> 넘는 교민·주재원·기업인이 읽고 있습니다.</div>'
+    $inputCss = 'width:100%;box-sizing:border-box;padding:12px 14px;font-size:15px;'
+              . 'border:1px solid ' . $LINE . ';border-radius:10px;background:' . $PAPER . ';'
+              . 'color:' . $INK . ';outline:none;font-family:inherit;';
+    $labelCss = 'display:block;font-size:12.5px;font-weight:700;color:' . $MUTE . ';margin:0 0 5px;';
 
-       . '<form class="jenny-sub-form" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">'
-       // 벌통 — 사람 눈에서 완전히 치운다
-       . '<input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" '
-       . 'style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" />'
-       . '<input type="email" name="email" required placeholder="이메일 주소" aria-label="이메일 주소" '
-       . 'style="flex:1 1 220px;min-width:0;padding:13px 15px;font-size:15px;border:1px solid #E2D6C9;'
-       . 'border-radius:10px;background:#fff;color:' . $INK . ';outline:none;" />'
-       . '<button type="submit" '
-       . 'style="flex:0 0 auto;padding:13px 26px;font-size:15px;font-weight:800;color:#fff;'
-       . 'background:' . $ORANGE . ';border:0;border-radius:10px;cursor:pointer;">무료 구독</button>'
-       . '</form>'
+    /** 라벨 + 입력칸 한 벌 */
+    $field = function ($name, $type, $label, $ph = '', $req = false) use ($inputCss, $labelCss, $DEEP) {
+        return '<label style="' . $labelCss . '">' . esc_html($label)
+             . ($req ? ' <span style="color:' . $DEEP . '">*</span>' : '') . '</label>'
+             . '<input type="' . $type . '" name="' . $name . '"' . ($req ? ' required' : '')
+             . ' placeholder="' . esc_attr($ph) . '" style="' . $inputCss . '" />';
+    };
+    /** 라벨 + 고르는 칸 한 벌 */
+    $select = function ($name, $label, $list) use ($inputCss, $labelCss) {
+        $o = '<option value="">선택</option>';
+        foreach ($list as $v) $o .= '<option>' . esc_html($v) . '</option>';
+        return '<label style="' . $labelCss . '">' . esc_html($label) . '</label>'
+             . '<select name="' . $name . '" style="' . $inputCss . 'cursor:pointer;">' . $o . '</select>';
+    };
 
-       . '<div class="jenny-sub-msg" style="font-size:14px;font-weight:700;color:' . $DEEP . ';'
-       . 'margin-top:10px;display:none;"></div>'
+    // ── 팝업 ────────────────────────────────────────────────────────
+    $h .= '<div class="jenny-sub-modal" role="dialog" aria-modal="true" aria-label="데일리 뉴스 메일 신청서" '
+        . 'style="display:none;position:fixed;inset:0;z-index:99999;'
+        . 'background:rgba(35,26,20,.55);padding:20px;overflow-y:auto;'
+        . 'font-family:' . $FONT . ';">'
 
-       . '<div style="font-size:12.5px;color:' . $MUTE . ';margin-top:10px;">'
-       . '언제든 메일 맨 아래 「수신 거부」로 그만두실 수 있습니다.</div>'
+        . '<div class="jenny-sub-card" style="max-width:440px;margin:5vh auto;background:#fff;'
+        . 'border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3);">'
 
-       . '</div>';
+        // 머리
+        . '<div style="background:linear-gradient(135deg,' . $ORANGE . ' 0%,' . $DEEP . ' 100%);'
+        . 'padding:22px 24px 20px;color:#fff;position:relative;">'
+        . '<button type="button" class="jenny-sub-close" aria-label="닫기" '
+        . 'style="position:absolute;top:15px;right:15px;background:rgba(255,255,255,.22);'
+        . 'border:0;color:#fff;width:30px;height:30px;border-radius:999px;font-size:17px;'
+        . 'line-height:1;cursor:pointer;">×</button>'
+        . '<div style="font-size:19px;font-weight:800;letter-spacing:-.025em;'
+        . 'display:flex;align-items:center;gap:10px;padding-right:34px;">'
+        // 아이콘 자리 폭을 26px 로 고정한다 — 아래 부제목을 그만큼 들여써서 제목 글씨와 왼쪽을 맞춘다.
+        // ⚠️ 국기 이모지(🇻🇳)는 글자 두 개를 붙여 만드는 방식이라 윈도우에서 "VN" 으로 깨지지만,
+        //    📩 은 한 글자짜리라 어디서나 뜬다.
+        . '<span aria-hidden="true" style="width:26px;flex:0 0 auto;font-size:22px;'
+        . 'line-height:1;text-align:center;">📩</span>'
+        . '<span>씬짜오 데일리뉴스 메일 신청서</span>'
+        . '</div>'
+        . '<div style="font-size:13.5px;opacity:.94;margin-top:7px;line-height:1.55;padding-left:36px;">'
+        . '베트남 거주 교민·기업인·주재원을 위한<br>'
+        . '<b style="font-weight:800;">베트남 생활의 필수 정보</b></div>'
+        . '</div>'
 
-    if (!$script_done) {
-        $script_done = true;
-        $endpoint = esc_url_raw(rest_url('jenny/v1/subscribe'));
-        $h .= '<script>(function(){'
-            . 'var EP=' . wp_json_encode($endpoint) . ';'
-            . 'document.addEventListener("submit",function(e){'
-            . 'var f=e.target;if(!f.classList||!f.classList.contains("jenny-sub-form"))return;'
-            . 'e.preventDefault();'
-            . 'var box=f.closest(".jenny-sub"),msg=box.querySelector(".jenny-sub-msg"),'
-            . 'btn=f.querySelector("button"),em=f.querySelector("[name=email]").value.trim(),'
-            . 'hp=f.querySelector("[name=website]").value;'
-            . 'if(!em)return;'
-            . 'btn.disabled=true;btn.textContent="신청 중…";'
-            . 'fetch(EP,{method:"POST",headers:{"Content-Type":"application/json"},'
-            . 'body:JSON.stringify({email:em,website:hp})})'
-            . '.then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d}})})'
-            . '.then(function(x){'
-            // 성공하면 입력칸을 치운다 — 실수로 두 번 넣는 일이 없다
-            . 'if(x.ok){f.style.display="none";'
-            . 'msg.textContent="✉️ "+(x.d.message||"신청이 완료되었습니다.")+" 내일 아침부터 받아보실 수 있습니다.";}'
-            . 'else{msg.textContent=x.d.message||"신청에 실패했습니다.";'
-            . 'btn.disabled=false;btn.textContent="무료 구독";}'
-            . 'msg.style.display="block";'
-            . '}).catch(function(){'
-            . 'msg.textContent="연결이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.";'
-            . 'msg.style.display="block";btn.disabled=false;btn.textContent="무료 구독";'
-            . '});'
-            . '},false);'
-            . '})();</script>';
-    }
+        // 몸
+        . '<form class="jenny-sub-form" style="padding:20px 24px 24px;">'
+        // 벌통 — 사람 눈에서 완전히 치운다
+        . '<input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" '
+        . 'style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" />'
+
+        . '<div style="font-size:11.5px;font-weight:800;letter-spacing:.14em;color:' . $DEEP . ';'
+        . 'margin:0 0 12px;">필수 정보</div>'
+
+        . '<div style="margin-bottom:13px;">' . $field('name', 'text', '이름', '홍길동', true) . '</div>'
+        . '<div style="margin-bottom:13px;">' . $field('email', 'email', '이메일', 'name@example.com', true) . '</div>'
+
+        . '<div style="margin-bottom:13px;">'
+        . '<label style="' . $labelCss . '">휴대전화 <span style="color:' . $DEEP . '">*</span></label>'
+        . '<div style="display:grid;grid-template-columns:118px 1fr;gap:8px;">'
+        . '<select name="phoneCountry" aria-label="국가 번호" style="' . $inputCss . 'cursor:pointer;">'
+        . '<option value="VN">베트남 +84</option><option value="KR">한국 +82</option></select>'
+        . '<input type="tel" name="phone" required placeholder="090 1234 5678" style="' . $inputCss . '" />'
+        . '</div></div>'
+
+        . '<div style="font-size:11.5px;font-weight:800;letter-spacing:.14em;color:#A8998C;'
+        . 'margin:22px 0 12px;padding-top:18px;border-top:1px dashed #EBDFD3;">'
+        . '추가 정보 <span style="font-weight:500;letter-spacing:0;font-size:12px;">(선택)</span></div>'
+
+        . '<div style="margin-bottom:13px;">' . $field('company', 'text', '회사명', '씬짜오무역') . '</div>'
+
+        . '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px;">'
+        . '<div>' . $select('job', '직업 · 업종', $opts['job']) . '</div>'
+        . '<div>' . $field('jobTitle', 'text', '직책', '대표 · 과장 등') . '</div>'
+        . '</div>'
+
+        . '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px;">'
+        . '<div>' . $select('region', '근무지', $opts['region']) . '</div>'
+        . '<div><label style="' . $labelCss . '">성별</label>'
+        . '<div style="display:flex;gap:8px;">'
+        . '<label style="flex:1;margin:0;display:flex;align-items:center;justify-content:center;gap:7px;'
+        . 'padding:11px 0;border:1px solid ' . $LINE . ';border-radius:10px;background:' . $PAPER . ';'
+        . 'font-size:14.5px;font-weight:600;color:#5B5048;cursor:pointer;">'
+        . '<input type="radio" name="gender" value="남" style="width:auto;accent-color:' . $ORANGE . ';" /> 남</label>'
+        . '<label style="flex:1;margin:0;display:flex;align-items:center;justify-content:center;gap:7px;'
+        . 'padding:11px 0;border:1px solid ' . $LINE . ';border-radius:10px;background:' . $PAPER . ';'
+        . 'font-size:14.5px;font-weight:600;color:#5B5048;cursor:pointer;">'
+        . '<input type="radio" name="gender" value="여" style="width:auto;accent-color:' . $ORANGE . ';" /> 여</label>'
+        . '</div></div></div>'
+
+        . '<button type="submit" '
+        . 'style="width:100%;padding:15px;font-size:16.5px;font-weight:900;color:#fff;'
+        . 'background:' . $ORANGE . ';border:0;border-radius:11px;cursor:pointer;margin-top:6px;'
+        . 'font-family:inherit;">무료 구독 신청</button>'
+
+        . '<div class="jenny-sub-msg" style="font-size:14px;font-weight:700;color:' . $DEEP . ';'
+        . 'margin-top:10px;display:none;"></div>'
+
+        . '<div style="margin-top:14px;padding:13px 14px;background:#FFF8F2;border:1px solid #FBE4D0;'
+        . 'border-radius:10px;font-size:12.5px;line-height:1.72;color:#7A6A5C;">'
+        . '보내주신 정보는 <b style="color:#B4541A;">소중히 보관</b>하며, '
+        . '<b style="color:#B4541A;">씬짜오베트남의 구독자 관리 업무에만</b> 사용됩니다. '
+        . '제3자에게 제공하지 않습니다.<br>'
+        . '언제든 메일 맨 아래 「수신 거부」로 그만두실 수 있습니다.</div>'
+        . '</form>'
+
+        // 마친 뒤
+        . '<div class="jenny-sub-done" style="display:none;padding:26px 24px 30px;text-align:center;">'
+        . '<div style="font-size:30px;">📩</div>'
+        . '<div class="jenny-sub-done-msg" style="font-size:17px;font-weight:800;color:' . $INK . ';'
+        . 'margin-top:10px;"></div>'
+        . '<div style="font-size:13.5px;color:' . $MUTE . ';margin-top:8px;line-height:1.6;">'
+        . '내일 아침부터 받아보실 수 있습니다.<br>메일이 안 보이면 스팸함을 한 번 확인해 주세요.</div>'
+        . '<button type="button" class="jenny-sub-close" '
+        . 'style="margin-top:18px;background:' . $ORANGE . ';border:0;color:#fff;padding:11px 26px;'
+        . 'border-radius:9px;font-size:14px;font-weight:800;cursor:pointer;">닫기</button>'
+        . '</div>'
+
+        . '</div></div>';
+
+    $h .= '<script>(function(){'
+        . 'var EP=' . wp_json_encode($endpoint) . ';'
+        . 'var KEYS=["email","name","phone","phoneCountry","company","job","jobTitle","region","gender","website"];'
+        . 'function modal(){return document.querySelector(".jenny-sub-modal");}'
+        . 'function open(){var m=modal();if(!m)return;m.style.display="block";'
+        // 팝업이 떠 있는 동안 뒤쪽 기사가 같이 스크롤되면 어지럽다
+        . 'document.body.style.overflow="hidden";'
+        . 'var f=m.querySelector("[name=name]");if(f)setTimeout(function(){f.focus()},50);}'
+        . 'function close(){var m=modal();if(!m)return;m.style.display="none";'
+        . 'document.body.style.overflow="";}'
+        . 'document.addEventListener("click",function(e){'
+        . 'var op=e.target.closest&&e.target.closest(".jenny-sub-open");'
+        . 'if(op){e.preventDefault();open();return;}'
+        . 'if(e.target.closest&&e.target.closest(".jenny-sub-close")){close();return;}'
+        // 바깥 어두운 곳을 누르면 닫힌다 — 카드 안을 누른 것은 제외
+        . 'var m=modal();if(m&&m.style.display==="block"&&e.target===m){close();}'
+        . '},false);'
+        . 'document.addEventListener("keydown",function(e){if(e.key==="Escape")close();},false);'
+        . 'document.addEventListener("submit",function(e){'
+        . 'var f=e.target;if(!f.classList||!f.classList.contains("jenny-sub-form"))return;'
+        . 'e.preventDefault();'
+        . 'var card=f.closest(".jenny-sub-card"),msg=f.querySelector(".jenny-sub-msg"),'
+        . 'btn=f.querySelector("button[type=submit]"),d={};'
+        . 'KEYS.forEach(function(k){'
+        . 'var el=f.querySelector("[name="+k+"]:checked")||f.querySelector("[name="+k+"]");'
+        . 'if(el)d[k]=el.value.trim();});'
+        . 'if(!d.email||!d.name||!d.phone)return;'
+        . 'btn.disabled=true;btn.textContent="신청 중…";'
+        . 'fetch(EP,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)})'
+        . '.then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})'
+        . '.then(function(x){'
+        . 'if(x.ok){f.style.display="none";'
+        . 'var done=card.querySelector(".jenny-sub-done");'
+        . 'card.querySelector(".jenny-sub-done-msg").textContent=x.j.message||"신청이 완료되었습니다.";'
+        . 'done.style.display="block";}'
+        . 'else{msg.textContent=x.j.message||"신청에 실패했습니다.";msg.style.display="block";'
+        . 'btn.disabled=false;btn.textContent="무료 구독 신청";}'
+        . '}).catch(function(){'
+        . 'msg.textContent="연결이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.";'
+        . 'msg.style.display="block";btn.disabled=false;btn.textContent="무료 구독 신청";'
+        . '});'
+        . '},false);'
+        . '})();</script>';
 
     return $h;
 }
