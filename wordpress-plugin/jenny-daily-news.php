@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 2.6.0
+ * Version: 2.7.0
  * Author: Jenny (Antigravity)
  *
  * ── 변경 이력 ──
@@ -4572,6 +4572,10 @@ function jenny_append_news_footer($content)
 
     $out = '<div style="margin:48px 0 0;padding-top:8px;font-family:' . $FONT . ';">';
 
+    // 기사를 끝까지 읽은 **직후**가 가장 마음이 열린 순간이다.
+    // 관련뉴스를 먼저 보이면 거기를 눌러 떠나 버려서 구독 칸은 눈에 닿지도 않는다.
+    $out .= jenny_subscribe_box();
+
     if (!empty($related)) {
         $out .= '<div style="font-size:12px;font-weight:700;letter-spacing:.18em;color:' . $ORANGE . ';margin-bottom:16px;">'
               . '이어서 볼 뉴스</div>';
@@ -4615,3 +4619,163 @@ function jenny_append_news_footer($content)
     return $content . $out;
 }
 add_filter('the_content', 'jenny_append_news_footer', 20);
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * 기사 하단 구독 칸 (v2.7.0 · 2026-08-28)
+ * ───────────────────────────────────────────────────────────────────────
+ * 왜 여기에 두나:
+ *   chaovietnam.co.kr 은 구글에서 **주 78,000회** 노출된다. 검색으로 들어온
+ *   사람은 우리를 모르고, 기사 하나 읽고 그대로 나간다. 다시 올 이유가 없다.
+ *   여기서 메일 주소 하나를 받으면 **그 사람은 매일 아침 우리를 다시 만난다.**
+ *   스치는 트래픽을 매일 만나는 관계로 바꾸는 자리 — 가장 값싸고 가장 크다.
+ *
+ * 왜 배너가 아니라 **입력칸**인가:
+ *   배너는 눌러서 페이지를 옮기고 거기서 또 입력해야 한다. 단계마다 사람이 샌다.
+ *   여기서 바로 입력하면 옮길 일이 없다.
+ *
+ * 왜 관련뉴스보다 **위**인가:
+ *   기사를 끝까지 읽은 직후가 가장 마음이 열린 순간이다. 관련뉴스를 먼저 보이면
+ *   거기를 눌러 떠나 버려서, 구독 칸은 아예 눈에 닿지 않는다.
+ *
+ * 왜 서버를 거치나 (브라우저에서 바로 안 부르고):
+ *   명부는 daily-news-final(다른 도메인)이 들고 있다. 브라우저에서 바로 부르면
+ *   도메인이 달라 막힌다(CORS). 그래서 **워드프레스가 대신 부른다.**
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+define('JENNY_SUBSCRIBE_API', 'https://daily-news-final.vercel.app/api/subscribe');
+
+// 구독자 수 — 사회적 증거로 쓰는 숫자다. **백 단위로 내려** 적는다(넘겨 말하지 않기 위해).
+// ⚠️ 명부가 다음 백 단위를 넘으면 여기를 고친다. 확인: /admin/subscribers
+//    (2026-08-28 죽은 주소 542명을 정리하고 활성 6,651명)
+define('JENNY_SUBSCRIBER_COUNT', '6,600');
+
+/** 브라우저 → 워드프레스 → 명부. 중간 다리. */
+add_action('rest_api_init', function () {
+    register_rest_route('jenny/v1', '/subscribe', array(
+        'methods'             => 'POST',
+        'permission_callback' => '__return_true', // 로그인 안 한 방문자가 쓰는 것이 목적
+        'callback'            => 'jenny_rest_subscribe',
+    ));
+});
+
+function jenny_rest_subscribe($request)
+{
+    $params = $request->get_json_params();
+    if (!is_array($params)) $params = $request->get_params();
+
+    // 벌통(honeypot): 사람 눈에 안 보이는 칸이라 사람은 절대 못 채운다.
+    // 자동 프로그램은 칸이 보이면 일단 채우므로, 차 있으면 봇이다.
+    // 봇에게는 성공한 척 응답한다 — 실패를 알려 주면 다른 수를 쓴다.
+    if (!empty($params['website'])) {
+        return new WP_REST_Response(array('message' => '구독 신청이 완료되었습니다.'), 200);
+    }
+
+    $email = isset($params['email']) ? trim((string) $params['email']) : '';
+    if ($email === '' || !is_email($email)) {
+        return new WP_REST_Response(array('message' => '유효한 이메일 주소를 입력해 주세요.'), 400);
+    }
+
+    $res = wp_remote_post(JENNY_SUBSCRIBE_API, array(
+        'timeout' => 12,
+        'headers' => array('Content-Type' => 'application/json'),
+        'body'    => wp_json_encode(array('email' => $email)),
+    ));
+
+    if (is_wp_error($res)) {
+        return new WP_REST_Response(
+            array('message' => '지금은 신청이 어렵습니다. 잠시 후 다시 시도해 주세요.'),
+            502
+        );
+    }
+
+    $code = wp_remote_retrieve_response_code($res);
+    $body = json_decode(wp_remote_retrieve_body($res), true);
+    $msg  = (is_array($body) && !empty($body['message']))
+        ? $body['message']
+        : ($code >= 200 && $code < 300 ? '구독 신청이 완료되었습니다.' : '신청에 실패했습니다.');
+
+    return new WP_REST_Response(array('message' => $msg), $code ? $code : 500);
+}
+
+/**
+ * 구독 칸 HTML.
+ * 스타일은 인라인으로 박는다 — 테마가 무엇이든 같은 모습이어야 하고,
+ * 별도 CSS 파일을 물리면 캐시 때문에 옛 모습이 남는 일이 생긴다.
+ */
+function jenny_subscribe_box()
+{
+    $ORANGE = '#F97316';
+    $DEEP   = '#EA580C';
+    $INK    = '#231A14';
+    $MUTE   = '#8A8578';
+    $FONT   = "-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕','Noto Sans KR',sans-serif";
+
+    // 스크립트는 한 화면에 한 번만 — 본문 필터가 여러 번 불릴 수 있다
+    static $script_done = false;
+
+    $h = '<div class="jenny-sub" style="margin:40px 0 8px;padding:26px 24px;background:#FFF8F2;'
+       . 'border:1px solid #FBD9BE;border-radius:16px;font-family:' . $FONT . ';">'
+
+       . '<div style="font-size:12px;font-weight:800;letter-spacing:.16em;color:' . $DEEP . ';">'
+       . '씬짜오 데일리뉴스</div>'
+
+       . '<div style="font-size:21px;font-weight:800;color:' . $INK . ';margin-top:8px;line-height:1.4;">'
+       . '매일 아침, 베트남이 정리되어 옵니다</div>'
+
+       . '<div style="font-size:14.5px;color:#5B5048;margin-top:8px;line-height:1.6;">'
+       . '현지 뉴스와 한국 소식을 한 통에. '
+       . '<b style="color:' . $DEEP . ';">' . JENNY_SUBSCRIBER_COUNT . '명</b> 넘는 교민·주재원·기업인이 읽고 있습니다.</div>'
+
+       . '<form class="jenny-sub-form" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">'
+       // 벌통 — 사람 눈에서 완전히 치운다
+       . '<input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" '
+       . 'style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" />'
+       . '<input type="email" name="email" required placeholder="이메일 주소" aria-label="이메일 주소" '
+       . 'style="flex:1 1 220px;min-width:0;padding:13px 15px;font-size:15px;border:1px solid #E2D6C9;'
+       . 'border-radius:10px;background:#fff;color:' . $INK . ';outline:none;" />'
+       . '<button type="submit" '
+       . 'style="flex:0 0 auto;padding:13px 26px;font-size:15px;font-weight:800;color:#fff;'
+       . 'background:' . $ORANGE . ';border:0;border-radius:10px;cursor:pointer;">무료 구독</button>'
+       . '</form>'
+
+       . '<div class="jenny-sub-msg" style="font-size:14px;font-weight:700;color:' . $DEEP . ';'
+       . 'margin-top:10px;display:none;"></div>'
+
+       . '<div style="font-size:12.5px;color:' . $MUTE . ';margin-top:10px;">'
+       . '언제든 메일 맨 아래 「수신 거부」로 그만두실 수 있습니다.</div>'
+
+       . '</div>';
+
+    if (!$script_done) {
+        $script_done = true;
+        $endpoint = esc_url_raw(rest_url('jenny/v1/subscribe'));
+        $h .= '<script>(function(){'
+            . 'var EP=' . wp_json_encode($endpoint) . ';'
+            . 'document.addEventListener("submit",function(e){'
+            . 'var f=e.target;if(!f.classList||!f.classList.contains("jenny-sub-form"))return;'
+            . 'e.preventDefault();'
+            . 'var box=f.closest(".jenny-sub"),msg=box.querySelector(".jenny-sub-msg"),'
+            . 'btn=f.querySelector("button"),em=f.querySelector("[name=email]").value.trim(),'
+            . 'hp=f.querySelector("[name=website]").value;'
+            . 'if(!em)return;'
+            . 'btn.disabled=true;btn.textContent="신청 중…";'
+            . 'fetch(EP,{method:"POST",headers:{"Content-Type":"application/json"},'
+            . 'body:JSON.stringify({email:em,website:hp})})'
+            . '.then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d}})})'
+            . '.then(function(x){'
+            // 성공하면 입력칸을 치운다 — 실수로 두 번 넣는 일이 없다
+            . 'if(x.ok){f.style.display="none";'
+            . 'msg.textContent="✉️ "+(x.d.message||"신청이 완료되었습니다.")+" 내일 아침부터 받아보실 수 있습니다.";}'
+            . 'else{msg.textContent=x.d.message||"신청에 실패했습니다.";'
+            . 'btn.disabled=false;btn.textContent="무료 구독";}'
+            . 'msg.style.display="block";'
+            . '}).catch(function(){'
+            . 'msg.textContent="연결이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.";'
+            . 'msg.style.display="block";btn.disabled=false;btn.textContent="무료 구독";'
+            . '});'
+            . '},false);'
+            . '})();</script>';
+    }
+
+    return $h;
+}
