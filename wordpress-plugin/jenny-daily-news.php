@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 2.9.0
+ * Version: 2.10.0
  * Author: Jenny (Antigravity)
  *
  * ── 변경 이력 ──
@@ -4739,8 +4739,16 @@ function jenny_subscribe_options()
  * 스타일은 인라인으로 박는다 — 테마가 무엇이든 같은 모습이어야 하고,
  * 별도 CSS 파일을 물리면 캐시 때문에 옛 모습이 남는 일이 생긴다.
  */
-function jenny_subscribe_box()
+/**
+ * 신청 팝업 본체 — **한 화면에 하나만** 그린다.
+ * 띠(가로)와 카드(세로)가 한 페이지에 같이 놓여도 팝업은 공용으로 쓴다.
+ */
+function jenny_subscribe_modal()
 {
+    static $done = false;
+    if ($done) return '';
+    $done = true;
+
     $ORANGE = '#F97316';
     $DEEP   = '#EA580C';
     $INK    = '#231A14';
@@ -4749,28 +4757,7 @@ function jenny_subscribe_box()
     $PAPER  = '#FFFDFB';
     $FONT   = "-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕','Noto Sans KR',sans-serif";
 
-    static $done = false; // 팝업과 스크립트는 한 화면에 하나면 된다
-
-    // ── 띠 ──────────────────────────────────────────────────────────
-    // 기존 자체 홍보 띠(앱 설치·교민 생활정보)와 **같은 생김새**로 맞춘다.
-    // 독자 눈에 낯선 물건이 하나 더 생기는 것보다, 이미 익숙한 모양이 낫다.
-    $h = '<div style="margin:40px 0 8px;font-family:' . $FONT . ';">'
-       . '<a href="#" class="jenny-sub-open" role="button" '
-       . 'style="display:flex;align-items:center;gap:16px;text-decoration:none;'
-       . 'background:linear-gradient(135deg,' . $ORANGE . ' 0%,' . $DEEP . ' 100%);'
-       . 'border-radius:12px;padding:18px 20px;color:#fff;">'
-       . '<div style="flex:1 1 auto;min-width:0;">'
-       . '<div style="font-size:17px;font-weight:800;line-height:1.4;">'
-       . '씬짜오 데일리뉴스 무료 구독</div>'
-       . '<div style="font-size:13.5px;opacity:.92;margin-top:4px;line-height:1.5;">'
-       . '매일 아침 베트남·한국 소식을 메일로 — 베트남 생활의 필수 정보</div>'
-       . '</div>'
-       . '<span style="flex:0 0 auto;background:rgba(255,255,255,.22);border-radius:999px;'
-       . 'padding:10px 18px;font-size:14px;font-weight:800;white-space:nowrap;">구독 신청</span>'
-       . '</a></div>';
-
-    if ($done) return $h;
-    $done = true;
+    $h = '';
 
     $endpoint = esc_url_raw(rest_url('jenny/v1/subscribe'));
     $opts     = jenny_subscribe_options();
@@ -4944,5 +4931,173 @@ function jenny_subscribe_box()
         . '},false);'
         . '})();</script>';
 
+
     return $h;
 }
+
+function jenny_subscribe_box()
+{
+    // 같은 권유가 한 화면에 두 번 보이면 광고로 읽힌다 — 페이지당 한 번만 그린다
+    static $drawn = false;
+    if ($drawn) return '';
+    $drawn = true;
+
+    $ORANGE = '#F97316';
+    $DEEP   = '#EA580C';
+    $INK    = '#231A14';
+    $MUTE   = '#8A8578';
+    $LINE   = '#E2D6C9';
+    $PAPER  = '#FFFDFB';
+    $FONT   = "-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕','Noto Sans KR',sans-serif";
+
+
+    // ── 띠 ──────────────────────────────────────────────────────────
+    // 기존 자체 홍보 띠(앱 설치·교민 생활정보)와 **같은 생김새**로 맞춘다.
+    // 독자 눈에 낯선 물건이 하나 더 생기는 것보다, 이미 익숙한 모양이 낫다.
+    $h = '<div style="margin:40px 0 8px;font-family:' . $FONT . ';">'
+       . '<a href="#" class="jenny-sub-open" role="button" '
+       . 'style="display:flex;align-items:center;gap:16px;text-decoration:none;'
+       . 'background:linear-gradient(135deg,' . $ORANGE . ' 0%,' . $DEEP . ' 100%);'
+       . 'border-radius:12px;padding:18px 20px;color:#fff;">'
+       . '<div style="flex:1 1 auto;min-width:0;">'
+       . '<div style="font-size:17px;font-weight:800;line-height:1.4;">'
+       . '씬짜오 데일리뉴스 무료 구독</div>'
+       . '<div style="font-size:13.5px;opacity:.92;margin-top:4px;line-height:1.5;">'
+       . '매일 아침 베트남·한국 소식을 메일로 — 베트남 생활의 필수 정보</div>'
+       . '</div>'
+       . '<span style="flex:0 0 auto;background:rgba(255,255,255,.22);border-radius:999px;'
+       . 'padding:10px 18px;font-size:14px;font-weight:800;white-space:nowrap;">구독 신청</span>'
+       . '</a></div>';
+
+
+    return $h . jenny_subscribe_modal();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * 구독 신청서를 어디에 둘 것인가 (v2.10.0 · 2026-08-28)
+ * ───────────────────────────────────────────────────────────────────────
+ * v2.9.0 까지는 **기사 본문 끝** 한 자리에만 있었다. 그 자리는 기사를 다 읽은
+ * 사람에게 닿지만, **홈페이지만 보고 나가는 사람에게는 영영 안 보인다.**
+ *
+ * 그래서 자리를 늘리되 **셋까지만** 늘린다:
+ *   ① 기사 본문 끝      — 다 읽은 직후. 가장 마음이 열린 순간 (v2.9.0 부터)
+ *   ② 홈페이지 섹션 사이 — 홈만 보고 나가는 사람을 잡는 유일한 자리
+ *   ③ 사이드바          — 어느 페이지에 있든 눈에 걸리는 자리
+ *
+ * 왜 더 늘리지 않나: 같은 권유가 한 화면에 두 번 보이면 광고로 읽힌다.
+ * 그래서 **모양마다 페이지당 한 번만** 그린다(아래 $drawn 참고).
+ *
+ * 왜 테마 파일을 안 고치나: 테마가 바뀌면 그 수정이 통째로 날아간다.
+ * 이미 자체광고가 쓰고 있는 **DOM 삽입** 방식을 그대로 쓴다 —
+ * 자리를 못 찾으면 그 칸만 조용히 없는 것이 되고, 페이지는 안 깨진다.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+/**
+ * 세로 카드 — 사이드바처럼 **좁은 자리**용.
+ * 가로 띠를 좁은 곳에 넣으면 글자가 두세 줄로 접히면서 모양이 무너진다.
+ */
+function jenny_subscribe_card()
+{
+    $ORANGE = '#F97316';
+    $DEEP   = '#EA580C';
+    $FONT   = "-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕','Noto Sans KR',sans-serif";
+
+    $h = '<div style="font-family:' . $FONT . ';margin:0 0 24px;">'
+       . '<a href="#" class="jenny-sub-open" role="button" '
+       . 'style="display:block;text-decoration:none;color:#fff;border-radius:12px;'
+       . 'padding:20px 18px;text-align:center;'
+       . 'background:linear-gradient(135deg,' . $ORANGE . ' 0%,' . $DEEP . ' 100%);">'
+       . '<div style="font-size:26px;line-height:1;">📩</div>'
+       . '<div style="font-size:16px;font-weight:800;margin-top:9px;line-height:1.4;">'
+       . '씬짜오 데일리뉴스</div>'
+       . '<div style="font-size:13px;opacity:.93;margin-top:6px;line-height:1.55;">'
+       . '매일 아침 베트남·한국 소식을<br>메일로 받아보세요</div>'
+       . '<span style="display:inline-block;margin-top:13px;background:rgba(255,255,255,.22);'
+       . 'border-radius:999px;padding:9px 20px;font-size:13.5px;font-weight:800;">'
+       . '무료 구독 신청</span>'
+       . '</a></div>';
+
+    // 팝업·스크립트는 한 화면에 하나면 된다. 띠가 먼저 그려졌으면 이미 붙어 있다.
+    return $h . jenny_subscribe_modal();
+}
+
+/** 숏코드 — 사장님이 원하는 자리에 직접 붙일 수 있게. `[chaovn_subscribe]` */
+add_shortcode('chaovn_subscribe', function ($atts) {
+    $a = shortcode_atts(array('type' => 'strip'), $atts, 'chaovn_subscribe');
+    return $a['type'] === 'card' ? jenny_subscribe_card() : jenny_subscribe_box();
+});
+// 텍스트 위젯 안에서도 숏코드가 돌게 한다(자체광고 플러그인과 같은 처리)
+add_filter('widget_text_content', 'do_shortcode', 11);
+
+/**
+ * 사이드바 위젯 — 어느 페이지에 있든 눈에 걸리는 자리.
+ * 위젯으로 만드는 이유: 사장님이 **관리화면에서 끄고 켜고 순서를 바꿀 수 있다.**
+ * 코드로 박아 두면 그때마다 나를 불러야 한다.
+ */
+class Jenny_Subscribe_Widget extends WP_Widget
+{
+    public function __construct()
+    {
+        parent::__construct(
+            'jenny_subscribe_widget',
+            '씬짜오 뉴스레터 구독',
+            array('description' => '데일리 뉴스 메일 신청 카드 (누르면 신청 팝업)')
+        );
+    }
+    public function widget($args, $instance)
+    {
+        echo $args['before_widget'];
+        echo jenny_subscribe_card();
+        echo $args['after_widget'];
+    }
+    public function form($instance)
+    {
+        echo '<p>표시할 내용이 없습니다. 이 위젯을 사이드바에 두면 구독 카드가 나옵니다.</p>';
+    }
+}
+add_action('widgets_init', function () { register_widget('Jenny_Subscribe_Widget'); });
+
+/**
+ * 홈페이지 자동 삽입.
+ *
+ * 홈은 테마(Sahifa)가 그리므로 PHP 로는 끼어들 자리가 없다. 그래서 자체광고와
+ * 같은 방법을 쓴다 — 숨긴 채로 찍어 두고, 자바스크립트가 제자리로 옮긴다.
+ * **자리를 못 찾으면 그냥 안 보이고 끝난다.** 페이지가 깨지지 않는 것이 중요하다.
+ *
+ * 자리: 두 번째 섹션 다음. 맨 위는 이미 광고가 있고, 맨 아래는 아무도 안 본다.
+ * 콘텐츠를 조금 보고 난 자리가 가장 자연스럽다.
+ */
+add_action('wp_footer', function () {
+    if (!is_home() && !is_front_page()) return;
+
+    echo '<div id="jenny-sub-stage" style="display:none">' . jenny_subscribe_box() . '</div>';
+    ?>
+    <script>
+    (function () {
+      var stage = document.getElementById('jenny-sub-stage');
+      if (!stage) return;
+      var node = stage.firstElementChild;
+      if (!node) return;
+
+      var content = document.querySelector('#main-content .content')
+                 || document.querySelector('#main-content');
+      var boxes = (content || document).querySelectorAll('section.cat-box');
+
+      // 두 번째 섹션 다음. 섹션이 하나뿐이면 그 다음, 아예 없으면 콘텐츠 끝.
+      var anchor = boxes[1] || boxes[0] || null;
+      if (anchor && anchor.parentNode) {
+        anchor.parentNode.insertBefore(node, anchor.nextSibling);
+      } else if (content) {
+        content.appendChild(node);
+      } else {
+        return; // 자리를 못 찾으면 숨긴 채로 둔다
+      }
+      node.style.margin = '28px 0';
+      // 팝업 본체는 화면 전체를 덮는 것이라 옮기지 않고 그대로 둔다
+      while (stage.firstElementChild) {
+        document.body.appendChild(stage.firstElementChild);
+      }
+    })();
+    </script>
+    <?php
+}, 5);
