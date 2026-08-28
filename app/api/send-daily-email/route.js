@@ -92,34 +92,47 @@ export async function POST(request) {
     });
 
     const topNewsItems = recentNews.filter(n => n.isTopNews);
-    const otherNewsItems = recentNews.filter(n => !n.isTopNews);
-    let orderedItems = [...topNewsItems, ...otherNewsItems];
 
-    // ⚠️ 대비책 — 카드뉴스 선정('♥ 카드')이 하나도 없는 날이 있다.
-    //    2026-08-27 실제로 그랬다: 그날 기사가 60건 발행됐는데 isCardNews 는 0건이라
-    //    메일에서 뉴스 목록이 통째로 빠지고 카드 한 장만 덜렁 나갔다.
-    //    매일 나가는 메일이 사람 손 하나에 이렇게 걸리면 안 된다.
-    //    → 선정이 비면 그날 발행분에서 자동으로 채운다(인기검색어 관련도 → 최신순).
-    //      한국 뉴스는 아래 자기 자리가 따로 있으므로 뺀다.
-    //    ※ 자동으로 채웠어도 '선정' 을 대신하는 것은 아니다. 편집자가 고른 날은
-    //      그 선택이 그대로 우선한다.
-    if (otherNewsItems.length === 0) {
+    // 📰 아래 목록에서 빼는 것은 **카드 그림에 이미 실린 그 한 건뿐**이다.
+    //
+    // ⚠️ 2026-08-28 실측으로 드러난 사고: 예전에는 `isTopNews` 를 **전부** 뺐다.
+    //    그런데 그날 톱뉴스가 2건이었고 카드에는 1건만 들어간다 →
+    //    **편집자가 중요하다고 고른 나머지 한 건이 메일 어디에도 안 나갔다.**
+    //    ("베트남 해저 광케이블 3개 동시 장애" 가 그렇게 통째로 사라졌다)
+    //
+    //    카드에 쓰인 기사는 publish-card-news 가 `cardImageUrl` 을 채워 표시해 둔다.
+    //    그 표식이 없으면(옛 기사 등) 톱뉴스 첫 건을 카드로 본다.
+    const inCard = recentNews.find(n => n.cardImageUrl) || topNewsItems[0];
+    let orderedItems = recentNews
+      .filter(n => !inCard || n.id !== inCard.id)
+      // 남은 톱뉴스를 앞세운다 — 편집자가 중요하다고 표시한 것이므로
+      .sort((a, b) => (b.isTopNews ? 1 : 0) - (a.isTopNews ? 1 : 0));
+
+    // ⚠️ 모자라면 그날 발행분에서 채운다.
+    //    예전에는 **0건일 때만** 채웠다. 그래서 선정이 1~4건인 날은 목록이 듬성듬성
+    //    나갔다(2026-08-28: 5줄 자리에 3줄). 사장님 방침은 "지정이 있건 없건
+    //    자동으로 들어가게" 이므로, 있으면 그것을 앞세우고 **부족한 만큼만** 채운다.
+    const RECOMMEND_COUNT = 5;
+    if (orderedItems.length < RECOMMEND_COUNT) {
       try {
+        const exclude = [...orderedItems.map(n => n.id), ...(inCard ? [inCard.id] : [])];
         const auto = await prisma.newsItem.findMany({
           where: {
             status: 'PUBLISHED',
             publishedAt: { gte: today },
-            isTopNews: false,
+            id: { notIn: exclude },
             wordpressUrl: { not: null },
-            source: { notIn: ['Yonhap Main'] },
+            source: { notIn: ['Yonhap Main'] },   // 한국 뉴스는 아래 자기 자리가 따로 있다
           },
           orderBy: [{ keywordScore: 'desc' }, { publishedAt: 'desc' }],
-          take: 5,
+          take: RECOMMEND_COUNT - orderedItems.length,
         });
-        orderedItems = [...topNewsItems, ...auto];
-        console.log(`[SendEmail] 카드뉴스 선정 0건 → 그날 발행분에서 ${auto.length}건 자동 선택`);
+        if (auto.length) {
+          orderedItems = [...orderedItems, ...auto];
+          console.log(`[SendEmail] 선정 ${orderedItems.length - auto.length}건 + 자동 ${auto.length}건 = ${orderedItems.length}건`);
+        }
       } catch (e) {
-        console.warn('[SendEmail] 추천뉴스 자동 선택 실패 (목록 생략):', e.message);
+        console.warn('[SendEmail] 추천뉴스 자동 채우기 실패 (있는 것만 보냄):', e.message);
       }
     }
 
@@ -246,13 +259,11 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
     return `${target}${sep}utm_source=email&utm_medium=newsletter&utm_content=${content}`;
   };
 
-  // 아래 목록에는 **톱뉴스를 넣지 않는다** (2026-08-27 사장님 지시).
-  // 바로 위 큰 사진이 이미 그날의 톱뉴스다 — 같은 기사가 두 번 나오면
-  // "고르지도 않고 기계가 뱉었구나" 로 읽힌다.
+  // 목록에서 뺄 것(카드에 실린 그 한 건)과 부족분 채우기는 **POST 안에서 이미** 끝냈다.
+  // 이 함수는 DB 를 모른다 — 받은 것을 그대로 다섯 줄까지 그린다.
   //
-  // 다섯 줄로 끊는 이유도 취향이 아니다: 목록이 길수록 그 아래 광고까지
+  // 다섯 줄로 끊는 이유는 취향이 아니다: 목록이 길수록 그 아래 광고까지
   // 내려오는 사람이 줄어든다. 광고를 한 화면이라도 빨리 만나게 하려는 것.
-  // (선정이 0건인 날의 대비책은 POST 안에서 미리 처리한다 — 이 함수는 DB 를 모른다)
   const RECOMMEND_COUNT = 5;
   const toRow = (item) => ({
     title: item.translatedTitle || item.title || '',
@@ -262,10 +273,7 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
     url: withUtm(item.wordpressUrl || terminalUrl, 'news'),
   });
 
-  const items = (newsItems || [])
-    .filter((item) => !item.isTopNews)
-    .slice(0, RECOMMEND_COUNT)
-    .map(toRow);
+  const items = (newsItems || []).slice(0, RECOMMEND_COUNT).map(toRow);
 
   // 🇰🇷 오늘 한국에선 — 제목만 노출(요약을 다 주면 클릭할 이유가 사라진다), 링크는 우리 사이트
   const korea = (koreaNews || []).map((item) => ({
