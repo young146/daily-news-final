@@ -13,7 +13,8 @@
     "keywords:gsc": "node scripts/fetch-gsc-keywords.js",
     "retry-failed": "node scripts/retry-failed-translations.js",
     "backfill-seo": "node scripts/backfill-seo-meta.js",
-    "backfill-affiliate": "node scripts/backfill-affiliate-block.js"
+    "backfill-affiliate": "node scripts/backfill-affiliate-block.js",
+    "newsletter:ctr": "node scripts/newsletter-ctr.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",
