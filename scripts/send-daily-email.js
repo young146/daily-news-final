@@ -3,6 +3,7 @@ import { sendNewsletterWithFallback } from '@/lib/email-service';
 import { autoLinkHtml } from '@/lib/html-utils';
 import { buildKakaoBroadcastText } from '@/lib/kakao-broadcast';
 import { fetchSiljeonnotePosts, withSiljeonnoteUtm } from '@/lib/siljeonnote';
+import { fetchOldColumn } from '@/lib/old-columns';
 import { getFirestore } from '@/lib/firebase-admin';
 import { filterCardsForToday, getVietnamIsoWeekday } from '@/lib/promo-card-filters';
 import { getSponsor, emailSubject, emailHeaderHtml } from '@/lib/sponsor';
@@ -39,7 +40,7 @@ async function fetchRecentJobsAndRealEstate() {
 
 const prisma = new PrismaClient();
 
-function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], appFunnel = null, sponsor = null, blogPosts = []) {
+function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], appFunnel = null, sponsor = null, blogPosts = [], oldColumn = null) {
   // 프로토콜 누락 env 값 보정 (app/api/send-daily-email/route.js 와 동일한 이유)
   const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chaovietnam.co.kr';
   const baseUrl = /^https?:\/\//.test(rawBaseUrl) ? rawBaseUrl : `https://${rawBaseUrl}`;
@@ -144,6 +145,18 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
       `;
     });
     html += `</div>`;
+  }
+
+  // 📜 그때 그 칼럼 — 본진 20년 칼럼 발굴 (2026-08-30, 새 글 코너 아래)
+  if (oldColumn) {
+    const colUrl = `${oldColumn.link}${oldColumn.link.includes('?') ? '&' : '?'}utm_source=email&utm_medium=newsletter&utm_content=old_column`;
+    html += `
+      <div style="margin: 30px 0; padding: 18px 20px; background: #fdf9f4; border: 1px solid #f0e7de; border-radius: 10px;">
+        <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 700; color: #9a9089; letter-spacing: 2px;">그때 그 칼럼 · ${oldColumn.dateStr}의 글</p>
+        <a href="${colUrl}" target="_blank" style="font-size: 15px; font-weight: 700; color: #222; text-decoration: none;">${oldColumn.title}</a>
+        ${oldColumn.excerpt ? `<p style="margin: 6px 0 0 0; font-size: 13px; color: #555; line-height: 1.7;">${oldColumn.excerpt}… <a href="${colUrl}" target="_blank" style="color: #c2410c; font-weight: 700; text-decoration: none;">다시 읽기 →</a></p>` : ''}
+      </div>
+    `;
   }
 
   // 홍보카드 섹션 (DB에서 동적 로드)
@@ -310,8 +323,16 @@ export async function sendDailyDigest(isTest = false) {
         console.warn('실전노트 조회 실패 (코너 생략):', e.message);
     }
 
+    // 그때 그 칼럼 — 본진 아카이브 발굴 (실패 시 코너만 생략)
+    let oldColumn = null;
+    try {
+        oldColumn = await fetchOldColumn();
+    } catch (e) {
+        console.warn('옛 칼럼 조회 실패 (코너 생략):', e.message);
+    }
+
     const sponsor = await getSponsor();
-    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards, appFunnel, sponsor, blogPosts);
+    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards, appFunnel, sponsor, blogPosts, oldColumn);
     const subject = emailSubject(sponsor, todayString);
 
     const recipientEmails = isTest

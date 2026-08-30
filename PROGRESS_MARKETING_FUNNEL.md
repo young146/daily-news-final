@@ -108,6 +108,7 @@
 
 ## 🪵 작업 로그 (최신순)
 
+- `2026-08-30` — **뉴스레터 「그때 그 칼럼」 코너** — 본진에 묻힌 사장님 20년 칼럼을 매일 1편 발굴해 뉴스레터에 노출 (블로그로 옮기면 중복 콘텐츠 — 본진으로 보내는 게 정답, 애드센스도 본진에 있음). `lib/old-columns.js` 신설: WP REST 로 칼럼 카테고리(Han Column 371·중언부언 126·CHAO COLUMN 108·Golf 86·짜오칼럼 12 = 약 700편)에서 날짜 기반 결정적 회전으로 1편 선정. 라이브·레거시 메일 양쪽 배선, UTM `utm_content=old_column`. 실측: 조회·렌더 OK, `next build` exit 0.
 - `2026-08-30` — **실전노트 블로그 유통 자동화 1단계** (정본: `chao-vn-app/PROGRESS_REVENUE_MASTERPLAN.md` 유통 트랙, 사장님 결정: 지금부터·채널 전부)
   - `lib/siljeonnote.js` 신설 — vietnamsari.com Blogger RSS 를 읽는 공용 모듈. ⚠️ Blogger 가 링크를 `https:///…`(도메인 누락)로 내보내는 버그를 여기서 복원. UTM 은 전용 헬퍼(`withSiljeonnoteUtm`) — 기존 화이트리스트는 안 건드림.
   - **뉴스레터 「실전노트」 코너** — 라이브 판(`app/api/send-daily-email/route.js` + `newsletter-template.js` `siljeonnoteBlock()`)과 레거시 CLI 판(`scripts/send-daily-email.js`) **양쪽에** 추가. 어느 판이 실제로 나가는지 저장소 안에서 확정 불가(자동 cron 없음 — 서버 crontab 추정)라 둘 다 배선. 최근 4일 새 글이 있는 날만 최대 2건 노출, 실패 시 섹션만 생략(fail-safe).

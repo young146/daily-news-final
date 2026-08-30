@@ -4,6 +4,7 @@ import { filterCardsForToday } from '@/lib/promo-card-filters';
 import { getSponsor, emailSubject, isSponsored, PUBLISHER_NAME, PUBLISHER_NAME_EN } from '@/lib/sponsor';
 import { renderDailyNewsEmail } from '@/lib/newsletter-template';
 import { fetchSiljeonnotePosts, withSiljeonnoteUtm } from '@/lib/siljeonnote';
+import { fetchOldColumn } from '@/lib/old-columns';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // Vercel Pro: 최대 5분 (대량 발송용)
@@ -205,6 +206,15 @@ export async function POST(request) {
       console.warn('[SendEmail] 실전노트 블로그 조회 실패 (섹션 생략):', e.message);
     }
 
+    // 📜 그때 그 칼럼 — 본진에 묻힌 20년 칼럼을 매일 한 편 발굴 (2026-08-30 사장님 지시)
+    let oldColumn = null;
+    try {
+      oldColumn = await fetchOldColumn();
+      console.log(`[SendEmail] 그때 그 칼럼: (${oldColumn.dateStr}) ${oldColumn.title}`);
+    } catch (e) {
+      console.warn('[SendEmail] 옛 칼럼 조회 실패 (코너 생략):', e.message);
+    }
+
     // Fetch active promo cards — 요일 + 채널(email) 필터 적용 (lib/promo-card-filters.js)
     const allPromoCards = await prisma.promoCard.findMany({
       where: { isActive: true },
@@ -223,7 +233,7 @@ export async function POST(request) {
 
     // 명명권(스폰서) 설정 — 비활성(기본)이면 씬짜오 브랜딩 그대로
     const sponsor = await getSponsor();
-    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards, sponsor, koreaNews, blogPosts);
+    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards, sponsor, koreaNews, blogPosts, oldColumn);
     // 제목에 그날의 톱 기사(편집자가 고른 탑뉴스)를 앞세운다 — 매일 같은 제목은 열 이유가 없다
     const topHeadline = orderedItems[0]?.translatedTitle || orderedItems[0]?.title || '';
     const subject = emailSubject(sponsor, todayString, topHeadline);
@@ -256,7 +266,7 @@ export async function POST(request) {
   }
 }
 
-function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], sponsor = null, koreaNews = [], blogPosts = []) {
+function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], sponsor = null, koreaNews = [], blogPosts = [], oldColumn = null) {
   // 화면(디자인)은 lib/newsletter-template.js 가 맡는다. 여기서는 **자료를 그 모양에 맞춰
   // 넘기는 일만** 한다 — 디자인을 고칠 때 발송 로직을 건드리지 않게 하려는 분리다.
   //
@@ -325,6 +335,9 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
     newsItems: items,
     koreaNews: korea,
     blogPosts: blog,
+    oldColumn: oldColumn
+      ? { ...oldColumn, url: withUtm(oldColumn.link, 'old_column') }
+      : null,
     promoCards: promos,
     brand: {
       publisherName: PUBLISHER_NAME,
