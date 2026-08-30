@@ -108,6 +108,12 @@
 
 ## 🪵 작업 로그 (최신순)
 
+- `2026-08-30` — **실전노트 블로그 유통 자동화 1단계** (정본: `chao-vn-app/PROGRESS_REVENUE_MASTERPLAN.md` 유통 트랙, 사장님 결정: 지금부터·채널 전부)
+  - `lib/siljeonnote.js` 신설 — vietnamsari.com Blogger RSS 를 읽는 공용 모듈. ⚠️ Blogger 가 링크를 `https:///…`(도메인 누락)로 내보내는 버그를 여기서 복원. UTM 은 전용 헬퍼(`withSiljeonnoteUtm`) — 기존 화이트리스트는 안 건드림.
+  - **뉴스레터 「실전노트」 코너** — 라이브 판(`app/api/send-daily-email/route.js` + `newsletter-template.js` `siljeonnoteBlock()`)과 레거시 CLI 판(`scripts/send-daily-email.js`) **양쪽에** 추가. 어느 판이 실제로 나가는지 저장소 안에서 확정 불가(자동 cron 없음 — 서버 crontab 추정)라 둘 다 배선. 최근 4일 새 글이 있는 날만 최대 2건 노출, 실패 시 섹션만 생략(fail-safe).
+  - **카톡 txt** — `buildKakaoBroadcastText` 에 `blogPosts` 블록 추가 + vietnamsari.com 을 카톡 UTM 허용 목록에 추가.
+  - **페북 자동 게시** — `app/api/cron/fb-blog/route.js` 신설 (vercel cron 03,09,15 UTC). 새 글을 기존 publishToFacebookPage Cloud Function 으로 4페이지에 게시. 중복 방지: Firestore `blogFbPosted/{링크md5}`. 협찬(promos)은 안 붙임 — 블로그는 독립 브랜드. 링크에 UTM 부착(신규 흐름이라 "뉴스 페북 UTM 안 붙임" 결정과 무관).
+  - 검증: `next build` exit 0 / RSS 실측 파싱(글 3건, 링크 복원·대표이미지·요약 확인) / 템플릿 렌더 실측 OK. **실물 확인 남음**: 다음 발송 메일에 코너 노출 + 내일 첫 cron 의 페북 게시.
 - `2026-05-25` — **푸시 알림 양방향 대화 시스템 완성** (retention 단계 3 무기)
   - **커스텀 푸시 발송**: Cloud Function `sendCustomPush` — 제목/내용/링크/이미지 지원. 발송 시 Firestore `announcements/{id}` 자동 생성 (댓글 스레드 루트).
   - **공지사항 화면 2종**: `AnnouncementsListScreen` (카드형 목록) + `AnnouncementDetailScreen` (본문+댓글/대댓글+이미지 첨부). 메뉴 탭 → 공지사항 접근.

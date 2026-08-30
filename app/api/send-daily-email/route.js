@@ -3,6 +3,7 @@ import { sendNewsletterWithFallback } from '../../../lib/email-service.js';
 import { filterCardsForToday } from '@/lib/promo-card-filters';
 import { getSponsor, emailSubject, isSponsored, PUBLISHER_NAME, PUBLISHER_NAME_EN } from '@/lib/sponsor';
 import { renderDailyNewsEmail } from '@/lib/newsletter-template';
+import { fetchSiljeonnotePosts, withSiljeonnoteUtm } from '@/lib/siljeonnote';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // Vercel Pro: 최대 5분 (대량 발송용)
@@ -190,6 +191,20 @@ export async function POST(request) {
       console.warn('[SendEmail] 한국 뉴스 블록 조회 실패 (섹션 생략):', e.message);
     }
 
+    // 📝 베트남 살이 실전노트 — 최근 며칠 새 글이 있으면 코너로 싣는다.
+    // 블로그 유통 자동화 트랙 (2026-08-30, chao-vn-app/PROGRESS_REVENUE_MASTERPLAN.md):
+    // 글 생산은 자동인데 발행 후 유통이 없었다 → 뉴스레터가 첫 배선.
+    // 새 글이 없는 날은 섹션 자체가 안 나간다 (매일 똑같은 코너는 무시당한다).
+    let blogPosts = [];
+    try {
+      blogPosts = await fetchSiljeonnotePosts({ days: 4, max: 2 });
+      if (blogPosts.length) {
+        console.log(`[SendEmail] 실전노트 새 글 ${blogPosts.length}건: ${blogPosts[0].title}`);
+      }
+    } catch (e) {
+      console.warn('[SendEmail] 실전노트 블로그 조회 실패 (섹션 생략):', e.message);
+    }
+
     // Fetch active promo cards — 요일 + 채널(email) 필터 적용 (lib/promo-card-filters.js)
     const allPromoCards = await prisma.promoCard.findMany({
       where: { isActive: true },
@@ -208,7 +223,7 @@ export async function POST(request) {
 
     // 명명권(스폰서) 설정 — 비활성(기본)이면 씬짜오 브랜딩 그대로
     const sponsor = await getSponsor();
-    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards, sponsor, koreaNews);
+    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards, sponsor, koreaNews, blogPosts);
     // 제목에 그날의 톱 기사(편집자가 고른 탑뉴스)를 앞세운다 — 매일 같은 제목은 열 이유가 없다
     const topHeadline = orderedItems[0]?.translatedTitle || orderedItems[0]?.title || '';
     const subject = emailSubject(sponsor, todayString, topHeadline);
@@ -241,7 +256,7 @@ export async function POST(request) {
   }
 }
 
-function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], sponsor = null, koreaNews = []) {
+function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], sponsor = null, koreaNews = [], blogPosts = []) {
   // 화면(디자인)은 lib/newsletter-template.js 가 맡는다. 여기서는 **자료를 그 모양에 맞춰
   // 넘기는 일만** 한다 — 디자인을 고칠 때 발송 로직을 건드리지 않게 하려는 분리다.
   //
@@ -282,6 +297,16 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
     url: withUtm(item.wordpressUrl, 'korea'),
   }));
 
+  // 📝 실전노트 — vietnamsari.com 은 별도 도메인이라 이 파일의 withUtm(우리 사이트용
+  // content 표기)이 아니라 전용 헬퍼로 붙인다 (source=email/medium=newsletter 는 동일
+  // → GA4 채널 비교 규약 유지).
+  const blog = (blogPosts || []).map((p) => ({
+    title: p.title,
+    summary: p.summary,
+    imageUrl: p.imageUrl,
+    url: withSiljeonnoteUtm(p.link, { source: 'email', medium: 'newsletter' }),
+  }));
+
   const promos = (promoCards || []).map((card) => {
     const ytMatch = card.videoUrl?.match(/(?:youtube\.com.*v=|youtu\.be\/)([^&\n?#]+)/);
     const ytId = ytMatch ? ytMatch[1] : null;
@@ -299,6 +324,7 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
     terminalUrl: withUtm(terminalUrl, 'terminal'),
     newsItems: items,
     koreaNews: korea,
+    blogPosts: blog,
     promoCards: promos,
     brand: {
       publisherName: PUBLISHER_NAME,

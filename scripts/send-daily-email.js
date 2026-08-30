@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { sendNewsletterWithFallback } from '@/lib/email-service';
 import { autoLinkHtml } from '@/lib/html-utils';
 import { buildKakaoBroadcastText } from '@/lib/kakao-broadcast';
+import { fetchSiljeonnotePosts, withSiljeonnoteUtm } from '@/lib/siljeonnote';
 import { getFirestore } from '@/lib/firebase-admin';
 import { filterCardsForToday, getVietnamIsoWeekday } from '@/lib/promo-card-filters';
 import { getSponsor, emailSubject, emailHeaderHtml } from '@/lib/sponsor';
@@ -38,7 +39,7 @@ async function fetchRecentJobsAndRealEstate() {
 
 const prisma = new PrismaClient();
 
-function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], appFunnel = null, sponsor = null) {
+function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], appFunnel = null, sponsor = null, blogPosts = []) {
   // 프로토콜 누락 env 값 보정 (app/api/send-daily-email/route.js 와 동일한 이유)
   const rawBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chaovietnam.co.kr';
   const baseUrl = /^https?:\/\//.test(rawBaseUrl) ? rawBaseUrl : `https://${rawBaseUrl}`;
@@ -122,6 +123,27 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
         </a>
       </div>
     `;
+  }
+
+  // 📝 베트남 살이 실전노트 — 새 글 코너 (유통 자동화 2026-08-30, 새 글 있는 날만)
+  // 링크는 /api/click 리다이렉트가 아니라 직링크+UTM — 리다이렉트는 네이버 메일이
+  // 스팸으로 보는 문제로 라이브 경로에서 이미 폐기된 방식이다.
+  if (blogPosts && blogPosts.length > 0) {
+    html += `
+      <div style="margin: 30px 0; padding: 18px 20px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;">
+        <p style="margin: 0 0 4px 0; font-size: 14px; font-weight: 700; color: #c2410c;">📝 베트남 살이 실전노트 — 새 글</p>
+        <p style="margin: 0 0 12px 0; font-size: 12px; color: #888;">베트남에 오래 산 사람이 돈·서류·절차를 직접 확인하고 씁니다</p>
+    `;
+    blogPosts.forEach(p => {
+      const url = withSiljeonnoteUtm(p.link, { source: 'email', medium: 'newsletter' });
+      html += `
+        <div style="margin-bottom: 12px; line-height: 1.5;">
+          <a href="${url}" target="_blank" style="font-size: 14px; font-weight: 700; color: #222; text-decoration: none;">${p.title}</a>
+          ${p.summary ? `<p style="margin: 4px 0 0 0; font-size: 13px; color: #666;">${p.summary}… <a href="${url}" target="_blank" style="color: #c2410c; font-weight: 700; text-decoration: none;">이어 읽기 →</a></p>` : ''}
+        </div>
+      `;
+    });
+    html += `</div>`;
   }
 
   // 홍보카드 섹션 (DB에서 동적 로드)
@@ -280,8 +302,16 @@ export async function sendDailyDigest(isTest = false) {
     const appFunnel = await fetchRecentJobsAndRealEstate();
     console.log(`[이메일] 신규 채용 ${appFunnel.newJobs}건, 신규 부동산 ${appFunnel.newRealEstate}건`);
 
+    // 실전노트 새 글 — 이메일 코너 + 카톡 블록이 같이 쓴다 (유통 자동화 2026-08-30)
+    let blogPosts = [];
+    try {
+        blogPosts = await fetchSiljeonnotePosts({ days: 4, max: 2 });
+    } catch (e) {
+        console.warn('실전노트 조회 실패 (코너 생략):', e.message);
+    }
+
     const sponsor = await getSponsor();
-    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards, appFunnel, sponsor);
+    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards, appFunnel, sponsor, blogPosts);
     const subject = emailSubject(sponsor, todayString);
 
     const recipientEmails = isTest
@@ -296,9 +326,11 @@ export async function sendDailyDigest(isTest = false) {
     //   - 카톡 봇이 없으므로 사용자가 *수동으로 복사·붙여넣기* 함
     //   - kakao-out/YYYY-MM-DD.txt 파일에 저장 + 콘솔에도 출력
     try {
+        // blogPosts 는 위(이메일 코너)에서 이미 가져왔다 — 카톡 텍스트에도 같이 실린다
         const kakaoText = buildKakaoBroadcastText(orderedItems, {
             terminalUrl,
             dateString: todayString,
+            blogPosts,
         });
         const outDir = path.join(process.cwd(), 'kakao-out');
         if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
