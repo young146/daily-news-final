@@ -108,6 +108,10 @@
 
 ## 🪵 작업 로그 (최신순)
 
+- `2026-08-31` — **자체 광고(앱 설치) 배치 확대** (사장님 지시)
+  - **vnkorlife**: `AppInstallBanner` 신설 → 목록 4곳(중고·구인·부동산은 쇼핑배너 위 / 옐로페이지는 상단광고 아래) + 상세 4곳(본문 끝 in-content 광고 앞). 교민생활정보는 *이 사이트가 곧 그것*이라 제외, 데일리뉴스는 지면과 거리가 있어 제외 — 앱 설치만. 생김새는 chaovietnam `house_app` 과 동일. `tsc` + `next build` 통과, 배포됨(`199ce35`).
+  - **뉴스 터미널**(chaovietnam): 자체 광고 **3종 전부** 확실히 노출 — 앱 설치(상단) · 데일리뉴스 구독(주요뉴스 뒤) · 교민 생활정보(하단). ⚠️ 기존 자체 홍보는 **팔린 광고가 없을 때만 뜨는 폴백**(+페이지당 2칸 제한)이라 3개가 다 보인다는 보장이 없었다 → `xinchao_house_banner()` 로 지정 배너를 서버에서 직접 렌더. jenny v2.13.0 / unified-ads v4.6.3 — **FTP 업로드 필요**.
+
 - `2026-08-30` — **뉴스레터 「그때 그 칼럼」 코너** — 본진에 묻힌 사장님 20년 칼럼을 매일 1편 발굴해 뉴스레터에 노출 (블로그로 옮기면 중복 콘텐츠 — 본진으로 보내는 게 정답, 애드센스도 본진에 있음). `lib/old-columns.js` 신설: WP REST 로 칼럼 카테고리(Han Column 371·중언부언 126·CHAO COLUMN 108·Golf 86·짜오칼럼 12 = 약 700편)에서 날짜 기반 결정적 회전으로 1편 선정. 라이브·레거시 메일 양쪽 배선, UTM `utm_content=old_column`. 실측: 조회·렌더 OK, `next build` exit 0.
 - `2026-08-30` — **실전노트 블로그 유통 자동화 1단계** (정본: `chao-vn-app/PROGRESS_REVENUE_MASTERPLAN.md` 유통 트랙, 사장님 결정: 지금부터·채널 전부)
   - `lib/siljeonnote.js` 신설 — vietnamsari.com Blogger RSS 를 읽는 공용 모듈. ⚠️ Blogger 가 링크를 `https:///…`(도메인 누락)로 내보내는 버그를 여기서 복원. UTM 은 전용 헬퍼(`withSiljeonnoteUtm`) — 기존 화이트리스트는 안 건드림.
