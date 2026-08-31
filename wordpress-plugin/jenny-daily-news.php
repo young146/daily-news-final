@@ -2,10 +2,15 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 2.11.0
+ * Version: 2.12.0
  * Author: Jenny (Antigravity)
  *
  * ── 변경 이력 ──
+ *   2.12.0 (2026-08-31) 홈 화면 섹션 제목 옆에 「전체 보기 »」 버튼.
+ *                      섹션 제목(데일리 뉴스·블로그 등)을 클릭하면 카테고리로 가지만
+ *                      클릭이 된다는 표시가 없어 아무도 모른다(사장님 지적). 테마의
+ *                      cat-box-title 에 이미 걸린 링크 주소를 그대로 복사해 눈에 보이는
+ *                      버튼으로 붙인다 — 테마 파일은 손대지 않는다(업데이트에 안전).
  *   2.6.0 (2026-08-28) 기사 본문 끝에 '이어서 볼 뉴스' 6건 + 뉴스 터미널 복귀 버튼.
  *                      지금까지 동선이 막다른 길이었다 — 터미널에서 기사로 들어가면
  *                      다 읽은 뒤 갈 곳이 없어 그냥 창을 닫았다(방문 1회에 기사 1건,
@@ -5266,3 +5271,45 @@ function jenny_shortcode_page()
     </script>
     <?php
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * 홈 화면 섹션 제목 옆 「전체 보기 »」 버튼 (v2.12.0 · 2026-08-31)
+ * ───────────────────────────────────────────────────────────────────────
+ * 왜: 섹션 제목(데일리 뉴스·블로그…)을 누르면 그 카테고리 전체가 나오지만,
+ *     제목이 눌린다는 표시가 어디에도 없다 — 사장님도 몰랐다. 아는 사람만
+ *     쓰는 기능은 없는 기능이다.
+ *
+ * 어떻게: 테마(Sahifa)가 이미 제목에 걸어 둔 링크 주소를 **그대로 복사**해
+ *     눈에 보이는 버튼으로 하나 더 붙인다. 테마 파일은 손대지 않는다
+ *     (테마가 업데이트되면 수정이 날아가는 것을 피함 — 이 플러그인의 원칙).
+ *     제목에 링크가 없는 섹션은 조용히 건너뛴다 — 페이지는 안 깨진다.
+ * ═══════════════════════════════════════════════════════════════════════ */
+add_action('wp_footer', function () {
+    if (!is_home() && !is_front_page()) return;
+    ?>
+    <style>
+      .cat-box-title { position: relative; }
+      .chaovn-see-all {
+        position: absolute; right: 0; top: 1px;
+        font-size: 12px; font-weight: 700; line-height: 1;
+        color: #EA580C !important; text-decoration: none !important;
+        background: #FFF3E9; border: 1px solid #FFD9BC;
+        border-radius: 999px; padding: 6px 12px; white-space: nowrap;
+      }
+      .chaovn-see-all:hover { background: #F97316; color: #fff !important; border-color: #F97316; }
+    </style>
+    <script>
+    (function () {
+      document.querySelectorAll('.cat-box-title').forEach(function (t) {
+        var a = t.querySelector('h2 a');
+        if (!a || !a.getAttribute('href') || t.querySelector('.chaovn-see-all')) return;
+        var link = document.createElement('a');
+        link.className = 'chaovn-see-all';
+        link.href = a.href;
+        link.textContent = '전체 보기 »';
+        t.appendChild(link);
+      });
+    })();
+    </script>
+    <?php
+}, 6);
