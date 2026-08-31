@@ -2,10 +2,14 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 2.13.1
+ * Version: 2.13.2
  * Author: Jenny (Antigravity)
  *
  * ── 변경 이력 ──
+ *   2.13.2 (2026-08-31) 터미널 자체 광고가 **두 개씩** 나오던 것 수정.
+ *                      2.13.0 에서 3종을 직접 그리게 했는데, header·top·bottom 슬롯의
+ *                      '광고 없을 때 자체 홍보로 채우기'(폴백)를 그대로 켜 둬서
+ *                      같은 배너가 한 번 더 붙었다 → 이 화면에선 폴백을 끈다(house=false).
  *   2.13.1 (2026-08-31) 새 숏코드 [xinchao_house] 를 「도구 → 씬짜오 숏코드」 목록에 등록.
  *   2.13.0 (2026-08-31) 뉴스 터미널에 자체 광고 3종을 **확실히** 배치.
  *                      앱 설치(위) · 데일리뉴스 구독(주요뉴스 뒤) · 교민 생활정보(아래).
@@ -1427,9 +1431,11 @@ function jenny_daily_news_shortcode($atts)
     // 헤더 아래 1칸 — 통합 광고센터 표준 슬롯 (PROGRESS_AD_SLOTS.md §8-2)
     // 이 화면은 테마 헤더가 없다. 페이지 최상단이 곧 '헤더 아래'다.
     $output = '';
+    // ⚠️ house=false — 이 화면은 자체 광고 3종을 **아래에서 직접** 그린다.
+    //    여기서 폴백까지 켜 두면 같은 배너가 두 번 나온다 (2026-08-31 실제로 그랬다).
     if (function_exists('xinchao_render_ad')) {
         $output .= '<div class="jenny-slot-header" style="margin:0 auto 12px;">';
-        $output .= xinchao_render_ad('news-terminal', 'header', 0, 970);
+        $output .= xinchao_render_ad('news-terminal', 'header', 0, 970, false);
         $output .= '</div>';
     }
 
@@ -1440,7 +1446,7 @@ function jenny_daily_news_shortcode($atts)
     //     표준에 없는 자리였고(§8-2), 그래서 '본문 중간'으로 판 광고가 여기 얹혔다.
     if (function_exists('xinchao_render_ad')) {
         $output .= '<div class="jenny-slot-top" style="margin:10px auto 16px;">';
-        $output .= xinchao_render_ad('news-terminal', 'top', 0, 728);
+        $output .= xinchao_render_ad('news-terminal', 'top', 0, 728, false);   // 폴백 끔 — 위 주석 참조
         $output .= '</div>';
     }
 
@@ -1837,7 +1843,7 @@ function jenny_daily_news_shortcode($atts)
     // 페이지 끝 1칸 — 통합 광고센터 표준 슬롯 (§8-2)
     if (function_exists('xinchao_render_ad')) {
         $output .= '<div class="jenny-slot-bottom" style="margin:8px auto 20px;">';
-        $output .= xinchao_render_ad('news-terminal', 'bottom', 0, 728);
+        $output .= xinchao_render_ad('news-terminal', 'bottom', 0, 728, false);  // 폴백 끔 — 위 주석 참조
         $output .= '</div>';
     }
 
