@@ -2,7 +2,7 @@
 /**
  * Plugin Name: XinChao 통합 광고 (Unified Ads)
  * Description: 통합 광고센터(ads_unified)의 chaovietnam 지면 광고를 공개 API로 불러와 표시한다. 기사 본문에 위치별 자동 삽입 — 상단(1) + 중간(2) + 하단(1). 사이드바는 [xinchao_ad slot="sidebar"] 숏코드. Advanced Ads/Ad Inserter 불필요. 직원은 통합센터에서 등록만 하면 되고, 위치는 우선순위로 자동 결정.
- * Version: 4.6.1
+ * Version: 4.6.2
  * Author: XinChao
  *
  * ── 변경 이력 ──
@@ -456,7 +456,9 @@ function xinchao_render_shopping($limit = 24, $max = 728, $coupang = true) {
     if (!$items && !$coupang) return '';
 
     $uid = 'xcshop_' . wp_generate_password(8, false, false);
-    $note = 'margin:4px 0 0;text-align:center;font-size:11px;color:#94a3b8;';
+    // 쿠팡 지침(2026-08-31 공지): 고지는 소비자가 쉽게 확인하도록 — 눈에 띄는 색·굵기로.
+    // (작은 회색이었다가 파란 굵은 글씨로 상향)
+    $note = 'margin:4px 0 0;text-align:center;font-size:12px;font-weight:700;color:#0b57d0;';
 
     ob_start();
     // ?xcshop_debug=1 이면 어디서 상품을 가져왔는지 소스에 남긴다(진단용).
