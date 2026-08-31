@@ -2,10 +2,11 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 2.13.0
+ * Version: 2.13.1
  * Author: Jenny (Antigravity)
  *
  * ── 변경 이력 ──
+ *   2.13.1 (2026-08-31) 새 숏코드 [xinchao_house] 를 「도구 → 씬짜오 숏코드」 목록에 등록.
  *   2.13.0 (2026-08-31) 뉴스 터미널에 자체 광고 3종을 **확실히** 배치.
  *                      앱 설치(위) · 데일리뉴스 구독(주요뉴스 뒤) · 교민 생활정보(아래).
  *                      기존 자체 홍보는 '팔린 광고가 없을 때만' 뜨는 폴백이라
@@ -5183,6 +5184,17 @@ function jenny_shortcode_catalog()
             'name' => '쇼핑 캐러셀',
             'desc' => '제휴 상품을 옆으로 넘기는 띠로 보여 준다.',
             'where'=> '제휴 수익을 노리는 자리에.',
+        ),
+        array(
+            'code' => '[xinchao_house id="house_app"]',
+            'tag'  => 'xinchao_house',
+            'name' => '자체 광고 띠 — 앱 설치',
+            'desc' => '씬짜오 앱 설치를 권하는 주황색 가로 띠. <b>팔린 광고가 있어도 항상 나온다.</b>',
+            'where'=> 'id 를 바꿔 셋 중 하나를 고른다: <code>house_app</code>(앱 설치) · '
+                    . '<code>house_magazine</code>(교민 생활정보) · <code>house_contact</code>(광고 문의). '
+                    . '폭을 줄이려면 <code>max="480"</code>. '
+                    . '⚠️ <b>[xinchao_ad] 의 자체 홍보와 다르다</b> — 그쪽은 '
+                    . '“팔린 광고가 없을 때만” 뜨는 대타이고(페이지당 2칸 제한), 이것은 지정해서 항상 그린다.',
         ),
         array(
             'code' => '[company_directory]',
