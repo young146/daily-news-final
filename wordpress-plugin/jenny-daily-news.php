@@ -2,10 +2,15 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 2.12.0
+ * Version: 2.13.0
  * Author: Jenny (Antigravity)
  *
  * ── 변경 이력 ──
+ *   2.13.0 (2026-08-31) 뉴스 터미널에 자체 광고 3종을 **확실히** 배치.
+ *                      앱 설치(위) · 데일리뉴스 구독(주요뉴스 뒤) · 교민 생활정보(아래).
+ *                      기존 자체 홍보는 '팔린 광고가 없을 때만' 뜨는 폴백이라
+ *                      우리 것 3개가 다 보인다는 보장이 없었다 → 지정 배너를 직접 그린다
+ *                      (`xinchao_house_banner()`, unified-ads v4.6.3).
  *   2.12.0 (2026-08-31) 홈 화면 섹션 제목 옆에 「전체 보기 »」 버튼.
  *                      섹션 제목(데일리 뉴스·블로그 등)을 클릭하면 카테고리로 가지만
  *                      클릭이 된다는 표시가 없어 아무도 모른다(사장님 지적). 테마의
@@ -1438,6 +1443,16 @@ function jenny_daily_news_shortcode($atts)
         $output .= '</div>';
     }
 
+    // 자체 광고 ① 앱 설치 — 화면 위쪽. (2026-08-31 사장님 지시:
+    // "뉴스 터미널에는 우리 것 3개(앱 설치·데일리뉴스 구독·교민 생활정보)가 다 들어가야 한다")
+    //
+    // ⚠️ xinchao_render_ad 의 자체 홍보는 **폴백**이라 팔린 광고가 있으면 안 나오고
+    //    한 페이지 2칸 제한도 있다. 그래서 여기서는 지정 배너를 직접 그린다.
+    //    셋을 화면 위·중간·아래로 흩어 놓는다 — 한 자리에 몰면 도배로 보인다.
+    if (function_exists('xinchao_house_banner')) {
+        $output .= xinchao_house_banner('house_app', 728);
+    }
+
     // 쇼핑 캐러셀 — 알리 상품 + (한국 접속자만) 쿠팡. (2026-08-22 추가)
     // 왜 여기서 직접 부르나: 뉴스 터미널 화면은 이 플러그인이 통째로 만든다.
     //   페이지 본문에 숏코드를 넣을 자리가 없으므로 여기서 렌더해 붙인다.
@@ -1749,6 +1764,11 @@ function jenny_daily_news_shortcode($atts)
             $output .= xinchao_render_ad('news-terminal', 'section', 0, 728, false);
             $output .= '</div>';
         }
+
+        // 자체 광고 ② 데일리뉴스 구독 — 주요 뉴스를 훑은 직후.
+        // 뉴스를 보러 온 사람에게 "이걸 매일 아침 메일로" 가 가장 자연스러운 자리다.
+        // (기사 본문 끝·홈·사이드바와 같은 띠. 페이지당 한 번만 그려진다 — $drawn 참고)
+        $output .= jenny_subscribe_box();
     }
 
     // --- 2. Render Sections ---
@@ -1807,6 +1827,11 @@ function jenny_daily_news_shortcode($atts)
     }
 
     wp_reset_postdata();
+
+    // 자체 광고 ③ 교민 생활정보(vnkorlife) — 뉴스를 다 본 뒤 "다음에 갈 곳".
+    if (function_exists('xinchao_house_banner')) {
+        $output .= xinchao_house_banner('house_magazine', 728);
+    }
 
     // 페이지 끝 1칸 — 통합 광고센터 표준 슬롯 (§8-2)
     if (function_exists('xinchao_render_ad')) {

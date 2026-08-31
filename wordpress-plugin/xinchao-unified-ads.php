@@ -2,7 +2,7 @@
 /**
  * Plugin Name: XinChao 통합 광고 (Unified Ads)
  * Description: 통합 광고센터(ads_unified)의 chaovietnam 지면 광고를 공개 API로 불러와 표시한다. 기사 본문에 위치별 자동 삽입 — 상단(1) + 중간(2) + 하단(1). 사이드바는 [xinchao_ad slot="sidebar"] 숏코드. Advanced Ads/Ad Inserter 불필요. 직원은 통합센터에서 등록만 하면 되고, 위치는 우선순위로 자동 결정.
- * Version: 4.6.2
+ * Version: 4.6.3
  * Author: XinChao
  *
  * ── 변경 이력 ──
@@ -105,6 +105,50 @@ function xinchao_house_creatives() {
 
 // 한 페이지에서 자체 홍보를 최대 몇 칸까지 그릴지. 20칸이 전부 우리 배너면 도배로 보인다.
 define('XINCHAO_HOUSE_MAX', 2);
+
+/**
+ * 자체 홍보 배너 **하나를 지정해서** 그린다 (2026-08-31).
+ *
+ * xinchao_render_ad() 의 자체 홍보는 **폴백**이다 — 팔린 광고가 있으면 안 나오고,
+ * 한 페이지 2칸 제한도 걸린다. 뉴스 터미널처럼 "우리 것 3개는 반드시 보여야 하는"
+ * 자리에는 그 방식이 맞지 않아, 서버에서 곧바로 그리는 길을 따로 둔다.
+ *
+ * 생김새는 폴백 배너(위 makeHouse)와 **같게** 맞춘다 — 독자 눈에 다른 물건이
+ * 하나 더 생기는 것보다 익숙한 모양이 낫다.
+ *
+ * @param string $id  house_app | house_magazine | house_contact
+ * @param int    $max 최대 폭(px)
+ */
+function xinchao_house_banner($id, $max = 728) {
+    $found = null;
+    foreach (xinchao_house_creatives() as $h) {
+        if ($h['id'] === $id) { $found = $h; break; }
+    }
+    if (!$found) return '';
+
+    return '<div style="max-width:' . (int) $max . 'px;margin:14px auto;">'
+        . '<a href="' . esc_url($found['url']) . '" target="_blank" rel="noopener" '
+        . 'aria-label="' . esc_attr($found['title']) . '" '
+        . 'data-xc-house="' . esc_attr($found['id']) . '" '
+        . 'style="display:flex;align-items:center;justify-content:space-between;gap:12px;'
+        . 'padding:14px 16px;border-radius:10px;text-decoration:none;text-align:left;'
+        . 'background:linear-gradient(135deg,' . esc_attr($found['c1']) . ','
+        . esc_attr($found['c2']) . ');color:#fff;">'
+        . '<div style="min-width:0;">'
+        . '<div style="font-size:15px;font-weight:800;line-height:1.3;">'
+        . esc_html($found['title']) . '</div>'
+        . '<div style="font-size:12px;opacity:.9;margin-top:2px;line-height:1.35;">'
+        . esc_html($found['sub']) . '</div></div>'
+        . '<span style="flex:0 0 auto;background:rgba(255,255,255,.22);border-radius:999px;'
+        . 'padding:7px 14px;font-size:12px;font-weight:800;white-space:nowrap;">'
+        . esc_html($found['cta']) . '</span></a></div>';
+}
+
+/** 숏코드 — 원하는 자리에 직접. `[xinchao_house id="house_app"]` */
+add_shortcode('xinchao_house', function ($atts) {
+    $a = shortcode_atts(array('id' => 'house_app', 'max' => '728'), $atts, 'xinchao_house');
+    return xinchao_house_banner($a['id'], intval($a['max']));
+});
 
 /**
  * 광고 슬롯 HTML(컨테이너 + 로드 스크립트).
