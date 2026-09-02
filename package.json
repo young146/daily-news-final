@@ -14,7 +14,8 @@
     "retry-failed": "node scripts/retry-failed-translations.js",
     "backfill-seo": "node scripts/backfill-seo-meta.js",
     "backfill-affiliate": "node scripts/backfill-affiliate-block.js",
-    "newsletter:ctr": "node scripts/newsletter-ctr.mjs"
+    "newsletter:ctr": "node scripts/newsletter-ctr.mjs",
+    "deploy:plugin": "node scripts/deploy-wp-plugin.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",
