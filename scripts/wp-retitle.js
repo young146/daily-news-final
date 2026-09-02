@@ -34,7 +34,8 @@ const args = process.argv.slice(2);
 const has = (f) => args.includes(f);
 const val = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null; };
 
-const PROPOSALS = path.join(__dirname, 'retitle-proposals.json');
+// 묶음(batch)별로 파일을 나눠 쓴다: --file retitle-proposals-2.json
+const PROPOSALS = path.resolve(__dirname, val('--file') || 'retitle-proposals.json');
 const TMPDIR = path.join(__dirname, '..', '.tmp');
 
 const dec = (s) => String(s).replace(/&#8217;|&#8216;/g, "'").replace(/&#8211;|&#8212;/g, '-')

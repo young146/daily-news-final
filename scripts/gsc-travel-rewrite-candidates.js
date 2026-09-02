@@ -131,10 +131,12 @@ async function fetchCategory(id) {
     }))
     .sort((a, b) => b.missed - a.missed);
 
+  const TOP = pick('--top', 30);
+  const SKIP = pick('--skip', 0);
   console.log(`\n${'='.repeat(100)}`);
-  console.log(`★ 제목만 고쳐도 이득인 글 (노출 ${MIN_IMP}+ · 놓친 클릭 순) — 상위 30`);
+  console.log(`★ 제목만 고쳐도 이득인 글 (노출 ${MIN_IMP}+ · 놓친 클릭 순) — ${SKIP + 1}~${SKIP + TOP}위`);
   console.log('='.repeat(100));
-  for (const c of cands.slice(0, 30)) {
+  for (const c of cands.slice(SKIP, SKIP + TOP)) {
     console.log(`\n[${c.id}] ${c.title.slice(0, 62)}`);
     console.log(`   노출 ${String(Math.round(c.imp)).padStart(6)} · 클릭 ${String(Math.round(c.clicks)).padStart(4)}` +
       ` · CTR ${(c.ctr * 100).toFixed(2).padStart(5)}% · ${c.pos.toFixed(1).padStart(5)}위` +
