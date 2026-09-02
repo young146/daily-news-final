@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Xinchao FX Calculator
  * Description: 베트남 동(VND) 환율 계산기 — [fx_calculator] shortcode. 원·달러·엔 ↔ 동 실시간 환산 + 지폐 단위 환산표 + 암산 요령. 환율은 서버에서 1시간 캐시(transient)하므로 HTML 에 실제 숫자가 박혀 검색 노출에 유리하다.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Xinchao News
  * Text Domain: xinchao-fx
  *
@@ -27,13 +27,21 @@
  *
  * 환율 출처: open.er-api.com (무료·키 불필요). lib/external-data.js 와 같은 소스라
  *           사이트·앱·뉴스가 같은 값을 쓴다.
+ *
+ * v1.1.0 (2026-09-02) — 화면 개편. 사장님 지적: "너무 건조하다".
+ *   · 씬짜오 브랜드 색 적용 — 로고에서 뽑은 오렌지 #FF6F02 / 짙은 적갈 #9C220A
+ *   · 로고 + 「씬짜오 베트남 환율계산기」 머리말
+ *   · 보낼 금액=흰 카드(입력) / 받을 금액=오렌지 카드(결과) 로 배경을 갈라
+ *     어느 쪽이 결과인지 눈으로 구분되게 함
+ *   로고는 서버에 이미 있는 파일을 쓴다(중복 업로드 안 함):
+ *   wp-content/uploads/2025/06/xinchao-logo.png
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-define('XCFX_VERSION', '1.0.0');
+define('XCFX_VERSION', '1.1.0');
 define('XCFX_TRANSIENT', 'xcfx_rates_v1');
 define('XCFX_TTL', HOUR_IN_SECONDS);
 
@@ -109,12 +117,32 @@ function xcfx_shortcode($atts) {
          data-jpyvnd="<?php echo esc_attr($r['jpyVnd']); ?>"
          data-usdkrw="<?php echo esc_attr($r['usdKrw']); ?>">
 
-        <!-- 오늘의 환율 요약: 검색 결과 스니펫에 잡히도록 텍스트로 박아둔다 -->
+        <!-- 머리말: 로고 + 제목 -->
+        <div class="xcfx-brand">
+            <img class="xcfx-logo" width="46" height="46" loading="lazy"
+                 src="https://chaovietnam.co.kr/wp-content/uploads/2025/06/xinchao-logo.png"
+                 alt="씬짜오베트남">
+            <div class="xcfx-brand-txt">
+                <h2 class="xcfx-title">씬짜오 베트남 환율계산기</h2>
+                <p class="xcfx-sub">원 · 달러 · 엔 ↔ 베트남 동(VND) 실시간 환산</p>
+            </div>
+        </div>
+
+        <!-- 오늘의 환율: 검색 스니펫에 잡히도록 텍스트로 박아둔다 -->
         <div class="xcfx-head">
-            <div class="xcfx-lead">
-                <strong>1,000동</strong> = 약 <strong><?php echo esc_html(xcfx_fmt($krw_per_vnd * 1000, 1)); ?>원</strong>
-                &nbsp;·&nbsp;
-                <strong>1달러</strong> = <strong><?php echo esc_html(xcfx_fmt($r['usdVnd'])); ?>동</strong>
+            <div class="xcfx-rates">
+                <div class="xcfx-rate-item">
+                    <span class="k">1,000동</span>
+                    <span class="v"><?php echo esc_html(xcfx_fmt($krw_per_vnd * 1000, 1)); ?><i>원</i></span>
+                </div>
+                <div class="xcfx-rate-item">
+                    <span class="k">1,000원</span>
+                    <span class="v"><?php echo esc_html(xcfx_fmt($r['krwVnd'] * 1000)); ?><i>동</i></span>
+                </div>
+                <div class="xcfx-rate-item">
+                    <span class="k">1달러</span>
+                    <span class="v"><?php echo esc_html(xcfx_fmt($r['usdVnd'])); ?><i>동</i></span>
+                </div>
             </div>
             <div class="xcfx-updated">
                 <?php echo esc_html($updated_kst); ?> 기준
@@ -124,32 +152,32 @@ function xcfx_shortcode($atts) {
             </div>
         </div>
 
-        <!-- 계산기 -->
+        <!-- 계산기: 보낼=흰 카드(입력) / 받을=오렌지 카드(결과) -->
         <div class="xcfx-calc">
-            <div class="xcfx-field">
-                <label for="xcfx-a">보낼 금액</label>
+            <div class="xcfx-field xcfx-from">
+                <label for="xcfx-a"><span class="xcfx-dot"></span>보낼 금액</label>
                 <div class="xcfx-input">
                     <input type="text" id="xcfx-a" inputmode="decimal" value="10,000" autocomplete="off">
                     <select id="xcfx-ca" aria-label="원래 통화">
-                        <option value="KRW" selected>원 (KRW)</option>
-                        <option value="VND">동 (VND)</option>
-                        <option value="USD">달러 (USD)</option>
-                        <option value="JPY">엔 (JPY)</option>
+                        <option value="KRW" selected>원 KRW</option>
+                        <option value="VND">동 VND</option>
+                        <option value="USD">달러 USD</option>
+                        <option value="JPY">엔 JPY</option>
                     </select>
                 </div>
             </div>
 
             <button type="button" class="xcfx-swap" id="xcfx-swap" aria-label="통화 바꾸기">⇅</button>
 
-            <div class="xcfx-field">
-                <label for="xcfx-b">받을 금액</label>
+            <div class="xcfx-field xcfx-to">
+                <label for="xcfx-b"><span class="xcfx-dot"></span>받을 금액</label>
                 <div class="xcfx-input">
                     <input type="text" id="xcfx-b" inputmode="decimal" value="" autocomplete="off">
                     <select id="xcfx-cb" aria-label="바꿀 통화">
-                        <option value="KRW">원 (KRW)</option>
-                        <option value="VND" selected>동 (VND)</option>
-                        <option value="USD">달러 (USD)</option>
-                        <option value="JPY">엔 (JPY)</option>
+                        <option value="KRW">원 KRW</option>
+                        <option value="VND" selected>동 VND</option>
+                        <option value="USD">달러 USD</option>
+                        <option value="JPY">엔 JPY</option>
                     </select>
                 </div>
             </div>
@@ -164,8 +192,8 @@ function xcfx_shortcode($atts) {
                 <tbody>
                 <?php foreach ($notes as $v) : ?>
                     <tr>
-                        <td class="xcfx-vnd"><?php echo esc_html(xcfx_fmt($v)); ?>đ</td>
-                        <td><?php echo esc_html(xcfx_fmt($krw_per_vnd * $v, $v < 10000 ? 1 : 0)); ?>원</td>
+                        <td class="xcfx-vnd"><?php echo esc_html(xcfx_fmt($v)); ?><i>đ</i></td>
+                        <td><?php echo esc_html(xcfx_fmt($krw_per_vnd * $v, $v < 10000 ? 1 : 0)); ?><i>원</i></td>
                         <td>$<?php echo esc_html(xcfx_fmt($v / $r['usdVnd'], 2)); ?></td>
                     </tr>
                 <?php endforeach; ?>
@@ -175,17 +203,25 @@ function xcfx_shortcode($atts) {
 
         <!-- 암산 요령 — 현지에 사는 사람만 쓸 수 있는 실전 정보 -->
         <h3 class="xcfx-h3">계산기 없이 암산하는 법</h3>
-        <div class="xcfx-tip">
-            <p><strong>동 → 원 : 0을 하나 지우고 반으로 나눈다.</strong><br>
-                예를 들어 <b>100,000동</b>이면 0을 하나 지워 10,000, 반으로 나누면 <b>5,000원</b>.
-                실제로는 <?php echo esc_html(xcfx_fmt($krw_per_vnd * 100000)); ?>원이니
-                시장에서 값을 가늠하기엔 충분합니다.</p>
-            <p><strong>원 → 동 : 2를 곱하고 0을 하나 붙인다.</strong><br>
-                <b>3만원</b>이면 6만에 0 하나 붙여 <b>60만동</b>.
-                (실제 <?php echo esc_html(xcfx_fmt(30000 / $krw_per_vnd)); ?>동)</p>
-            <p class="xcfx-warn"><strong>주의 — 0의 개수를 세십시오.</strong>
-                베트남 지폐는 20,000동(파란색)과 500,000동(하늘색)이 색이 비슷해
-                한국 사람이 가장 많이 실수하는 조합입니다. 계산 전에 0이 몇 개인지부터 보세요.</p>
+        <div class="xcfx-tips">
+            <div class="xcfx-tip">
+                <div class="xcfx-tip-h">동 → 원</div>
+                <p><b>0을 하나 지우고 반으로 나눈다.</b><br>
+                   <b>100,000동</b> → 0 하나 지워 10,000 → 반으로 나누면 <b>5,000원</b>.
+                   실제로는 <?php echo esc_html(xcfx_fmt($krw_per_vnd * 100000)); ?>원이니
+                   시장에서 값을 가늠하기엔 충분합니다.</p>
+            </div>
+            <div class="xcfx-tip">
+                <div class="xcfx-tip-h">원 → 동</div>
+                <p><b>2를 곱하고 0을 하나 붙인다.</b><br>
+                   <b>3만원</b> → 6만 → 0 하나 붙여 <b>60만동</b>.
+                   (실제 <?php echo esc_html(xcfx_fmt(30000 / $krw_per_vnd)); ?>동)</p>
+            </div>
+        </div>
+        <div class="xcfx-warn">
+            <strong>0의 개수를 세십시오.</strong>
+            베트남 지폐는 <b>20,000동</b>(파란색)과 <b>500,000동</b>(하늘색)이 색이 비슷해
+            한국 사람이 가장 많이 실수하는 조합입니다. 계산 전에 0이 몇 개인지부터 보세요.
         </div>
 
         <p class="xcfx-foot">
@@ -195,50 +231,116 @@ function xcfx_shortcode($atts) {
     </div>
 
     <style>
-    .xcfx{--fx-line:#e2e5e9;--fx-ink:#1a1f26;--fx-ink2:#5b6572;--fx-accent:#0d6b58;
-        --fx-bg:#f6f8f7;max-width:720px;margin:0 auto;color:var(--fx-ink);
-        font-size:16px;line-height:1.7}
-    .xcfx *{box-sizing:border-box}
-    .xcfx-head{border:1px solid var(--fx-line);border-left:4px solid var(--fx-accent);
-        border-radius:0 6px 6px 0;padding:16px 18px;background:var(--fx-bg);margin-bottom:20px}
-    .xcfx-lead{font-size:18px;line-height:1.6}
-    .xcfx-lead strong{color:var(--fx-accent)}
-    .xcfx-updated{font-size:13px;color:var(--fx-ink2);margin-top:4px}
-    .xcfx-stale{color:#a6382a}
-    .xcfx-calc{display:flex;flex-direction:column;gap:8px;align-items:stretch}
-    .xcfx-field label{display:block;font-size:13px;color:var(--fx-ink2);margin-bottom:5px}
-    .xcfx-input{display:flex;gap:8px}
-    .xcfx-input input{flex:1;min-width:0;font-size:22px;font-weight:600;padding:12px 14px;
-        border:1px solid var(--fx-line);border-radius:6px;background:#fff;color:var(--fx-ink);
-        text-align:right;font-variant-numeric:tabular-nums;width:100%}
-    .xcfx-input input:focus{outline:2px solid var(--fx-accent);outline-offset:1px}
-    .xcfx-input select{font-size:15px;padding:0 10px;border:1px solid var(--fx-line);
-        border-radius:6px;background:#fff;color:var(--fx-ink);min-width:118px}
-    .xcfx-swap{align-self:center;width:38px;height:38px;border-radius:50%;
-        border:1px solid var(--fx-line);background:#fff;color:var(--fx-accent);
-        font-size:17px;cursor:pointer;line-height:1;margin:2px 0}
-    .xcfx-swap:hover{background:var(--fx-bg)}
-    .xcfx-rate-line{font-size:14px;color:var(--fx-ink2);text-align:center;margin:12px 0 4px}
-    .xcfx-h3{font-size:19px;margin:34px 0 12px;padding-bottom:8px;
-        border-bottom:1px solid var(--fx-line)}
-    .xcfx-tbl-wrap{overflow-x:auto}
-    .xcfx-tbl{width:100%;border-collapse:collapse;font-size:15px}
-    .xcfx-tbl th{text-align:right;font-size:13px;color:var(--fx-ink2);font-weight:500;
-        padding:9px 12px;border-bottom:1px solid var(--fx-line);background:var(--fx-bg)}
-    .xcfx-tbl th:first-child{text-align:left}
-    .xcfx-tbl td{text-align:right;padding:9px 12px;border-bottom:1px solid var(--fx-line);
-        font-variant-numeric:tabular-nums}
-    .xcfx-tbl td.xcfx-vnd{text-align:left;font-weight:600}
-    .xcfx-tbl tr:last-child td{border-bottom:none}
-    .xcfx-tip p{margin:0 0 14px}
-    .xcfx-tip b{color:var(--fx-accent)}
-    .xcfx-warn{background:var(--fx-bg);border-radius:6px;padding:13px 15px;font-size:15px}
-    .xcfx-foot{font-size:13px;color:var(--fx-ink2);margin-top:26px;padding-top:14px;
-        border-top:1px solid var(--fx-line)}
-    @media(max-width:560px){
-        .xcfx-input input{font-size:19px}
-        .xcfx-input select{min-width:100px;font-size:14px}
+    /* 씬짜오 브랜드 색 — 로고에서 뽑음 (오렌지 #FF6F02 / 짙은 적갈 #9C220A / 흰색) */
+    .xcfx{
+        --fx-brand:#FF6F02; --fx-brand-dk:#E05F00; --fx-deep:#9C220A;
+        --fx-tint:#FFF3E8; --fx-tint-line:#FFD3AC;
+        --fx-ink:#241A14; --fx-ink2:#6E5D53; --fx-ink3:#9C8B80;
+        --fx-surface:#FFFFFF; --fx-ground:#FCF8F5; --fx-line:#EDE2DA;
+        max-width:760px;margin:0 auto;color:var(--fx-ink);
+        font-size:16px;line-height:1.7;text-align:left;
     }
+    .xcfx *{box-sizing:border-box}
+    .xcfx i{font-style:normal}
+
+    /* 머리말 */
+    .xcfx-brand{display:flex;align-items:center;gap:14px;
+        padding-bottom:16px;border-bottom:3px solid var(--fx-brand);margin-bottom:22px}
+    .xcfx-logo{width:46px;height:46px;border-radius:9px;flex:none;display:block}
+    .xcfx-brand-txt{min-width:0}
+    .xcfx-title{margin:0;font-size:23px;font-weight:800;line-height:1.25;
+        letter-spacing:-.02em;color:var(--fx-ink)}
+    .xcfx-sub{margin:3px 0 0;font-size:13.5px;color:var(--fx-ink2)}
+
+    /* 오늘의 환율 배너 */
+    .xcfx-head{background:linear-gradient(135deg,var(--fx-brand) 0%,var(--fx-brand-dk) 62%,var(--fx-deep) 100%);
+        border-radius:12px;padding:18px 20px 14px;margin-bottom:22px;color:#fff}
+    .xcfx-rates{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .xcfx-rate-item{display:flex;flex-direction:column;gap:2px;min-width:0;
+        padding-left:13px;border-left:1px solid rgba(255,255,255,.34)}
+    .xcfx-rate-item:first-child{padding-left:0;border-left:0}
+    .xcfx-rate-item .k{font-size:12.5px;color:rgba(255,255,255,.88);white-space:nowrap}
+    .xcfx-rate-item .v{font-size:21px;font-weight:700;line-height:1.15;
+        letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .xcfx-rate-item .v i{font-size:13px;font-weight:500;margin-left:2px;opacity:.9}
+    .xcfx-updated{margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.26);
+        font-size:12px;color:rgba(255,255,255,.9)}
+    .xcfx-stale{color:#FFE0D6;font-weight:600}
+
+    /* 계산기 */
+    .xcfx-calc{display:flex;flex-direction:column;align-items:stretch;gap:0}
+    .xcfx-field{border-radius:12px;padding:14px 16px 16px;border:1px solid var(--fx-line)}
+    .xcfx-from{background:var(--fx-surface)}
+    .xcfx-to{background:var(--fx-tint);border-color:var(--fx-tint-line)}
+    .xcfx-field label{display:flex;align-items:center;gap:7px;
+        font-size:13px;font-weight:600;color:var(--fx-ink2);margin-bottom:8px}
+    .xcfx-dot{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block}
+    .xcfx-from .xcfx-dot{background:var(--fx-ink3)}
+    .xcfx-to .xcfx-dot{background:var(--fx-brand)}
+    .xcfx-to label{color:var(--fx-deep)}
+    .xcfx-input{display:flex;gap:9px}
+    .xcfx-input input{flex:1;min-width:0;width:100%;font-size:24px;font-weight:700;
+        padding:11px 14px;border:1px solid var(--fx-line);border-radius:9px;
+        background:#fff;color:var(--fx-ink);text-align:right;
+        font-variant-numeric:tabular-nums;line-height:1.3;-webkit-appearance:none}
+    .xcfx-to .xcfx-input input{border-color:var(--fx-tint-line);color:var(--fx-deep)}
+    .xcfx-input input:focus{outline:2px solid var(--fx-brand);outline-offset:1px;border-color:transparent}
+    .xcfx-input select{font-size:14.5px;font-weight:600;padding:0 10px;
+        border:1px solid var(--fx-line);border-radius:9px;background:#fff;
+        color:var(--fx-ink);min-width:112px;-webkit-appearance:menulist}
+    .xcfx-input select:focus{outline:2px solid var(--fx-brand);outline-offset:1px}
+    .xcfx-swap{align-self:center;width:42px;height:42px;border-radius:50%;
+        border:2px solid #fff;background:var(--fx-brand);color:#fff;
+        font-size:19px;line-height:1;cursor:pointer;margin:-9px 0;z-index:2;position:relative;
+        box-shadow:0 2px 8px rgba(255,111,2,.34)}
+    .xcfx-swap:hover{background:var(--fx-brand-dk)}
+    .xcfx-swap:focus-visible{outline:2px solid var(--fx-deep);outline-offset:2px}
+    .xcfx-rate-line{font-size:14px;color:var(--fx-ink2);text-align:center;
+        margin:14px 0 0;font-variant-numeric:tabular-nums}
+
+    /* 소제목 */
+    .xcfx-h3{font-size:19px;font-weight:700;margin:34px 0 14px;padding-left:12px;
+        border-left:4px solid var(--fx-brand);line-height:1.35;color:var(--fx-ink)}
+
+    /* 지폐 환산표 */
+    .xcfx-tbl-wrap{overflow-x:auto;border:1px solid var(--fx-line);border-radius:11px}
+    .xcfx-tbl{width:100%;border-collapse:collapse;font-size:15px;background:#fff}
+    .xcfx-tbl th{text-align:right;font-size:12.5px;font-weight:600;padding:11px 14px;
+        background:var(--fx-brand);color:#fff;white-space:nowrap}
+    .xcfx-tbl th:first-child{text-align:left}
+    .xcfx-tbl td{text-align:right;padding:10px 14px;border-top:1px solid var(--fx-line);
+        font-variant-numeric:tabular-nums;white-space:nowrap}
+    .xcfx-tbl tbody tr:nth-child(even){background:var(--fx-ground)}
+    .xcfx-tbl td.xcfx-vnd{text-align:left;font-weight:700;color:var(--fx-deep)}
+    .xcfx-tbl td i{color:var(--fx-ink3);font-size:12.5px;margin-left:2px}
+
+    /* 암산 요령 */
+    .xcfx-tips{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .xcfx-tip{background:var(--fx-ground);border:1px solid var(--fx-line);
+        border-radius:11px;padding:16px 18px}
+    .xcfx-tip-h{display:inline-block;font-size:12.5px;font-weight:700;color:#fff;
+        background:var(--fx-brand);border-radius:20px;padding:3px 12px;margin-bottom:9px}
+    .xcfx-tip p{margin:0;font-size:14.5px;line-height:1.75}
+    .xcfx-tip b{color:var(--fx-deep)}
+    .xcfx-warn{margin-top:14px;background:var(--fx-tint);border:1px solid var(--fx-tint-line);
+        border-left:4px solid var(--fx-brand);border-radius:0 11px 11px 0;
+        padding:14px 18px;font-size:14.5px;line-height:1.75}
+    .xcfx-warn strong{color:var(--fx-deep)}
+    .xcfx-warn b{color:var(--fx-deep)}
+
+    .xcfx-foot{font-size:13px;color:var(--fx-ink3);margin:26px 0 0;padding-top:14px;
+        border-top:1px solid var(--fx-line);line-height:1.7}
+
+    @media(max-width:600px){
+        .xcfx-title{font-size:20px}
+        .xcfx-rates{grid-template-columns:1fr 1fr;gap:12px 10px}
+        .xcfx-rate-item:nth-child(3){padding-left:0;border-left:0}
+        .xcfx-rate-item .v{font-size:19px}
+        .xcfx-input input{font-size:20px}
+        .xcfx-input select{min-width:96px;font-size:13.5px}
+        .xcfx-tips{grid-template-columns:1fr}
+    }
+    @media (prefers-reduced-motion:reduce){.xcfx *{transition:none!important}}
     </style>
 
     <script>
