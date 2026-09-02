@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Xinchao FX Calculator
  * Description: 베트남 동(VND) 환율 계산기 — [fx_calculator] shortcode. 원·달러·엔 ↔ 동 실시간 환산 + 지폐 단위 환산표 + 암산 요령. 환율은 서버에서 1시간 캐시(transient)하므로 HTML 에 실제 숫자가 박혀 검색 노출에 유리하다.
- * Version: 1.1.0
+ * Version: 1.1.1
  * Author: Xinchao News
  * Text Domain: xinchao-fx
  *
@@ -35,13 +35,18 @@
  *     어느 쪽이 결과인지 눈으로 구분되게 함
  *   로고는 서버에 이미 있는 파일을 쓴다(중복 업로드 안 함):
  *   wp-content/uploads/2025/06/xinchao-logo.png
+ *
+ * v1.1.1 (2026-09-02) — 사장님 지적 2건
+ *   · "보낼 금액/받을 금액" 은 송금처럼 읽힌다 → 「금액 입력」/「환산 결과」
+ *   · 10,000 이 값으로 박혀 진했다 → placeholder 로 옮기고 흐리게(opacity .5).
+ *     입력이 비면 반대쪽도 비우도록 JS 보강 — 안 그러면 '0' 이 남는다.
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-define('XCFX_VERSION', '1.1.0');
+define('XCFX_VERSION', '1.1.1');
 define('XCFX_TRANSIENT', 'xcfx_rates_v1');
 define('XCFX_TTL', HOUR_IN_SECONDS);
 
@@ -152,12 +157,13 @@ function xcfx_shortcode($atts) {
             </div>
         </div>
 
-        <!-- 계산기: 보낼=흰 카드(입력) / 받을=오렌지 카드(결과) -->
+        <!-- 계산기: 입력=흰 카드 / 결과=오렌지 카드 -->
         <div class="xcfx-calc">
             <div class="xcfx-field xcfx-from">
-                <label for="xcfx-a"><span class="xcfx-dot"></span>보낼 금액</label>
+                <label for="xcfx-a"><span class="xcfx-dot"></span>금액 입력</label>
                 <div class="xcfx-input">
-                    <input type="text" id="xcfx-a" inputmode="decimal" value="10,000" autocomplete="off">
+                    <input type="text" id="xcfx-a" inputmode="decimal" value=""
+                           placeholder="10,000" autocomplete="off">
                     <select id="xcfx-ca" aria-label="원래 통화">
                         <option value="KRW" selected>원 KRW</option>
                         <option value="VND">동 VND</option>
@@ -170,9 +176,10 @@ function xcfx_shortcode($atts) {
             <button type="button" class="xcfx-swap" id="xcfx-swap" aria-label="통화 바꾸기">⇅</button>
 
             <div class="xcfx-field xcfx-to">
-                <label for="xcfx-b"><span class="xcfx-dot"></span>받을 금액</label>
+                <label for="xcfx-b"><span class="xcfx-dot"></span>환산 결과</label>
                 <div class="xcfx-input">
-                    <input type="text" id="xcfx-b" inputmode="decimal" value="" autocomplete="off">
+                    <input type="text" id="xcfx-b" inputmode="decimal" value=""
+                           placeholder="자동 계산" autocomplete="off">
                     <select id="xcfx-cb" aria-label="바꿀 통화">
                         <option value="KRW">원 KRW</option>
                         <option value="VND" selected>동 VND</option>
@@ -284,7 +291,11 @@ function xcfx_shortcode($atts) {
         background:#fff;color:var(--fx-ink);text-align:right;
         font-variant-numeric:tabular-nums;line-height:1.3;-webkit-appearance:none}
     .xcfx-to .xcfx-input input{border-color:var(--fx-tint-line);color:var(--fx-deep)}
+    /* placeholder 는 눈에 띄게 흐려야 "예시"로 읽힌다 — 값과 같은 농도면 지울 생각을 안 한다 */
+    .xcfx-input input::placeholder{color:var(--fx-ink3);opacity:.5;font-weight:400}
+    .xcfx-to .xcfx-input input::placeholder{color:#C89A76;opacity:.75;font-weight:400}
     .xcfx-input input:focus{outline:2px solid var(--fx-brand);outline-offset:1px;border-color:transparent}
+    .xcfx-input input:focus::placeholder{opacity:.3}
     .xcfx-input select{font-size:14.5px;font-weight:600;padding:0 10px;
         border:1px solid var(--fx-line);border-radius:9px;background:#fff;
         color:var(--fx-ink);min-width:112px;-webkit-appearance:menulist}
@@ -386,13 +397,14 @@ function xcfx_shortcode($atts) {
                 one.toLocaleString('ko-KR',
                     { minimumFractionDigits: d, maximumFractionDigits: d }) + NAME[cb.value];
         }
-        // side: 어느 칸을 사람이 쳤는가 → 반대쪽을 계산한다
+        // side: 어느 칸을 사람이 쳤는가 → 반대쪽을 계산한다.
+        // 입력이 비면 반대쪽도 비운다 — 안 그러면 '0' 이 남아 placeholder 가 안 보인다.
         function sync(side) {
-            if (side === 'a') {
-                b.value = fmt(convert(parseNum(a.value), ca.value, cb.value), cb.value);
-            } else {
-                a.value = fmt(convert(parseNum(b.value), cb.value, ca.value), ca.value);
-            }
+            var src = side === 'a' ? a : b, dst = side === 'a' ? b : a;
+            var from = side === 'a' ? ca.value : cb.value;
+            var to = side === 'a' ? cb.value : ca.value;
+            if (!String(src.value).trim()) { dst.value = ''; showRate(); return; }
+            dst.value = fmt(convert(parseNum(src.value), from, to), to);
             showRate();
         }
 
