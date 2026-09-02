@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 2.13.2
+ * Version: 2.13.3
  * Author: Jenny (Antigravity)
  *
  * ── 변경 이력 ──
@@ -1508,7 +1508,11 @@ function jenny_daily_news_shortcode($atts)
     $output .= '<div class="jenny-metric"><div class="jenny-fx-chip"><span class="jenny-fx-flag">🇰🇷</span><span class="jenny-fx-label">100 KRW</span><span class="jenny-fx-value">' . esc_html($exchange['krw_100']) . '₫</span></div>' . $krw_graph . '</div>';
     $output .= '</div>'; // close jenny-card-chips
     $output .= '<div class="jenny-card-btns">';
-    $output .= '<a href="https://finance.naver.com/marketindex/" rel="noopener" target="_blank" class="jenny-card-btn" style="background:#059669;">🔍 네이버 환율 검색 →</a>';
+    // 환율을 본 사람이 다음에 원하는 건 '내 돈으로 얼마인가' 다.
+    // 예전엔 여기서 네이버로 내보냈다 — 우리 방문자를 남의 사이트에 넘기는 자리였다.
+    // 2026-09-02 우리 계산기(/exchange-rate/)가 생겨 그 자리를 되찾는다.
+    // 겸해서 그 페이지로 가는 **내부 링크**가 된다 (서치콘솔이 '참조 페이지 없음'이라 했던 문제).
+    $output .= '<a href="' . esc_url(home_url('/exchange-rate/')) . '" class="jenny-card-btn" style="background:#FF6F02;">🧮 환율 계산기 →</a>';
     if (!empty($jenny_aff['wise'])) {
         $output .= '<a href="' . esc_url(home_url('/go/wise')) . '" rel="sponsored nofollow noopener" target="_blank" class="jenny-card-btn" style="background:#163300;color:#9fe870;">' . $brand_icon('wise.com') . ' 이 환율로 송금 →</a>';
     }
