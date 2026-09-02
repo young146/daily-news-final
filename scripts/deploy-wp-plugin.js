@@ -40,6 +40,13 @@ const PASS = process.env.FTP_PASS;
 const BASE = (process.env.FTP_BASE || 'public_html').replace(/\/+$/, '');
 const REMOTE = `${BASE}/wp-content/plugins`;
 
+// SFTP 서버의 RSA 호스트키 지문(SHA256, base64). **공개키라 저장소에 있어도 안전하다.**
+// .env 가 아니라 여기 두는 이유: 서버 고유값이라 PC 마다 다르지 않고, 다른 PC 에서도
+// 그대로 통해야 하기 때문. (.env 는 git 에 안 올라가 다른 PC 에 전달되지 않는다)
+// 원본 키는 scripts/known_hosts 에 함께 보관한다.
+const SFTP_HOSTKEY = process.env.SFTP_HOSTKEY_SHA256 ||
+  '4vWIkuSXXn4DFeWc7DQ8idYr24R/lBQ6jXxzUsAyXjM';
+
 function die(msg) { console.error('\n✖ ' + msg + '\n'); process.exit(1); }
 
 if (!HOST || !USER) die('.env 에 FTP_HOST / FTP_USER 가 없습니다.');
@@ -91,25 +98,51 @@ function remoteTarget(file, srv) {
   return { dir: folder, base: localBase };
 }
 
-/** FTP 경로 각 구간을 인코딩 (폴더명에 공백이 있어도 안전) */
+/** 경로 각 구간을 인코딩 (폴더명에 공백이 있어도 안전) */
 const encPath = (p) => p.split('/').map(encodeURIComponent).join('/');
 
 /**
- * curl 로 한 파일 업로드. 설정을 stdin 으로 넘겨 비밀번호를 명령줄에 노출하지 않는다.
- * @param {boolean} secure FTPS 강제 여부
+ * 한 파일 업로드. 설정을 stdin 으로 넘겨 비밀번호를 명령줄에 노출하지 않는다.
+ *
+ * 프로토콜 우선순위 (2026-09-02 실측으로 정함):
+ *   ① sftp  — **기본.** 포트 65002(호스팅어 SSH). 통째로 암호화되고 서버 신원까지
+ *             known_hosts 로 검증한다. 경로는 절대경로(SFTP_BASE)를 쓴다.
+ *   ② ftps  — IP 로 접속하면 윈도우 schannel 이 "using IP address, SNI is not supported"
+ *             로 인증서 검증에 실패한다. 도메인은 다른 IP(CDN)로 가서 FTP 서버에 안 닿는다.
+ *             → 사실상 못 쓴다. 그래도 환경이 바뀌면 통할 수 있으니 남겨둔다.
+ *   ③ ftp   — **평문. 비밀번호가 그대로 흐른다.** 최후 수단이며 쓰이면 크게 경고한다.
+ *
+ * @param {'sftp'|'ftps'|'ftp'} proto
  */
-function upload(file, target, secure) {
-  const dir = target.dir ? `${REMOTE}/${encPath(target.dir)}` : REMOTE;
+function upload(file, target, proto) {
+  const local = file.replace(/\\/g, '/');
+  const sub = target.dir ? `/${encPath(target.dir)}` : '';
+  const leaf = encodeURIComponent(target.base);
+
+  let url, extra = [];
+  if (proto === 'sftp') {
+    const base = (process.env.SFTP_BASE || '').replace(/\/+$/, '');
+    if (!base) return { status: 1, stderr: '.env 에 SFTP_BASE 가 없습니다' };
+    url = `sftp://${HOST}:${process.env.SFTP_PORT || 65002}` +
+          `${encPath(base)}/wp-content/plugins${sub}/${leaf}`;
+    // 서버 신원 고정. 지문이 다르면 curl 이 접속을 거부한다 → 중간자 공격 차단.
+    // ⚠️ curl 에는 --known-hosts 옵션이 없다(실측). --hostpubsha256 로 직접 고정한다.
+    //    libssh2 가 **RSA** 키로 협상하므로 RSA 지문을 넣는다(ed25519 를 넣으면 mismatch 로 거부됨).
+    //    서버 키가 바뀌면 아래 값을 갱신:
+    //      ssh-keyscan -p 65002 -t rsa <IP> > k && ssh-keygen -lf k
+    extra = [`hostpubsha256 = "${SFTP_HOSTKEY}"`];
+  } else {
+    const dir = target.dir ? `${REMOTE}/${encPath(target.dir)}` : REMOTE;
+    url = `ftp://${HOST}:${PORT}/${encPath(dir)}/${leaf}`;
+    extra = ['ftp-create-dirs', proto === 'ftps' ? 'ssl-reqd' : ''];
+  }
+
   const conf = [
     `user = "${USER}:${PASS}"`,
-    `upload-file = "${file.replace(/\\/g, '/')}"`,
-    `url = "ftp://${HOST}:${PORT}/${encPath(dir)}/${encodeURIComponent(target.base)}"`,
-    'ftp-create-dirs',
-    'silent',
-    'show-error',
-    'connect-timeout = 20',
-    'max-time = 180',
-    secure ? 'ssl-reqd' : '',
+    `upload-file = "${local}"`,
+    `url = "${url}"`,
+    'silent', 'show-error', 'connect-timeout = 20', 'max-time = 180',
+    ...extra,
   ].filter(Boolean).join('\n');
 
   return spawnSync('curl', ['-K', '-'], { input: conf, encoding: 'utf8' });
@@ -185,7 +218,10 @@ async function verify(expected) {
 
 (async () => {
   const files = pickFiles();
-  console.log(`■ 대상 ${files.length}개 → ftp://${HOST}:${PORT}/${REMOTE}/`);
+  const sb = (process.env.SFTP_BASE || '').replace(/\/+$/, '');
+  console.log(`■ 대상 ${files.length}개 → ` + (sb
+    ? `sftp://${HOST}:${process.env.SFTP_PORT || 65002}${sb}/wp-content/plugins/  (암호화·서버키 고정)`
+    : `ftp://${HOST}:${PORT}/${REMOTE}/  ⚠ 평문`));
   const expected = [];
   for (const f of files) {
     const h = readHeader(f);
@@ -207,25 +243,33 @@ async function verify(expected) {
 
   if (DRY) { console.log('\n미리보기였습니다. 실제로 올리려면 --dry 를 빼세요.'); return; }
 
-  let ok = 0, fail = 0, plaintext = false;
+  let ok = 0, fail = 0, usedPlain = false;
   console.log('');
   for (const { file: f, target } of plan) {
-    let r = upload(f, target, true);                // ① 먼저 FTPS(암호화)
-    if (r.status !== 0) {
-      const why = (r.stderr || '').trim().split('\n')[0];
-      console.log(`   … FTPS 실패(${why || 'unknown'}) → 평문 FTP 로 재시도`);
-      r = upload(f, target, false);                 // ② 서버가 거부하면 평문
-      if (r.status === 0) plaintext = true;
+    let r, used;
+    for (const proto of ['sftp', 'ftps', 'ftp']) {   // 안전한 것부터
+      r = upload(f, target, proto);
+      used = proto;
+      if (r.status === 0) break;
+      const why = (r.stderr || '').trim().split('\n')[0].slice(0, 110);
+      if (proto !== 'ftp') console.log(`   … ${proto} 실패(${why || 'unknown'}) → 다음 방식으로 재시도`);
     }
-    if (r.status === 0) { console.log(`   ✅ ${path.basename(f)}`); ok++; }
-    else { console.log(`   ❌ ${path.basename(f)} — ${(r.stderr || '').trim().slice(0, 160)}`); fail++; }
+    if (r.status === 0) {
+      console.log(`   ✅ ${path.basename(f)}  [${used}]`);
+      if (used === 'ftp') usedPlain = true;
+      ok++;
+    } else {
+      console.log(`   ❌ ${path.basename(f)} — ${(r.stderr || '').trim().slice(0, 160)}`);
+      fail++;
+    }
   }
 
   console.log(`\n■ 업로드 완료 — 성공 ${ok} · 실패 ${fail}`);
-  if (plaintext) {
-    console.log('  ⚠ 암호화(FTPS)가 거부되어 평문 FTP 로 올렸습니다.');
-    console.log('    비밀번호가 네트워크에 그대로 흐릅니다. 호스팅어에 FTPS 지원을 확인하고,');
-    console.log('    가능하면 SFTP(포트 22)로 바꾸는 것을 권합니다.');
+  if (usedPlain) {
+    console.log('  🔴 평문 FTP 로 올라갔습니다 — **비밀번호가 네트워크에 그대로 흘렀습니다.**');
+    console.log('     SFTP 가 왜 실패했는지 확인하세요 (.env 의 SFTP_BASE·SFTP_PORT,');
+    console.log('     scripts/known_hosts 존재 여부). 서버 키가 바뀌었다면 known_hosts 를 갱신해야 합니다:');
+    console.log('       ssh-keyscan -p 65002 -t ed25519,rsa <IP> | grep -v "^#" > scripts/known_hosts');
   }
   if (ok) await verify(expected);
 })().catch((e) => die(e.message));
