@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Xinchao FX Calculator
  * Description: 베트남 동(VND) 환율 계산기 — [fx_calculator] shortcode. 원·달러·엔 ↔ 동 실시간 환산 + 지폐 단위 환산표 + 암산 요령. 환율은 서버에서 1시간 캐시(transient)하므로 HTML 에 실제 숫자가 박혀 검색 노출에 유리하다.
- * Version: 1.1.1
+ * Version: 1.1.2
  * Author: Xinchao News
  * Text Domain: xinchao-fx
  *
@@ -25,8 +25,12 @@
  *   2. WP 관리자 → 플러그인 → "Xinchao FX Calculator" 활성화
  *   3. 새 페이지 생성(권장 슬러그: /exchange-rate) → 본문에 [fx_calculator] 삽입
  *
- * 환율 출처: open.er-api.com (무료·키 불필요). lib/external-data.js 와 같은 소스라
- *           사이트·앱·뉴스가 같은 값을 쓴다.
+ * 환율 출처: open.er-api.com = exchangerate-api.com 무료 엔드포인트 (키 불필요).
+ *           lib/external-data.js 와 같은 소스라 사이트·앱·뉴스가 같은 값을 쓴다.
+ *           ⚠️ **원본은 하루 1회 갱신**이다 (응답의 time_next_update 로 확인).
+ *              XCFX_TTL 1시간은 *우리 서버 캐시* 주기일 뿐 데이터 주기가 아니다.
+ *           ⚠️ 이건 국제 기준환율(중간값)이지 **은행 고시 매매기준율이 아니다.**
+ *              화면에 그렇게 표기했다 — 다른 이름으로 바꿔 쓰지 말 것.
  *
  * v1.1.0 (2026-09-02) — 화면 개편. 사장님 지적: "너무 건조하다".
  *   · 씬짜오 브랜드 색 적용 — 로고에서 뽑은 오렌지 #FF6F02 / 짙은 적갈 #9C220A
@@ -40,13 +44,18 @@
  *   · "보낼 금액/받을 금액" 은 송금처럼 읽힌다 → 「금액 입력」/「환산 결과」
  *   · 10,000 이 값으로 박혀 진했다 → placeholder 로 옮기고 흐리게(opacity .5).
  *     입력이 비면 반대쪽도 비우도록 JS 보강 — 안 그러면 '0' 이 남는다.
+ *
+ * v1.1.2 (2026-09-02) — 환율 출처 표기 (사장님 지적)
+ *   · 제목 아래에 「국제 기준환율(중간값) · ExchangeRate-API 제공 · 하루 1회 갱신」
+ *   · 각주의 "매시간 갱신" 은 **오기였다** → 하루 1회로 정정하고,
+ *     은행 매매기준율과 다르다는 점·실수령액이 더 적다는 점을 명시.
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-define('XCFX_VERSION', '1.1.1');
+define('XCFX_VERSION', '1.1.2');
 define('XCFX_TRANSIENT', 'xcfx_rates_v1');
 define('XCFX_TTL', HOUR_IN_SECONDS);
 
@@ -129,7 +138,9 @@ function xcfx_shortcode($atts) {
                  alt="씬짜오베트남">
             <div class="xcfx-brand-txt">
                 <h2 class="xcfx-title">씬짜오 베트남 환율계산기</h2>
-                <p class="xcfx-sub">원 · 달러 · 엔 ↔ 베트남 동(VND) 실시간 환산</p>
+                <p class="xcfx-sub">원 · 달러 · 엔 ↔ 베트남 동(VND) 환산</p>
+                <p class="xcfx-src">국제 기준환율(중간값) · <a href="https://www.exchangerate-api.com"
+                   target="_blank" rel="noopener nofollow">ExchangeRate-API</a> 제공 · 하루 1회 갱신</p>
             </div>
         </div>
 
@@ -232,8 +243,10 @@ function xcfx_shortcode($atts) {
         </div>
 
         <p class="xcfx-foot">
-            환율은 매시간 갱신되는 국제 기준 환율입니다. 은행·환전소·카드사는 여기에 수수료가 붙어
-            실제 받는 금액은 조금 달라집니다.
+            <b>여기 환율은 국제 시장의 기준환율(중간값)</b>입니다. 은행 고시 매매기준율과는
+            소수점 아래에서 차이가 날 수 있고, 은행·환전소·카드사는 여기에 수수료가 붙으므로
+            <b>실제로 받는 금액은 이보다 적습니다.</b> 값어치를 가늠하는 용도로 쓰시고,
+            정확한 금액은 거래하는 곳에서 확인하세요.
         </p>
     </div>
 
@@ -258,6 +271,9 @@ function xcfx_shortcode($atts) {
     .xcfx-title{margin:0;font-size:23px;font-weight:800;line-height:1.25;
         letter-spacing:-.02em;color:var(--fx-ink)}
     .xcfx-sub{margin:3px 0 0;font-size:13.5px;color:var(--fx-ink2)}
+    .xcfx-src{margin:5px 0 0;font-size:12px;color:var(--fx-ink3);line-height:1.5}
+    .xcfx-src a{color:var(--fx-ink2);text-decoration:underline;text-underline-offset:2px}
+    .xcfx-src a:hover{color:var(--fx-brand)}
 
     /* 오늘의 환율 배너 */
     .xcfx-head{background:linear-gradient(135deg,var(--fx-brand) 0%,var(--fx-brand-dk) 62%,var(--fx-deep) 100%);
@@ -339,8 +355,9 @@ function xcfx_shortcode($atts) {
     .xcfx-warn strong{color:var(--fx-deep)}
     .xcfx-warn b{color:var(--fx-deep)}
 
-    .xcfx-foot{font-size:13px;color:var(--fx-ink3);margin:26px 0 0;padding-top:14px;
-        border-top:1px solid var(--fx-line);line-height:1.7}
+    .xcfx-foot{font-size:13px;color:var(--fx-ink2);margin:26px 0 0;padding-top:14px;
+        border-top:1px solid var(--fx-line);line-height:1.75}
+    .xcfx-foot b{color:var(--fx-ink)}
 
     @media(max-width:600px){
         .xcfx-title{font-size:20px}
