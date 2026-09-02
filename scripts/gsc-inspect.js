@@ -20,10 +20,18 @@
 require('dotenv').config();
 const { GoogleAuth } = require('google-auth-library');
 
-const SITE = process.env.SEARCH_CONSOLE_SITE || 'sc-domain:chaovietnam.co.kr';
-const ORIGIN = (process.env.WORDPRESS_URL || 'https://chaovietnam.co.kr').replace(/\/$/, '');
+const argv = process.argv.slice(2);
+// --site 로 다른 서치콘솔 속성을 지정할 수 있다.
+//   예) --site https://www.vietnamsari.com/   (블로그 = URL접두어 속성, www 포함 정확히)
+//   ⚠️ URL접두어 속성은 주소가 **정확히** 일치해야 한다. www 를 빼면 조회가 안 된다.
+const siteIdx = argv.indexOf('--site');
+const SITE = siteIdx >= 0 ? argv[siteIdx + 1]
+  : (process.env.SEARCH_CONSOLE_SITE || 'sc-domain:chaovietnam.co.kr');
+// 경로만 넘겼을 때 붙일 도메인 — 속성이 URL 이면 그걸 쓰고, sc-domain 이면 WP 주소를 쓴다
+const ORIGIN = (SITE.startsWith('http') ? SITE
+  : (process.env.WORDPRESS_URL || 'https://chaovietnam.co.kr')).replace(/\/$/, '');
 
-const args = process.argv.slice(2);
+const args = argv.filter((a, i) => a !== '--site' && i !== siteIdx + 1);
 if (!args.length) {
   console.error('사용법: node scripts/gsc-inspect.js <URL 또는 /경로/> [...]');
   process.exit(1);
