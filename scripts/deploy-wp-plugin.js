@@ -56,12 +56,26 @@ if (!PASS && !DRY) {
       '  .env 의 FTP_PASS= 뒤에 넣어 주세요. 넣은 뒤 OneDrive dev-secrets 백업도 갱신하세요.');
 }
 
-/** 올릴 파일 목록 — 인자가 없으면 wordpress-plugin/*.php 전부 */
+/**
+ * 올릴 파일 목록 — 인자가 없으면 wordpress-plugin/*.php 전부.
+ *
+ * 인자는 두 가지를 다 받는다:
+ *   ① 파일명만          xinchao-fx-calculator.php   → wordpress-plugin/ 에서 찾는다
+ *   ② 경로 (상대/절대)  ../../chao-vn-app/.../x.php → 그 경로를 그대로 쓴다
+ *
+ * ⚠️ 왜 ② 가 필요한가 (2026-09-03):
+ *    워드프레스 플러그인이 이 저장소에만 있는 게 아니다. chao-vn-app 저장소의
+ *    wp-plugins/ 에도 있다(chaovn-seo-boost 등). 그때 파일을 이 저장소로 복사해 오면
+ *    같은 플러그인이 두 저장소에 생겨 **반드시 어긋난다.** 원본 자리에 두고 올린다.
+ */
 function pickFiles() {
   if (targets.length) {
     return targets.map((t) => {
+      // 준 경로가 그대로 존재하면 그것을 쓴다 (다른 저장소의 플러그인)
+      if (fs.existsSync(t) && fs.statSync(t).isFile()) return path.resolve(t);
       const p = path.join(DIR, path.basename(t));
-      if (!fs.existsSync(p)) die(`파일이 없습니다: ${p}`);
+      if (!fs.existsSync(p)) die(`파일이 없습니다: ${t}
+  (${DIR} 에서도 못 찾았습니다)`);
       return p;
     });
   }
