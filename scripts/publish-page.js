@@ -89,6 +89,9 @@ const api = (p, init = {}) => fetch(`${WP}/wp-json/wp/v2${p}`, {
 
   const body = { content, slug: SLUG };
   if (TITLE) body.title = TITLE;
+  // 대표 이미지 — 목록·SNS 공유 카드에 쓰인다. 없으면 글이 밋밋해 잘 안 눌린다.
+  const FEATURED = flag('featured');
+  if (FEATURED) body.featured_media = parseInt(FEATURED, 10);
   // 새 페이지는 기본 draft. --publish 를 준 경우에만 공개한다.
   if (!page) body.status = GO_PUBLIC ? 'publish' : 'draft';
   else if (GO_PUBLIC) body.status = 'publish';

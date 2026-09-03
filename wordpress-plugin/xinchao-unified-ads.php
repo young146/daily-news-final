@@ -2,10 +2,17 @@
 /**
  * Plugin Name: XinChao 통합 광고 (Unified Ads)
  * Description: 통합 광고센터(ads_unified)의 chaovietnam 지면 광고를 공개 API로 불러와 표시한다. 기사 본문에 위치별 자동 삽입 — 상단(1) + 중간(2) + 하단(1). 사이드바는 [xinchao_ad slot="sidebar"] 숏코드. Advanced Ads/Ad Inserter 불필요. 직원은 통합센터에서 등록만 하면 되고, 위치는 우선순위로 자동 결정.
- * Version: 4.7.3
+ * Version: 4.8.2
  * Author: XinChao
  *
  * ── 변경 이력 ──
+ *   4.8.2 (2026-09-03) 가운데 자리를 '50% 에 가장 가까운 단락 경계'로. 앞에 큰 위젯이
+ *                      박힌 글(환율계산기)은 후보를 못 찾아 하단과 붙었다.
+ *   4.8.1 (2026-09-03) 가운데 CTA 위치를 단락 '개수'가 아니라 '글자 수'로 계산.
+ *                      소제목·표가 많은 글에서 가운데가 끝자락에 떨어져 하단과 붙었다.
+ *   4.8.0 (2026-09-03) CTA 를 **세 자리로 분산**(사장님 지시: 맨 아래 뭉치면 효과 없다).
+ *                      제목 아래=이메일 구독 / 본문 한가운데=앱 설치 / 맨 아래=디지털 라인.
+ *                      + house_digital(씬짜오베트남 디지털 라인) 소재 추가.
  *   4.7.3 (2026-09-03) 서버 렌더끼리도 안 겹치게 — 뉴스 터미널은 house_app 을 일부러
  *                      서버에서 그리는데 본문 끝 띠가 또 그렸다. 그린 소재를 기록해 피한다.
  *   4.7.2 (2026-09-03) 자체 홍보 폴백이 **본문 끝 띠와 같은 소재를 또 그리던 것**을 고침.
@@ -112,6 +119,16 @@ function xinchao_house_creatives() {
             'cta'   => '보러 가기',
             'url'   => 'https://vnkorlife.com/',
             'c1'    => '#0ea5e9', 'c2' => '#0369a1',
+        ),
+        array(
+            // 2026-09-03 추가. 본문 맨 아래 자리 — "우리가 뭐 하는 데인지" 한 곳으로 모으는 창구.
+            // vnkorlife.com/xinchao = 「씬짜오베트남 디지털 라인」(매거진·데일리뉴스·앱·생활정보 안내)
+            'id'    => 'house_digital',
+            'title' => '씬짜오베트남 디지털 라인',
+            'sub'   => '매거진 · 데일리뉴스 · 앱 · 생활정보 서비스를 한눈에',
+            'cta'   => '둘러보기',
+            'url'   => 'https://vnkorlife.com/xinchao',
+            'c1'    => '#334155', 'c2' => '#0f172a',
         ),
         array(
             'id'    => 'house_contact',
@@ -746,42 +763,40 @@ add_filter('the_content', 'xinchao_inject_body_ads', 20);
 //
 // 어디에 붙나: 낱개 글·페이지(is_singular)의 본문 맨 끝. 목록·피드·검색결과에는 안 붙는다.
 // ═════════════════════════════════════════════════════════
-function xinchao_cta_strip() {
-    $out = '';
-
-    // ── ① 이메일 구독 — **있는 것을 쓴다, 새로 만들지 않는다** ──────────
-    // jenny_subscribe_box() 는 사이트 안에서 바로 접수되는 폼이다(밖으로 보내지 않는다).
-    // 그리고 스스로 `static $drawn` 으로 **한 페이지에 한 번만** 그린다 —
-    // 데일리뉴스 목록처럼 이미 띠가 나온 페이지에서는 빈 문자열을 돌려주므로
-    // 여기서 불러도 중복되지 않는다. (2026-09-03: 이걸 모르고 따로 만들었다가 중복을 냈다)
-    if (function_exists('jenny_subscribe_box')) {
-        $out .= jenny_subscribe_box();
-    }
-
-    // ── ② 앱 설치 — 이건 본문 끝에 상시 권할 자리가 없었다 ──────────────
-    // 단, 이 페이지가 이미 앱 배너를 그렸으면(뉴스 터미널 등) 또 그리지 않는다.
-    $drawn =& xinchao_house_drawn();
-    if (in_array('house_app', $drawn, true)) return $out;
-    $drawn[] = 'house_app';
-
-    $out .= '<div class="xc-cta-strip" style="margin:14px 0 8px;">'
-         .  '<a href="https://vnkorlife.com/download" target="_blank" rel="noopener"'
-         .  ' data-xc-house="house_app"'
-         .  ' style="display:flex;align-items:center;justify-content:space-between;gap:12px;'
-         .  'padding:14px 16px;border-radius:10px;text-decoration:none;color:#fff;line-height:1.35;'
-         .  'background:linear-gradient(135deg,#f97316,#ea580c);">'
-         .  '<span style="min-width:0;">'
-         .  '<span style="display:block;font-size:15px;font-weight:800;">씬짜오 앱 설치</span>'
-         .  '<span style="display:block;font-size:12px;opacity:.92;margin-top:2px;">'
-         .  '뉴스 · 구인 · 부동산 · 업소록을 손안에 — 무료</span></span>'
-         .  '<span style="flex:0 0 auto;background:rgba(255,255,255,.22);border-radius:999px;'
-         .  'padding:7px 14px;font-size:12px;font-weight:800;white-space:nowrap;">무료 설치</span>'
-         .  '</a></div>';
-
-    return $out;
+/**
+ * ① 제목 바로 아래 — 이메일 구독.
+ *
+ * **있는 것을 쓴다, 새로 만들지 않는다.** jenny_subscribe_box() 는 사이트 안에서 바로
+ * 접수되는 폼이고(밖으로 안 보낸다), 스스로 `static $drawn` 으로 한 페이지에 한 번만
+ * 그린다 — 이미 띠가 나온 페이지(데일리뉴스 목록 등)에서는 빈 문자열을 돌려준다.
+ * (2026-09-03: 이걸 모르고 따로 만들었다가 구독 권유가 두 개 뜨는 사고를 냈다)
+ */
+function xinchao_cta_subscribe() {
+    return function_exists('jenny_subscribe_box') ? jenny_subscribe_box() : '';
 }
 
-function xinchao_append_cta_strip($content) {
+/** ② 본문 한가운데 — 앱 설치. ③ 맨 아래 — 씬짜오 디지털 라인. */
+function xinchao_cta_house($id) {
+    // 이 페이지가 이미 같은 소재를 그렸으면 또 그리지 않는다 (뉴스 터미널 등)
+    $drawn =& xinchao_house_drawn();
+    if (in_array($id, $drawn, true)) return '';
+    return xinchao_house_banner($id, XINCHAO_BODY_MAX);   // 안에서 $drawn 에 기록된다
+}
+
+/**
+ * 본문에 CTA 를 **세 자리로 나눠** 넣는다 (2026-09-03, 사장님 지시).
+ *
+ * 왜 나누나: 맨 아래에 두 개를 뭉쳐 두니 홍보 효과가 없었다. 글 끝까지 읽는 사람은
+ * 소수라 거기 모아 두면 대부분이 못 본다. 읽는 흐름 위에 하나씩 흩어 놓는다.
+ *
+ *   제목 아래   → 이메일 구독   (가장 잘 보이는 자리 · 깔때기 첫 칸)
+ *   본문 한가운데 → 앱 설치       (읽다가 만나는 자리)
+ *   맨 아래     → 디지털 라인    (다 읽은 사람에게 "우리가 뭐 하는 데인지")
+ *
+ * ⚠️ 한가운데(1/2)에 넣는 이유: 유료 광고가 이미 본문을 3등분해 1/3·2/3 에 들어간다
+ *    (xinchao_inject_body_ads). 1/2 은 그 둘 사이라 서로 붙지 않는다.
+ */
+function xinchao_inject_cta($content) {
     // 낱개 글·페이지의 본문일 때만. 목록·발췌·피드·관리화면에는 붙이지 않는다.
     if (is_admin() || is_feed() || !is_singular()) return $content;
     if (!in_the_loop() || !is_main_query()) return $content;
@@ -791,9 +806,44 @@ function xinchao_append_cta_strip($content) {
     if ($done) return $content;
     $done = true;
 
-    return $content . xinchao_cta_strip();
+    $top    = xinchao_cta_subscribe();
+    $bottom = xinchao_cta_house('house_digital');
+    $mid    = xinchao_cta_house('house_app');
+
+    if ($mid === '') return $top . $content . $bottom;
+
+    // ⚠️ 단락 **개수**로 가운데를 잡으면 빗나간다 (2026-09-03 실측).
+    //    소제목·표·목록이 많은 글은 <p> 가 적어서, 개수 기준 가운데가 글의 끝자락에 떨어진다.
+    //    환율계산기 페이지에서 앱 배너와 디지털 라인이 53%·54% 로 **붙어 버렸다.**
+    //    그래서 **글자 수**로 잰다 — 읽는 사람이 체감하는 '중간'은 그쪽이다.
+    // 쓸 수 있는 단락 경계를 다 모은 뒤, **50% 에 가장 가까운 것**을 고른다.
+    // 처음엔 "45% 를 처음 넘긴 곳"으로 했는데, 환율계산기 페이지처럼 앞에 큰 위젯이
+    // 박힌 글은 그 구간에 단락 경계가 아예 없어 후보를 못 찾고 하단과 붙었다(실측).
+    // 20~80% 범위만 쓴다 — 너무 앞이면 제목 아래 구독폼과, 너무 뒤면 하단과 붙는다.
+    $parts = explode('</p>', $content);
+    $total = max(1, strlen($content));
+    $cut   = -1;
+    $best  = 1.0;
+    $acc   = 0;
+    foreach ($parts as $i => $p) {
+        $acc += strlen($p) + 4;                       // '</p>' 길이 보정
+        if (trim($p) === '') continue;
+        $ratio = $acc / $total;
+        if ($ratio < 0.20 || $ratio > 0.80) continue;
+        $dist = abs($ratio - 0.50);
+        if ($dist < $best) { $best = $dist; $cut = $i; }
+    }
+    if ($cut < 0) return $top . $content . $mid . $bottom;   // 끼울 자리가 없으면 아래에 둔다
+
+    $body = '';
+    foreach ($parts as $i => $p) {
+        if (trim($p) === '') { $body .= $p; continue; }
+        $body .= $p . '</p>';
+        if ($i === $cut) $body .= $mid;
+    }
+    return $top . $body . $bottom;
 }
-add_filter('the_content', 'xinchao_append_cta_strip', 25);   // 광고 삽입(20) 뒤에 붙는다
+add_filter('the_content', 'xinchao_inject_cta', 25);   // 광고 삽입(20) 뒤에 붙는다
 
 // ─────────────────────────────────────────────────────────
 // 🧩 테마 지면 슬롯 (헤더 · 상단 · 섹션 · 하단) — 홈과 기사 상세
