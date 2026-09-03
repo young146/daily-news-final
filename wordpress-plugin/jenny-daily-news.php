@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Jenny Daily News Display
  * Description: Displays daily news in a beautiful card layout using the shortcode [daily_news_list]. Shows excerpt and links to full article. Includes weather and exchange rate info.
- * Version: 2.13.3
+ * Version: 2.14.0
  * Author: Jenny (Antigravity)
  *
  * ── 변경 이력 ──
@@ -2005,6 +2005,84 @@ function jenny_handle_go_redirect()
     exit;
 }
 add_action('template_redirect', 'jenny_handle_go_redirect');
+
+// ============================================================================
+// 제휴 클릭 성적표 — 관리자 메뉴 (2026-09-03 추가)
+// ----------------------------------------------------------------------------
+// 왜 이제 붙이나: 클릭은 2026년 내내 `jenny_go_clicks` 옵션에 **쌓이고 있었는데
+//   볼 화면이 없었다.** 그래서 사장님도 나도 "거의 흔적이 없다"를 느낌으로만 말했다.
+//   재지 못하면 고칠 수도 없다 — 쌓인 숫자를 꺼내 보이는 것이 첫 걸음이다.
+//
+// 무엇을 보여주나: 제휴별 총 클릭 + 최근 14일 추이. 아무것도 안 고친다(읽기 전용).
+// ============================================================================
+add_action('admin_menu', function () {
+    add_submenu_page(
+        'tools.php', '제휴 클릭 성적표', '제휴 클릭', 'manage_options',
+        'jenny-go-clicks', 'jenny_render_go_clicks_page'
+    );
+});
+
+function jenny_render_go_clicks_page()
+{
+    if (!current_user_can('manage_options')) return;
+    $clicks = get_option('jenny_go_clicks', array());
+    $dests  = jenny_affiliate_destinations();
+
+    // 최근 14일 날짜 목록
+    $days = array();
+    for ($i = 13; $i >= 0; $i--) $days[] = date('Y-m-d', strtotime("-{$i} days"));
+
+    echo '<div class="wrap"><h1>제휴 클릭 성적표</h1>';
+    if (!is_array($clicks) || !$clicks) {
+        echo '<p>아직 기록된 클릭이 없습니다.</p></div>';
+        return;
+    }
+
+    // 총합 많은 순
+    uasort($clicks, function ($a, $b) {
+        return (int) ($b['total'] ?? 0) <=> (int) ($a['total'] ?? 0);
+    });
+
+    $grand = 0;
+    foreach ($clicks as $c) $grand += (int) ($c['total'] ?? 0);
+    echo '<p><strong>전체 누적 클릭: ' . number_format($grand) . '회</strong></p>';
+
+    echo '<table class="widefat striped"><thead><tr>'
+       . '<th>제휴</th><th style="text-align:right">누적</th><th style="text-align:right">최근 14일</th>'
+       . '<th>목적지 설정</th><th>날짜별 (최근 14일)</th></tr></thead><tbody>';
+    foreach ($clicks as $slug => $c) {
+        $recent = 0;
+        $spark = array();
+        foreach ($days as $d) {
+            $n = (int) ($c[$d] ?? 0);
+            $recent += $n;
+            $spark[] = $n ? $n : '·';
+        }
+        $has = !empty($dests[$slug]) ? '✅' : '⚠️ 없음';
+        echo '<tr><td><code>/go/' . esc_html($slug) . '</code></td>'
+           . '<td style="text-align:right"><strong>' . number_format((int) ($c['total'] ?? 0)) . '</strong></td>'
+           . '<td style="text-align:right">' . number_format($recent) . '</td>'
+           . '<td>' . $has . '</td>'
+           . '<td style="font-family:monospace;font-size:12px;color:#666">' . esc_html(implode(' ', $spark)) . '</td></tr>';
+    }
+    echo '</tbody></table>';
+    echo '<p style="color:#666;margin-top:14px">날짜별은 왼쪽이 14일 전, 오른쪽이 오늘입니다. '
+       . '· 은 클릭 0회.<br>이 표는 <strong>클릭</strong>만 셉니다. 실제 수익(전환)은 제휴사 대시보드에서 확인하세요.</p>';
+    echo '</div>';
+}
+
+// 옵션을 REST 로도 읽을 수 있게 한다 — 밖에서 리포트를 뽑을 때 쓴다(읽기 전용).
+add_action('rest_api_init', function () {
+    register_rest_route('jenny/v1', '/go-clicks', array(
+        'methods'  => 'GET',
+        'callback' => function () {
+            return rest_ensure_response(get_option('jenny_go_clicks', array()));
+        },
+        'permission_callback' => function () {
+            return current_user_can('manage_options');
+        },
+    ));
+});
 
 /**
  * WordPress 본문 페이지에 모바일 스타일 추가 (전역 적용)
