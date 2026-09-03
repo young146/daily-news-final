@@ -3,7 +3,7 @@
  * Plugin Name: ChaoVN Topic Hub
  * Plugin URI: https://chaovietnam.co.kr
  * Description: 주제 관문(허브) 페이지의 부품. 주제 사전에 맞는 기사를 자동으로 모아 보여준다. [chaovn_hub topic="visa" mode="latest"]
- * Version: 1.0.0
+ * Version: 1.0.3
  * Author: Chao Vietnam Team
  * License: GPL v2 or later
  *
@@ -40,7 +40,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('CHAOVN_HUB_VER', '1.0.0');
+define('CHAOVN_HUB_VER', '1.0.3');
 
 // 데일리 뉴스 카테고리 — 다른 플러그인이 이미 정의했으면 그것을 따른다(값을 두 곳에 적지 않는다)
 if (!defined('CHAOVN_NEWS_CAT_ID')) {
@@ -51,27 +51,61 @@ if (!defined('CHAOVN_NEWS_CAT_ID')) {
  * 주제 사전.
  * 새 관문을 만들 때 여기에 한 줄 추가하면 된다 — 페이지 쪽은 안 고쳐도 된다.
  *
- * words   : 제목에 이 중 하나가 있으면 그 주제의 글로 본다
- * exclude : 같은 낱말이 다른 뜻으로 쓰이는 경우를 걸러낸다
+ * words   : 제목에 이 중 하나가 있어야 그 주제의 글로 본다
+ * require : **베트남 맥락 확인.** 이 중 하나도 없으면 버린다
+ * exclude : 낱말은 같아도 다른 얘기인 글을 버린다
+ *
+ * ⚠️ require 가 왜 필요한가 (2026-09-03 실측으로 알게 됨):
+ *    words+exclude 만으로 돌렸더니 관문에 이런 것들이 딸려 왔다 —
+ *      「미국, 외국인 비자 최대 20만 건 취소 추진」 (미국 얘기)
+ *      「중국 하이난섬 30일 무비자」 (중국 얘기)
+ *      「베트남 등 외국인 고용허가제 E-9 체류자 28만7천명」 (한국 내 노동자 얘기)
+ *      「트럼프, 하버드대 유학생 비자 제한」 (미국 얘기)
+ *    데일리 뉴스는 전 세계 뉴스를 다루므로 '비자'만 보면 세계의 비자 뉴스가 다 걸린다.
+ *    **관문에 엉뚱한 링크가 있으면 없느니만 못하다** — 독자에게도 구글에게도
+ *    "관리 안 되는 페이지" 신호다. 그래서 "베트남에 들어오는 이야기인가"를 한 번 더 묻는다.
  */
 function chaovn_hub_topics() {
+    // 베트남 맥락 표지 — 여러 주제가 함께 쓴다
+    $vn = array('베트남', '호치민', '호찌민', '하노이', '다낭', '나트랑', '푸꾸옥', '사이공',
+                '떤선녓', '노이바이', 'PAI', 'TRC', 'E-visa', '이비자', 'DN1', 'DN2');
+    // 다른 나라 이야기로 새는 것을 막는 공통 제외어
+    $other = array('미국', '중국', '일본', '태국', '유럽', '트럼프', '하버드', '하이난',
+                   '필리핀', '캄보디아', '라오스', '싱가포르', '대만', '홍콩', '인도네시아',
+                   '고용허가제', 'E-9', '유학생 비자');
+
     return array(
         'visa' => array(
             'label'   => '입국·비자·체류',
             'words'   => array('비자', '입국', 'PAI', '체류', '거주증', '노동허가', '무비자',
-                               'E-visa', '이비자', '출입국', '여권', '외국인 등록', 'TRC'),
-            // '투자 비자', '인재 비자' 같은 정책 논평은 여행자에게 쓸모가 없다
-            'exclude' => array('채권', '증시', '주가', '환율', '금리'),
+                               'E-visa', '이비자', '출입국', '외국인 등록', 'TRC'),
+            'require' => $vn,
+            // 금융 기사('채권 비자'류 오탐) + 행사·후원 기사를 뺀다.
+            // 「호치민 비자신청센터, 한글학교에 발전기금 후원」 같은 글은 비자 안내가 아니다.
+            'exclude' => array_merge($other, array(
+                // ⚠️ 한글은 낱말 경계가 없어 LIKE '%비자%' 가 「소**비자**」에도 걸린다.
+                //    2026-09-03 실측: 「라자다, 베트남서 소비자 오도 혐의로 과태료」가 딸려 왔다.
+                //    같은 부류가 또 나오면 여기에 낱말을 더한다.
+                '소비자',
+                '채권', '증시', '주가', '금리', '환율',
+                '후원', '기금', '간담회', '위촉', '임명', '총영사관', '축사', '개최',
+                // 사건·사고는 제도 안내가 아니다. 관문에 범죄 기사가 뜨면 읽는 사람이 불안해진다.
+                // (실측: 「한국, 베트남인 131명 허위 난민신청 알선조직 적발」)
+                // '베트남인이 밖으로 나가는' 기사도 여기서 함께 걸러진다 — 우리 독자는 반대 방향이다.
+                '난민', '알선', '적발', '검거', '구속', '송환', '밀입국', '근로자',
+            )),
         ),
         'flight' => array(
             'label'   => '항공·교통',
-            'words'   => array('항공', '노선', '취항', '공항', '비행기', '결항', '지연'),
-            'exclude' => array('공항철도 한국'),
+            'words'   => array('항공', '노선', '취항', '공항', '결항', '지연'),
+            'require' => $vn,
+            'exclude' => array_merge($other, array('주가', '실적', '인수', '합병')),
         ),
         'money' => array(
             'label'   => '환전·송금·결제',
-            'words'   => array('환전', '송금', '환율', '계좌', '카드 결제', 'ATM'),
-            'exclude' => array(),
+            'words'   => array('환전', '송금', '계좌 개설', '카드 결제', 'ATM'),
+            'require' => $vn,
+            'exclude' => $other,
         ),
     );
 }
@@ -93,6 +127,15 @@ function chaovn_hub_query($topic, $mode, $count) {
     }
     if (!$likes) return array();
     $where_words = '(' . implode(' OR ', $likes) . ')';
+
+    // 베트남 맥락이 하나도 없으면 버린다 (위 주석의 실측 사례 참고)
+    if (!empty($topic['require'])) {
+        $req = array();
+        foreach ($topic['require'] as $w) {
+            $req[] = $wpdb->prepare('p.post_title LIKE %s', '%' . $wpdb->esc_like($w) . '%');
+        }
+        $where_words .= ' AND (' . implode(' OR ', $req) . ')';
+    }
 
     $where_not = '';
     foreach ($topic['exclude'] as $w) {
@@ -136,6 +179,7 @@ function chaovn_hub_shortcode($atts) {
         'mode'  => 'latest',
         'count' => 5,
         'title' => '',
+        'ids'   => '',   // 직접 고른 글 번호(쉼표 구분). 주면 자동 수집을 쓰지 않는다.
     ), $atts, 'chaovn_hub');
 
     $topics = chaovn_hub_topics();
@@ -143,13 +187,32 @@ function chaovn_hub_shortcode($atts) {
     $topic = $topics[$a['topic']];
     $mode  = ($a['mode'] === 'guide') ? 'guide' : 'latest';
 
-    // 캐시 — 관문 페이지는 많이 열리는데 매번 SQL 을 돌 이유가 없다.
-    // 6시간이면 "오늘 바뀐 제도"를 놓치지 않으면서 부하도 없다.
-    $key  = 'chaovn_hub_' . $a['topic'] . '_' . $mode . '_' . (int) $a['count'];
-    $rows = get_transient($key);
-    if ($rows === false) {
-        $rows = chaovn_hub_query($topic, $mode, (int) $a['count']);
-        set_transient($key, $rows, 6 * HOUR_IN_SECONDS);
+    // ── 직접 고른 목록이 있으면 그것을 쓴다 ─────────────────────
+    // 왜: 안내 기사는 **좋은 것이 몇 편뿐**이라 자동 수집이 오히려 해롭다.
+    //     2026-09-03 실측에서 자동 수집이 「한글학교 발전기금 후원」 같은 글을 끌어왔다.
+    //     사람이 고른 5편이 기계가 고른 8편보다 낫다. 뉴스(latest)만 자동으로 둔다.
+    if ($a['ids'] !== '') {
+        $ids = array_filter(array_map('intval', explode(',', $a['ids'])));
+        $rows = array();
+        foreach ($ids as $id) {                       // 준 순서를 그대로 지킨다
+            $p = get_post($id);
+            if ($p && $p->post_status === 'publish') {
+                $rows[] = (object) array('ID' => $p->ID, 'post_title' => $p->post_title, 'post_date' => $p->post_date);
+            }
+        }
+    } else {
+        // 캐시 — 관문 페이지는 많이 열리는데 매번 SQL 을 돌 이유가 없다.
+        // 6시간이면 "오늘 바뀐 제도"를 놓치지 않으면서 부하도 없다.
+        //
+        // ⚠️ 키에 **판 번호를 넣는다.** 안 넣었더니 주제 사전을 고쳐 올려도 옛 결과가
+        //    6시간 동안 그대로 나왔다(2026-09-03 실측). 사전을 고치는 일이 곧 판 올리는
+        //    일이므로, 판이 바뀌면 캐시가 저절로 무효가 되는 편이 안전하다.
+        $key  = 'chaovn_hub_' . CHAOVN_HUB_VER . '_' . $a['topic'] . '_' . $mode . '_' . (int) $a['count'];
+        $rows = get_transient($key);
+        if ($rows === false) {
+            $rows = chaovn_hub_query($topic, $mode, (int) $a['count']);
+            set_transient($key, $rows, 6 * HOUR_IN_SECONDS);
+        }
     }
 
     // 결과가 없으면 **아무것도 그리지 않는다.** 빈 상자가 페이지에 남으면 관리 안 된 사이트로 보인다.
