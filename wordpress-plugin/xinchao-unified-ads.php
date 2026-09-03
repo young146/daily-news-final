@@ -2,10 +2,22 @@
 /**
  * Plugin Name: XinChao 통합 광고 (Unified Ads)
  * Description: 통합 광고센터(ads_unified)의 chaovietnam 지면 광고를 공개 API로 불러와 표시한다. 기사 본문에 위치별 자동 삽입 — 상단(1) + 중간(2) + 하단(1). 사이드바는 [xinchao_ad slot="sidebar"] 숏코드. Advanced Ads/Ad Inserter 불필요. 직원은 통합센터에서 등록만 하면 되고, 위치는 우선순위로 자동 결정.
- * Version: 4.7.0
+ * Version: 4.7.3
  * Author: XinChao
  *
  * ── 변경 이력 ──
+ *   4.7.3 (2026-09-03) 서버 렌더끼리도 안 겹치게 — 뉴스 터미널은 house_app 을 일부러
+ *                      서버에서 그리는데 본문 끝 띠가 또 그렸다. 그린 소재를 기록해 피한다.
+ *   4.7.2 (2026-09-03) 자체 홍보 폴백이 **본문 끝 띠와 같은 소재를 또 그리던 것**을 고침.
+ *                      (뉴스 터미널에서 「씬짜오 앱 설치」가 두 번 떴다.)
+ *                      폴백이 DOM 을 보고 이미 나온 소재를 건너뛴다 + JS 배너에도
+ *                      data-xc-house 표식을 달아 슬롯끼리도 안 겹치게 했다.
+ *   4.7.1 (2026-09-03) 위 4.7.0 에서 **구독 권유를 새로 만든 것이 잘못**이었다.
+ *                      jenny-daily-news.php 에 이미 사이트 안에서 접수되는 폼이 있었고,
+ *                      데일리뉴스 목록·기사에서 구독 권유가 두 번 나왔다(실측).
+ *                      → 내가 만든 구독 버튼과 house_newsletter 소재를 걷어내고,
+ *                        기존 jenny_subscribe_box() 를 불러 쓴다(스스로 중복을 막는다).
+ *                        본문 끝 띠는 이제 **앱 설치**만 담당한다.
  *   4.7.0 (2026-09-03) 앱 설치·이메일 구독 안내를 **모든 글·페이지 끝에 항상** 붙인다.
  *                      자체 홍보(house)는 폴백이라 광고가 팔린 페이지에서는 사라졌다 —
  *                      광고가 잘 팔릴수록 깔때기 입구가 없어지는 거꾸로 된 구조였다.
@@ -88,16 +100,11 @@ function xinchao_house_creatives() {
             'url'   => 'https://vnkorlife.com/download',
             'c1'    => '#f97316', 'c2' => '#ea580c',
         ),
-        array(
-            // 2026-09-03 추가. 자체 홍보 소재에 **이메일 구독이 통째로 빠져 있었다.**
-            // 마케팅 깔때기의 첫 칸이 이메일인데 정작 사이트 어디에도 권하는 자리가 없었다.
-            'id'    => 'house_newsletter',
-            'title' => '베트남 뉴스, 매일 아침 메일로',
-            'sub'   => '현지 매체 기사를 번역·정리해 하루 한 통 — 무료',
-            'cta'   => '구독하기',
-            'url'   => 'https://vnkorlife.com/newsletter',
-            'c1'    => '#059669', 'c2' => '#047857',
-        ),
+        // 📌 구독 권유 소재를 **여기 두지 않는다** (2026-09-03).
+        //    jenny-daily-news.php 에 이미 `jenny_subscribe_box()` 가 있고, 그쪽은
+        //    **사이트 안에서 바로 접수되는 폼**이다(모달 + REST). 밖으로 링크만 보내는
+        //    배너보다 낫다. 여기에 또 만들면 한 화면에 구독 권유가 둘이 된다 —
+        //    실제로 잠깐 그렇게 만들었다가 홈·기사에서 중복이 나서 걷어냈다.
         array(
             'id'    => 'house_magazine',
             'title' => '교민 생활정보 씬짜오',
@@ -133,12 +140,26 @@ define('XINCHAO_HOUSE_MAX', 2);
  * @param string $id  house_app | house_magazine | house_contact
  * @param int    $max 최대 폭(px)
  */
+/**
+ * 이 페이지에서 서버가 이미 그린 자체 홍보 소재 id 목록.
+ * 왜 필요한가 (2026-09-03): 뉴스 터미널은 house_app 을 일부러 서버에서 그리는데,
+ * 본문 끝 안내 띠도 같은 소재를 그려 「씬짜오 앱 설치」가 두 번 떴다.
+ * JS 폴백은 DOM 을 보고 피할 수 있지만 **서버 렌더끼리는 서로를 못 본다** — 그래서 기록해 둔다.
+ */
+function &xinchao_house_drawn() {
+    static $drawn = array();
+    return $drawn;
+}
+
 function xinchao_house_banner($id, $max = 728) {
     $found = null;
     foreach (xinchao_house_creatives() as $h) {
         if ($h['id'] === $id) { $found = $h; break; }
     }
     if (!$found) return '';
+
+    $drawn =& xinchao_house_drawn();
+    if (!in_array($id, $drawn, true)) $drawn[] = $id;
 
     return '<div style="max-width:' . (int) $max . 'px;margin:14px auto;">'
         . '<a href="' . esc_url($found['url']) . '" target="_blank" rel="noopener" '
@@ -293,11 +314,23 @@ function xinchao_render_ad($page = '', $slot = '', $n = 0, $max = 728, $house = 
         if (!houseOk || !house.length) return null;
         var used = window.__xcHouseN || 0;
         if (used >= houseMax) return null;
+
+        // 본문 끝 안내 띠(xinchao_cta_strip)가 서버에서 이미 그린 소재는 건너뛴다.
+        // 안 그러면 같은 페이지에 「씬짜오 앱 설치」가 두 번 뜬다 (2026-09-03 실측: 뉴스 터미널).
+        // 폴백은 JS 로 나중에 그리므로 PHP 쪽에서 알 수 없다 — 여기서 DOM 을 보고 피한다.
+        var pool = house.filter(function(c){
+          return !document.querySelector('[data-xc-house="' + c.id + '"]');
+        });
+        if (!pool.length) return null;
+
         window.__xcHouseN = used + 1;
-        var h = house[used % house.length];
+        var h = pool[used % pool.length];
         var a = document.createElement('a');
         a.href = h.url; a.target = '_blank'; a.rel = 'noopener';
         a.setAttribute('aria-label', h.title);
+        // 서버에서 그린 배너(xinchao_house_banner)와 같은 표식을 단다.
+        // ① 위 pool 필터가 슬롯끼리도 겹치지 않게 해준다 ② 성과 집계 기준이 한 벌로 통일된다.
+        a.setAttribute('data-xc-house', h.id);
         a.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;'
           + 'padding:14px 16px;border-radius:10px;text-decoration:none;text-align:left;'
           + 'background:linear-gradient(135deg,' + h.c1 + ',' + h.c2 + ');color:#fff;margin-bottom:14px;';
@@ -714,31 +747,38 @@ add_filter('the_content', 'xinchao_inject_body_ads', 20);
 // 어디에 붙나: 낱개 글·페이지(is_singular)의 본문 맨 끝. 목록·피드·검색결과에는 안 붙는다.
 // ═════════════════════════════════════════════════════════
 function xinchao_cta_strip() {
-    $items = array(
-        array('url'   => 'https://vnkorlife.com/download',
-              'id'    => 'house_app',
-              'top'   => '씬짜오 앱 설치',
-              'bottom'=> '뉴스 · 구인 · 부동산 · 업소록',
-              'c1'    => '#f97316', 'c2' => '#ea580c'),
-        array('url'   => 'https://vnkorlife.com/newsletter',
-              'id'    => 'house_newsletter',
-              'top'   => '데일리뉴스 이메일 구독',
-              'bottom'=> '매일 아침 한 통 · 무료',
-              'c1'    => '#059669', 'c2' => '#047857'),
-    );
+    $out = '';
 
-    $out = '<div class="xc-cta-strip" style="display:flex;flex-wrap:wrap;gap:10px;margin:26px 0 8px;">';
-    foreach ($items as $i) {
-        $out .= '<a href="' . esc_url($i['url']) . '" target="_blank" rel="noopener"'
-             .  ' data-xc-house="' . esc_attr($i['id']) . '"'
-             .  ' style="flex:1 1 220px;display:block;padding:13px 16px;border-radius:10px;'
-             .  'text-decoration:none;color:#fff;line-height:1.35;'
-             .  'background:linear-gradient(135deg,' . esc_attr($i['c1']) . ',' . esc_attr($i['c2']) . ');">'
-             .  '<span style="display:block;font-size:15px;font-weight:800;">' . esc_html($i['top']) . '</span>'
-             .  '<span style="display:block;font-size:12px;opacity:.92;margin-top:2px;">' . esc_html($i['bottom']) . '</span>'
-             .  '</a>';
+    // ── ① 이메일 구독 — **있는 것을 쓴다, 새로 만들지 않는다** ──────────
+    // jenny_subscribe_box() 는 사이트 안에서 바로 접수되는 폼이다(밖으로 보내지 않는다).
+    // 그리고 스스로 `static $drawn` 으로 **한 페이지에 한 번만** 그린다 —
+    // 데일리뉴스 목록처럼 이미 띠가 나온 페이지에서는 빈 문자열을 돌려주므로
+    // 여기서 불러도 중복되지 않는다. (2026-09-03: 이걸 모르고 따로 만들었다가 중복을 냈다)
+    if (function_exists('jenny_subscribe_box')) {
+        $out .= jenny_subscribe_box();
     }
-    return $out . '</div>';
+
+    // ── ② 앱 설치 — 이건 본문 끝에 상시 권할 자리가 없었다 ──────────────
+    // 단, 이 페이지가 이미 앱 배너를 그렸으면(뉴스 터미널 등) 또 그리지 않는다.
+    $drawn =& xinchao_house_drawn();
+    if (in_array('house_app', $drawn, true)) return $out;
+    $drawn[] = 'house_app';
+
+    $out .= '<div class="xc-cta-strip" style="margin:14px 0 8px;">'
+         .  '<a href="https://vnkorlife.com/download" target="_blank" rel="noopener"'
+         .  ' data-xc-house="house_app"'
+         .  ' style="display:flex;align-items:center;justify-content:space-between;gap:12px;'
+         .  'padding:14px 16px;border-radius:10px;text-decoration:none;color:#fff;line-height:1.35;'
+         .  'background:linear-gradient(135deg,#f97316,#ea580c);">'
+         .  '<span style="min-width:0;">'
+         .  '<span style="display:block;font-size:15px;font-weight:800;">씬짜오 앱 설치</span>'
+         .  '<span style="display:block;font-size:12px;opacity:.92;margin-top:2px;">'
+         .  '뉴스 · 구인 · 부동산 · 업소록을 손안에 — 무료</span></span>'
+         .  '<span style="flex:0 0 auto;background:rgba(255,255,255,.22);border-radius:999px;'
+         .  'padding:7px 14px;font-size:12px;font-weight:800;white-space:nowrap;">무료 설치</span>'
+         .  '</a></div>';
+
+    return $out;
 }
 
 function xinchao_append_cta_strip($content) {
