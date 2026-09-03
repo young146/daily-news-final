@@ -2,10 +2,14 @@
 /**
  * Plugin Name: XinChao 통합 광고 (Unified Ads)
  * Description: 통합 광고센터(ads_unified)의 chaovietnam 지면 광고를 공개 API로 불러와 표시한다. 기사 본문에 위치별 자동 삽입 — 상단(1) + 중간(2) + 하단(1). 사이드바는 [xinchao_ad slot="sidebar"] 숏코드. Advanced Ads/Ad Inserter 불필요. 직원은 통합센터에서 등록만 하면 되고, 위치는 우선순위로 자동 결정.
- * Version: 4.6.3
+ * Version: 4.7.0
  * Author: XinChao
  *
  * ── 변경 이력 ──
+ *   4.7.0 (2026-09-03) 앱 설치·이메일 구독 안내를 **모든 글·페이지 끝에 항상** 붙인다.
+ *                      자체 홍보(house)는 폴백이라 광고가 팔린 페이지에서는 사라졌다 —
+ *                      광고가 잘 팔릴수록 깔때기 입구가 없어지는 거꾸로 된 구조였다.
+ *                      + 자체 홍보 소재에 빠져 있던 house_newsletter(이메일 구독) 추가.
  *   4.6.1 (2026-08-23) 위 4.6.0 이 실제로는 동작하지 않았다 — 위젯 안에 슬롯 스크립트가
  *                      있어서 textContent 가 '자바스크립트 소스'까지 글자로 세는 바람에
  *                      '비어 있음' 판정이 영영 참이 되지 않았다. 사본에서 script/style 을
@@ -83,6 +87,16 @@ function xinchao_house_creatives() {
             'cta'   => '무료 설치',
             'url'   => 'https://vnkorlife.com/download',
             'c1'    => '#f97316', 'c2' => '#ea580c',
+        ),
+        array(
+            // 2026-09-03 추가. 자체 홍보 소재에 **이메일 구독이 통째로 빠져 있었다.**
+            // 마케팅 깔때기의 첫 칸이 이메일인데 정작 사이트 어디에도 권하는 자리가 없었다.
+            'id'    => 'house_newsletter',
+            'title' => '베트남 뉴스, 매일 아침 메일로',
+            'sub'   => '현지 매체 기사를 번역·정리해 하루 한 통 — 무료',
+            'cta'   => '구독하기',
+            'url'   => 'https://vnkorlife.com/newsletter',
+            'c1'    => '#059669', 'c2' => '#047857',
         ),
         array(
             'id'    => 'house_magazine',
@@ -684,6 +698,62 @@ function xinchao_inject_body_ads($content) {
     return $top . $body . $bottom;
 }
 add_filter('the_content', 'xinchao_inject_body_ads', 20);
+
+// ═════════════════════════════════════════════════════════
+// 📬 앱 설치 · 이메일 구독 안내 띠 — **모든 글·페이지 끝에 항상**
+// ─────────────────────────────────────────────────────────
+// 왜 자체 홍보(house) 배너로 안 하고 따로 두나 (2026-09-03, 사장님 지시):
+//   자체 홍보는 **폴백**이다 — 팔린 광고가 있으면 안 나오고, 한 페이지 2칸 제한도 걸린다.
+//   그래서 광고가 잘 팔린 페이지일수록 앱·구독 안내가 사라지는, 정확히 거꾸로 된 일이 생긴다.
+//   마케팅 깔때기의 첫 칸(이메일)과 둘째 칸(앱 설치)은 **광고가 팔리든 말든 늘 있어야** 한다.
+//
+// 왜 큰 배너 두 개가 아니라 작은 띠 하나인가:
+//   글 끝마다 배너 두 장이 서면 도배로 보인다. 한 줄에 버튼 둘이면 눈에 거슬리지 않으면서
+//   "여기 누르면 되는구나"가 분명하다. 광고 슬롯과도 생김새가 겹치지 않는다.
+//
+// 어디에 붙나: 낱개 글·페이지(is_singular)의 본문 맨 끝. 목록·피드·검색결과에는 안 붙는다.
+// ═════════════════════════════════════════════════════════
+function xinchao_cta_strip() {
+    $items = array(
+        array('url'   => 'https://vnkorlife.com/download',
+              'id'    => 'house_app',
+              'top'   => '씬짜오 앱 설치',
+              'bottom'=> '뉴스 · 구인 · 부동산 · 업소록',
+              'c1'    => '#f97316', 'c2' => '#ea580c'),
+        array('url'   => 'https://vnkorlife.com/newsletter',
+              'id'    => 'house_newsletter',
+              'top'   => '데일리뉴스 이메일 구독',
+              'bottom'=> '매일 아침 한 통 · 무료',
+              'c1'    => '#059669', 'c2' => '#047857'),
+    );
+
+    $out = '<div class="xc-cta-strip" style="display:flex;flex-wrap:wrap;gap:10px;margin:26px 0 8px;">';
+    foreach ($items as $i) {
+        $out .= '<a href="' . esc_url($i['url']) . '" target="_blank" rel="noopener"'
+             .  ' data-xc-house="' . esc_attr($i['id']) . '"'
+             .  ' style="flex:1 1 220px;display:block;padding:13px 16px;border-radius:10px;'
+             .  'text-decoration:none;color:#fff;line-height:1.35;'
+             .  'background:linear-gradient(135deg,' . esc_attr($i['c1']) . ',' . esc_attr($i['c2']) . ');">'
+             .  '<span style="display:block;font-size:15px;font-weight:800;">' . esc_html($i['top']) . '</span>'
+             .  '<span style="display:block;font-size:12px;opacity:.92;margin-top:2px;">' . esc_html($i['bottom']) . '</span>'
+             .  '</a>';
+    }
+    return $out . '</div>';
+}
+
+function xinchao_append_cta_strip($content) {
+    // 낱개 글·페이지의 본문일 때만. 목록·발췌·피드·관리화면에는 붙이지 않는다.
+    if (is_admin() || is_feed() || !is_singular()) return $content;
+    if (!in_the_loop() || !is_main_query()) return $content;
+
+    // 한 페이지에 두 번 그리지 않는다 (테마가 the_content 를 두 번 부르는 경우가 있다)
+    static $done = false;
+    if ($done) return $content;
+    $done = true;
+
+    return $content . xinchao_cta_strip();
+}
+add_filter('the_content', 'xinchao_append_cta_strip', 25);   // 광고 삽입(20) 뒤에 붙는다
 
 // ─────────────────────────────────────────────────────────
 // 🧩 테마 지면 슬롯 (헤더 · 상단 · 섹션 · 하단) — 홈과 기사 상세

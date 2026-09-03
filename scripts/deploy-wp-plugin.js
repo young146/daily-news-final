@@ -257,20 +257,28 @@ async function verify(expected) {
 
   if (DRY) { console.log('\n미리보기였습니다. 실제로 올리려면 --dry 를 빼세요.'); return; }
 
-  let ok = 0, fail = 0, usedPlain = false;
+  // ⚠️ 2026-09-03: **평문 FTP·FTPS 폴백을 없앴다.** 두 가지가 한꺼번에 잘못됐다.
+  //   ① 비밀번호가 평문으로 흐른다.
+  //   ② 경로가 다르다 — SFTP_BASE 는 절대경로(/home/.../domains/…/public_html)인데
+  //      FTP_BASE 는 'public_html' 상대경로다. FTP 로그인 홈이 이미 public_html 이라
+  //      `ftp-create-dirs` 가 **없는 경로를 새로 만들어** public_html/public_html/wp-content/
+  //      plugins/ 에 파일을 떨궜다. 그래놓고 "성공"으로 보고했다.
+  //      실제로 xinchao-fx-calculator.php 가 그렇게 새어 있었다(이전 세션에서 발생, 이날 발견).
+  //   ⇒ **조용히 잘못된 곳에 올리느니 실패하는 편이 낫다.** SFTP 만 쓰고, 일시적 실패는 재시도한다.
+  const TRIES = 3;
+  let ok = 0, fail = 0;
   console.log('');
   for (const { file: f, target } of plan) {
-    let r, used;
-    for (const proto of ['sftp', 'ftps', 'ftp']) {   // 안전한 것부터
-      r = upload(f, target, proto);
-      used = proto;
+    let r;
+    for (let t = 1; t <= TRIES; t++) {
+      r = upload(f, target, 'sftp');
       if (r.status === 0) break;
       const why = (r.stderr || '').trim().split('\n')[0].slice(0, 110);
-      if (proto !== 'ftp') console.log(`   … ${proto} 실패(${why || 'unknown'}) → 다음 방식으로 재시도`);
+      console.log(`   … sftp 실패 ${t}/${TRIES} (${why || 'unknown'})`);
+      if (t < TRIES) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1500); // 잠깐 쉬고 재시도
     }
     if (r.status === 0) {
-      console.log(`   ✅ ${path.basename(f)}  [${used}]`);
-      if (used === 'ftp') usedPlain = true;
+      console.log(`   ✅ ${path.basename(f)}  [sftp]`);
       ok++;
     } else {
       console.log(`   ❌ ${path.basename(f)} — ${(r.stderr || '').trim().slice(0, 160)}`);
@@ -279,11 +287,10 @@ async function verify(expected) {
   }
 
   console.log(`\n■ 업로드 완료 — 성공 ${ok} · 실패 ${fail}`);
-  if (usedPlain) {
-    console.log('  🔴 평문 FTP 로 올라갔습니다 — **비밀번호가 네트워크에 그대로 흘렀습니다.**');
-    console.log('     SFTP 가 왜 실패했는지 확인하세요 (.env 의 SFTP_BASE·SFTP_PORT,');
-    console.log('     scripts/known_hosts 존재 여부). 서버 키가 바뀌었다면 known_hosts 를 갱신해야 합니다:');
-    console.log('       ssh-keyscan -p 65002 -t ed25519,rsa <IP> | grep -v "^#" > scripts/known_hosts');
+  if (fail) {
+    console.log('  SFTP 가 계속 실패하면 확인할 것: .env 의 SFTP_BASE·SFTP_PORT,');
+    console.log('  그리고 서버 키가 바뀌었는지. 바뀌었다면 지문을 갱신해야 합니다:');
+    console.log('    ssh-keyscan -p 65002 -t rsa <IP> > k && ssh-keygen -lf k');
   }
   if (ok) await verify(expected);
 })().catch((e) => die(e.message));
