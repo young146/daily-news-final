@@ -60,6 +60,20 @@ export async function POST(request) {
       }
     }
 
+    // 테스트·개별 발송에도 이름을 실어 준다.
+    // ⚠️ 이걸 빠뜨리면 **테스트 메일에만 이름이 안 보여서**, 실제로는 잘 되는데
+    //    "이름이 안 나온다"고 잘못 판단하게 된다. 시험은 실제와 같아야 의미가 있다.
+    if (Object.keys(nameByEmail).length === 0 && recipientEmails.length) {
+      const rows = await prisma.subscriber.findMany({
+        where: { email: { in: recipientEmails } },
+        select: { email: true, name: true },
+      });
+      for (const r of rows) {
+        const g = greetingName(r.name);
+        if (g) nameByEmail[r.email.trim().toLowerCase()] = g;
+      }
+    }
+
     // Set "today" to start of day in Vietnam timezone
     const now = new Date();
     const vnDateStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
