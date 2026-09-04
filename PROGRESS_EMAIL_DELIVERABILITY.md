@@ -351,6 +351,43 @@ SMTP 발송 → 이름 X (위에 적은 대로 BCC 라 구조상 불가), 인사
 `POST /api/send-daily-email` 은 **아무 인증 검사가 없다.** 주소만 알면 누구나
 구독자 전원에게 메일을 보낼 수 있다. 관리자 화면에서만 부르도록 만들어졌을 뿐이다.
 
+#### 2026-09-04 조사 완료 — 만들 때 이 표를 쓰면 된다 (조사만 하고 조치는 보류)
+
+실측(메일이 안 나가는 GET 으로만 두드림):
+```
+GET /admin/published-news   → 200   로그인 요구 없이 화면이 열림
+GET /api/send-daily-email   → 405   "여기 있다, 노크 방식만 틀렸다"
+```
+405 는 **문이 열려 있다**는 뜻이다(잠겼으면 401). 게다가 관리자 입구가
+공개 사이트 머리글에 링크돼 있다(`components/Header.js:74`) — 주소도 숨겨져 있지 않다.
+
+⚠️ **"Vercel 로그인이 막아준다"는 오해다.** Vercel 로그인은 **대시보드**(배포·환경변수)를
+   지킬 뿐, **배포된 웹사이트는 누구나 연다.** 건물 관리사무소는 잠겼지만 현관은 열려 있다.
+
+**🚫 막으면 안 되는 문** — 잘못 막으면 그날로 고장 난다. (외부 저장소 전수 조사 완료)
+
+| 문 | 누가 쓰나 | 막으면 |
+|---|---|---|
+| `/api/search`, `/search/ids`, `/item`, `/regions` | vnkorlife.com 통합검색 | 검색 전멸 |
+| `/api/subscribe` | vnkorlife + 워드프레스 플러그인 | 신규 구독 차단 |
+| `/api/public/ads` | 워드프레스 플러그인 | 광고 사라짐 |
+| `/api/assistant` | vnkorlife AI 검색 도우미 | 도우미 먹통 |
+| `/api/directory/edit` | vnkorlife (**이미 Firebase 인증 있음**) | 업체 수정 불가 |
+| `/api/notify-application` | vnkorlife | 신청 알림 끊김 |
+| `/api/unsubscribe`, `/one-click` | **메일 속 수신거부 링크** | 거부 못 함 → 스팸 신고 |
+| `/api/sendgrid/events` | SendGrid 웹훅 | 자동 수신거부 죽음 |
+| `/api/cron/*` (9개) | Vercel 크론 | 매일 크롤링·발행 정지 |
+
+📌 **앱(chao-vn-app)은 이 API 를 안 쓴다** — Firestore 로 직접 통신한다.
+   소스에 보이는 `daily-news-final` 문자열은 전부 주석이었다(전수 확인).
+
+**막아야 할 문**: `/admin/*` · `/api/send-daily-email` · `/api/admin/*` · `/api/test-emails` ·
+크롤링/번역/카드생성 5개(AI 비용) · 페북·카톡 게시 3개 · `/api/auth/users` 등 약 20개.
+
+**설계 (예전 관리자 시스템을 되살리는 게 아니다)**: 그건 사용자 관리·OTP 까지 붙어
+버벅거려 지워졌다. 비밀번호 하나 + **1년짜리 쿠키** → PC 당 평생 한 번 입력. 코드 40줄.
+⚠️ **환경변수가 없으면 열린 채로 둔다** — 변수 하나 빠졌다고 발송이 잠기는 게 더 위험하다.
+
 ---
 
 ## 9. 2026-09-04 점검 — 목표는 달성됐고, **다른 구멍**이 있었다
