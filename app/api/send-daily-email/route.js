@@ -4,7 +4,7 @@ import { filterCardsForToday } from '@/lib/promo-card-filters';
 import { getSponsor, emailSubject, isSponsored, PUBLISHER_NAME, PUBLISHER_NAME_EN } from '@/lib/sponsor';
 import { renderDailyNewsEmail } from '@/lib/newsletter-template';
 import { greetingName } from '@/lib/subscriber-name.js';
-import { buildGreeting } from '@/lib/greeting.js';
+import { resolveGreeting } from '@/lib/greeting-override.js';
 import { fetchSiljeonnotePosts, withSiljeonnoteUtm } from '@/lib/siljeonnote';
 import { fetchOldColumn } from '@/lib/old-columns';
 
@@ -256,7 +256,10 @@ export async function POST(request) {
 
     // 명명권(스폰서) 설정 — 비활성(기본)이면 씬짜오 브랜딩 그대로
     const sponsor = await getSponsor();
-    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards, sponsor, koreaNews, blogPosts, oldColumn);
+    // 인사말 — 관리 화면에서 손질해 둔 것이 있으면 그것을, 없으면 규칙이 만든 것을 쓴다.
+    // DB 가 안 되어도 자동 문구로 폴백하므로 발송이 막히지 않는다.
+    const greetingText = await resolveGreeting();
+    const htmlContent = generateCardNewsHtml(todayString, cardImageUrl, terminalUrl, orderedItems, promoCards, sponsor, koreaNews, blogPosts, oldColumn, greetingText);
     // 제목에 그날의 톱 기사(편집자가 고른 탑뉴스)를 앞세운다 — 매일 같은 제목은 열 이유가 없다
     const topHeadline = orderedItems[0]?.translatedTitle || orderedItems[0]?.title || '';
     const subject = emailSubject(sponsor, todayString, topHeadline);
@@ -289,7 +292,7 @@ export async function POST(request) {
   }
 }
 
-function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], sponsor = null, koreaNews = [], blogPosts = [], oldColumn = null) {
+function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, promoCards = [], sponsor = null, koreaNews = [], blogPosts = [], oldColumn = null, greetingText = '') {
   // 화면(디자인)은 lib/newsletter-template.js 가 맡는다. 여기서는 **자료를 그 모양에 맞춰
   // 넘기는 일만** 한다 — 디자인을 고칠 때 발송 로직을 건드리지 않게 하려는 분리다.
   //
@@ -353,9 +356,8 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
 
   return renderDailyNewsEmail({
     dateString,
-    // 그날의 사정을 담은 인사말 — 연휴·공휴일·요일을 본다.
-    // 근거가 없으면 담백한 기본 인사로 물러선다(지어내지 않는다).
-    greetingText: buildGreeting(),
+    // 그날의 사정을 담은 인사말. 사람이 관리 화면에서 고쳐 두었으면 그것이 온다.
+    greetingText,
     cardImageUrl,
     terminalUrl: withUtm(terminalUrl, 'terminal'),
     newsItems: items,

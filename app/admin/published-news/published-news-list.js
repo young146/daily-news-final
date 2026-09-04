@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Trash2, ExternalLink, CheckCircle, XCircle, AlertCircle, Send } from 'lucide-react';
 import { deletePublishedNewsAction, batchDeletePublishedNewsAction, toggleTopNewsForPublishedAction, toggleCardNewsAction } from '../actions';
 import { SHARE_TARGETS, withShareUtm } from '@/lib/share-utm';
+import GreetingEditor from './greeting-editor';
 
 // 발행된 뉴스(자체 취재 기사 포함)를 탑뉴스/카드뉴스로 지정·해제하는 토글.
 // 카드뉴스 화면은 DB의 isTopNews/isCardNews 로 대상을 고르므로 여기서 켜야 후보에 잡힌다.
@@ -440,6 +441,10 @@ export default function PublishedNewsList({ groupedNews, categories, subscriberC
               </button>
             </div>
           )}
+        </div>
+        {/* ✍️ 오늘 메일 첫 줄 — 자동 문구를 보고 고칠 수 있게 (2026-09-04) */}
+        <div className="px-7 pt-5">
+          <GreetingEditor showToast={showToast} />
         </div>
         {/* 🧪 테스트 발송 대상 이메일 관리 */}
         <div className="px-7 py-5 border-t-2 border-orange-100 bg-green-50">
