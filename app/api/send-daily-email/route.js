@@ -3,6 +3,8 @@ import { sendNewsletterWithFallback } from '../../../lib/email-service.js';
 import { filterCardsForToday } from '@/lib/promo-card-filters';
 import { getSponsor, emailSubject, isSponsored, PUBLISHER_NAME, PUBLISHER_NAME_EN } from '@/lib/sponsor';
 import { renderDailyNewsEmail } from '@/lib/newsletter-template';
+import { greetingName } from '@/lib/subscriber-name.js';
+import { buildGreeting } from '@/lib/greeting.js';
 import { fetchSiljeonnotePosts, withSiljeonnoteUtm } from '@/lib/siljeonnote';
 import { fetchOldColumn } from '@/lib/old-columns';
 
@@ -20,6 +22,7 @@ export async function POST(request) {
 
     // 수신자 결정
     let recipientEmails;
+    const nameByEmail = {};   // { 소문자이메일: '곽성환 님' }
     if (customEmail) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customEmail)) {
         return Response.json({ success: false, error: '유효하지 않은 이메일 주소입니다.' });
@@ -41,11 +44,17 @@ export async function POST(request) {
       // 전체 구독자
       const subscribers = await prisma.subscriber.findMany({
         where: { isActive: true },
-        select: { email: true }
+        select: { email: true, name: true }
       });
       recipientEmails = subscribers
         .map(s => s.email ? s.email.trim() : '')
         .filter(email => email.length > 0);
+      // 받는 사람 이름 — 인사말에 쓴다. 부를 수 없는 값은 담지 않는다(빈 값이면 이름 없이 나감).
+      for (const s of subscribers) {
+        if (!s.email) continue;
+        const g = greetingName(s.name);
+        if (g) nameByEmail[s.email.trim().toLowerCase()] = g;
+      }
       if (recipientEmails.length === 0) {
         return Response.json({ success: false, error: '활성 구독자가 없습니다.' });
       }
@@ -247,7 +256,7 @@ export async function POST(request) {
 
     // 전체 발송: e-service 우선, 실패 시 SMTP 개별 폴백
     const { batchTotal, succeeded, failed, method, failedEmails } = await sendNewsletterWithFallback(
-      recipientEmails, subject, htmlContent, { forceSmtp, smtpAccount }
+      recipientEmails, subject, htmlContent, { forceSmtp, smtpAccount, nameByEmail }
     );
 
     const methodLabel = method === 'smtp' ? '📧 SMTP 개별' : '📨 e-service';
@@ -330,6 +339,9 @@ function generateCardNewsHtml(dateString, cardImageUrl, terminalUrl, newsItems, 
 
   return renderDailyNewsEmail({
     dateString,
+    // 그날의 사정을 담은 인사말 — 연휴·공휴일·요일을 본다.
+    // 근거가 없으면 담백한 기본 인사로 물러선다(지어내지 않는다).
+    greetingText: buildGreeting(),
     cardImageUrl,
     terminalUrl: withUtm(terminalUrl, 'terminal'),
     newsItems: items,
