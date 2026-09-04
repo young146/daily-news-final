@@ -775,6 +775,40 @@ function xinchao_cta_subscribe() {
     return function_exists('jenny_subscribe_box') ? jenny_subscribe_box() : '';
 }
 
+/**
+ * 맨 아래 — 씬짜오가 운영하는 다른 사이트로 가는 **작은 한 줄**.
+ *
+ * 왜 배너가 아니라 글자 한 줄인가 (2026-09-04 사장님 지시):
+ *   목적이 "구글이 저 사이트를 찾아가게 하는 것"이다. 구글은 배너든 글자든
+ *   똑같이 <a href> 를 따라간다. 그런데 **배너로 만들면 유료 광고 자리를 먹는다**
+ *   (house 소재는 XINCHAO_HOUSE_MAX 칸을 놓고 경쟁한다). 목적은 같고 값은 싼 쪽을 쓴다.
+ *
+ * ⚠️ rel 에 nofollow 를 넣지 말 것. 넣으면 구글이 "따라가지 말라"로 읽어
+ *    이 줄을 넣은 이유 자체가 사라진다. (noopener 는 보안용이라 무관)
+ *
+ * ⚠️ 새 창(target=_blank)으로 열지 않는다 — 우리 식구 사이트끼리는 같은 창이 자연스럽다.
+ */
+function xinchao_cta_sisters() {
+    $sites = array(
+        // 블로그 — 2026-08 개설. 구글이 아직 홈 1쪽만 색인했다(2026-09-04 실측).
+        // 본진에서 오는 길이 한 줄도 없어 구글이 "아무도 소개 안 한 낯선 집"으로 본다.
+        array('url' => 'https://www.vietnamsari.com/', 'name' => '베트남 살이 실전노트',
+              'desc' => '비자·환전·교통 실전 정보'),
+        array('url' => 'https://vnkorlife.com/',       'name' => 'vnkorlife',
+              'desc' => '업소록·구인·부동산'),
+    );
+    $out = '';
+    foreach ($sites as $i => $s) {
+        if ($i) $out .= '<span style="color:#cbd5e1;margin:0 8px;">·</span>';
+        $out .= '<a href="' . esc_url($s['url']) . '" rel="noopener" style="color:#475569;'
+              . 'text-decoration:none;border-bottom:1px solid #e2e8f0;">'
+              . esc_html($s['name']) . '</a>'
+              . '<span style="color:#94a3b8;"> ' . esc_html($s['desc']) . '</span>';
+    }
+    return '<p style="margin:14px 0 0;font-size:13px;line-height:1.9;color:#94a3b8;'
+         . 'text-align:center;">씬짜오가 함께 운영합니다 — ' . $out . '</p>';
+}
+
 /** ② 본문 한가운데 — 앱 설치. ③ 맨 아래 — 씬짜오 디지털 라인. */
 function xinchao_cta_house($id) {
     // 이 페이지가 이미 같은 소재를 그렸으면 또 그리지 않는다 (뉴스 터미널 등)
@@ -807,7 +841,7 @@ function xinchao_inject_cta($content) {
     $done = true;
 
     $top    = xinchao_cta_subscribe();
-    $bottom = xinchao_cta_house('house_digital');
+    $bottom = xinchao_cta_house('house_digital') . xinchao_cta_sisters();
     $mid    = xinchao_cta_house('house_app');
 
     if ($mid === '') return $top . $content . $bottom;
