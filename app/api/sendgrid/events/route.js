@@ -44,9 +44,20 @@ export const dynamic = 'force-dynamic';
 
 const ACT_ON = new Set(['unsubscribe', 'group_unsubscribe', 'spamreport']);
 
+// SendGrid Event Webhook 의 **공개키**. 서명이 진짜 SendGrid 것인지 확인하는 용도라
+// **저장소에 있어도 안전하다** (비밀번호가 아니다 — 이걸로는 아무것도 서명할 수 없다).
+// 저장소에 두는 이유: 환경변수로만 두면 Vercel 설정을 사람이 손으로 넣어야 하고,
+// 그 한 단계가 빠지면 **검증이 통째로 꺼진 채 웹훅이 도는** 상태가 된다.
+// (같은 판단으로 `scripts/deploy-wp-plugin.js` 도 SFTP 호스트키 지문을 코드에 두고 있다)
+// 키가 바뀌면 SendGrid → Settings → Mail Settings → Event Webhook 에서 새 값을 받아 갈아끼운다.
+// 환경변수 SENDGRID_WEBHOOK_KEY 가 있으면 그쪽이 우선한다.
+const DEFAULT_WEBHOOK_KEY =
+  'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEmdFlwOw8Ql/90xo6ASIx+S4I8PDyKAqP' +
+  '+hnLN2zx+oxYocBntuw3NHz+yyGrKUXiNlWxhb3Wcx2DkQrlLjRV+A==';
+
 /** SendGrid ECDSA 서명 검증 (공개키가 없으면 null = 판정 보류) */
 function verify(rawBody, signature, timestamp) {
-  const pub = process.env.SENDGRID_WEBHOOK_KEY;
+  const pub = process.env.SENDGRID_WEBHOOK_KEY || DEFAULT_WEBHOOK_KEY;
   if (!pub || !signature || !timestamp) return null;
   try {
     const key = crypto.createPublicKey({
